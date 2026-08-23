@@ -146,13 +146,13 @@ export const KpiRewardsView: React.FC = () => {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-              <Award className="w-5 h-5 text-emerald-600" />
+            <div className="w-9 h-9 rounded-xl bg-success-100 text-success-800 flex items-center justify-center font-bold">
+              <Award className="w-5 h-5 text-success-600" />
             </div>
             <div>
               <h1 className="text-lg font-extrabold text-slate-900">Bảng Theo dõi KPI & Tiến độ Render View</h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                Chỉ hiển thị các bài / dự án được phân công cho nhân viên: <strong className="text-slate-800">{currentEmployee.fullName}</strong> (<span className="font-mono text-emerald-700 font-bold">{currentEmployee.employeeCode}</span>)
+                Chỉ hiển thị các bài / dự án được phân công cho nhân viên: <strong className="text-slate-800">{currentEmployee.fullName}</strong> (<span className="font-mono text-success-700 font-bold">{currentEmployee.employeeCode}</span>)
               </p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export const KpiRewardsView: React.FC = () => {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-success-500 cursor-pointer"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                 <option key={m} value={m}>Tháng {m < 10 ? '0' + m : m}</option>
@@ -175,7 +175,7 @@ export const KpiRewardsView: React.FC = () => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-success-500 cursor-pointer"
             >
               <option value={2026}>2026</option>
               <option value={2025}>2025</option>
@@ -184,20 +184,20 @@ export const KpiRewardsView: React.FC = () => {
 
           <button
             onClick={() => setIsImportKpiModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-success-800 bg-success-50 hover:bg-success-100 rounded-xl border border-success-200 transition-colors cursor-pointer"
           >
-            <Link className="w-4 h-4 text-emerald-600" />
+            <Link className="w-4 h-4 text-success-600" />
             <span>Liên kết Bảng KPI</span>
           </button>
         </div>
       </div>
 
       {/* WORKING DAYS & KPI TARGET CALCULATION ACCORDION / HIGHLIGHT CARD */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white p-5 rounded-2xl border border-slate-700 shadow-md">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-primary-950 text-white p-5 rounded-2xl border border-slate-700 shadow-md">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-slate-700/80">
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+            <div className="w-10 h-10 rounded-xl bg-success-500/20 border border-success-400/30 flex items-center justify-center text-success-400">
               <CalendarDays className="w-5 h-5" />
             </div>
             <div>
@@ -205,7 +205,7 @@ export const KpiRewardsView: React.FC = () => {
                 <h3 className="text-sm font-extrabold text-white">
                   Cơ cấu Ngày Công & Chỉ Tiêu KPI Tháng {selectedMonth}/{selectedYear}
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-success-500/20 text-success-300 border border-success-400/30">
                   Lịch làm việc 5.5 ngày/tuần
                 </span>
               </div>
@@ -218,7 +218,7 @@ export const KpiRewardsView: React.FC = () => {
           <div className="flex items-center gap-3 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
             <div className="text-right">
               <span className="text-[10px] text-slate-400 block font-medium">Định mức KPI / ngày công</span>
-              <span className="text-xs font-bold text-emerald-400">{kpiRatePerDay} view/công</span>
+              <span className="text-xs font-bold text-success-400">{kpiRatePerDay} view/công</span>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -236,7 +236,7 @@ export const KpiRewardsView: React.FC = () => {
                 max="5"
                 value={kpiRatePerDay}
                 onChange={(e) => setKpiRatePerDay(Math.max(0.1, Number(e.target.value) || 1.5))}
-                className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-xs font-mono font-bold text-center text-white focus:ring-1 focus:ring-emerald-400"
+                className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-xs font-mono font-bold text-center text-white focus:ring-1 focus:ring-success-400"
               />
               <button
                 type="button"
@@ -259,7 +259,7 @@ export const KpiRewardsView: React.FC = () => {
             <p className="text-base font-bold text-white font-mono mt-0.5">
               {workDaysInfo.fullWeekdaysCount} <span className="text-xs font-normal text-slate-400">ngày</span>
             </p>
-            <span className="text-[10px] text-emerald-400">={workDaysInfo.fullWeekdaysCount} công</span>
+            <span className="text-[10px] text-success-400">={workDaysInfo.fullWeekdaysCount} công</span>
           </div>
 
           <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
@@ -278,20 +278,20 @@ export const KpiRewardsView: React.FC = () => {
             <span className="text-[10px] text-slate-500">Nghỉ hàng tuần</span>
           </div>
 
-          <div className="bg-emerald-950/80 p-3 rounded-xl border border-emerald-600/40">
-            <span className="text-[11px] text-emerald-300 font-bold block">Tổng Ngày Công Chuẩn</span>
-            <p className="text-lg font-black text-emerald-300 font-mono mt-0.5">
-              {workDaysInfo.standardWorkDays} <span className="text-xs font-semibold text-emerald-400">công</span>
+          <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
+            <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
+            <p className="text-lg font-black text-success-300 font-mono mt-0.5">
+              {workDaysInfo.standardWorkDays} <span className="text-xs font-semibold text-success-400">công</span>
             </p>
-            <span className="text-[10px] text-emerald-400 font-medium">Quy chuẩn tháng {selectedMonth}</span>
+            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth}</span>
           </div>
 
-          <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-indigo-950/80 p-3 rounded-xl border border-indigo-500/40">
-            <span className="text-[11px] text-indigo-200 font-bold block">Chỉ tiêu KPI Tháng</span>
+          <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-primary-950/80 p-3 rounded-xl border border-primary-500/40">
+            <span className="text-[11px] text-primary-200 font-bold block">Chỉ tiêu KPI Tháng</span>
             <p className="text-lg font-black text-white font-mono mt-0.5">
-              {dynamicKpiTarget} <span className="text-xs font-semibold text-indigo-300">view</span>
+              {dynamicKpiTarget} <span className="text-xs font-semibold text-primary-300">view</span>
             </p>
-            <span className="text-[10px] text-indigo-300 font-mono">
+            <span className="text-[10px] text-primary-300 font-mono">
               {workDaysInfo.standardWorkDays} × {kpiRatePerDay} view
             </span>
           </div>
@@ -319,13 +319,13 @@ export const KpiRewardsView: React.FC = () => {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Điểm KPI Quy đổi</span>
-            <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-[10px] font-bold">Hệ số độ khó</span>
+            <span className="p-1.5 bg-success-100 text-success-800 rounded-lg text-[10px] font-bold">Hệ số độ khó</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-black text-emerald-700 font-mono tracking-tight">{totalConvertedKpi}</p>
-            <span className="text-xs font-semibold text-emerald-600">điểm</span>
+            <p className="text-3xl font-black text-success-700 font-mono tracking-tight">{totalConvertedKpi}</p>
+            <span className="text-xs font-semibold text-success-600">điểm</span>
           </div>
-          <p className="text-[11px] text-emerald-600 font-medium">Quy đổi theo loại không gian & yêu cầu</p>
+          <p className="text-[11px] text-success-600 font-medium">Quy đổi theo loại không gian & yêu cầu</p>
         </div>
 
         {/* Target KPI & % Completion (Dynamically from standard work days) */}
@@ -337,12 +337,12 @@ export const KpiRewardsView: React.FC = () => {
             </span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-emerald-600 font-mono">{completionPercentage}%</span>
+            <span className="text-3xl font-black text-success-600 font-mono">{completionPercentage}%</span>
             <span className="text-xs font-bold text-slate-500">tiến độ đạt</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+              className="bg-success-500 h-full rounded-full transition-all duration-500" 
               style={{ width: `${Math.min(100, completionPercentage)}%` }}
             ></div>
           </div>
@@ -352,10 +352,10 @@ export const KpiRewardsView: React.FC = () => {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500">Công việc Phân công</span>
-            <FolderGit2 className="w-4 h-4 text-indigo-600" />
+            <FolderGit2 className="w-4 h-4 text-primary-600" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-indigo-700 font-mono">{assignedJobs.length}</span>
+            <span className="text-3xl font-black text-primary-700 font-mono">{assignedJobs.length}</span>
             <span className="text-xs font-bold text-slate-500">sub-tasks</span>
           </div>
           <p className="text-[11px] text-slate-500">
@@ -371,13 +371,13 @@ export const KpiRewardsView: React.FC = () => {
         {/* Table Top Controls & Search Bar */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-800 flex items-center justify-center font-bold">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
               <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <span>Danh sách Dự án & Sub-task Được Giao (KPI Tracking)</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200">
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-primary-50 text-primary-700 rounded-md border border-primary-200">
                   {assignedJobs.length} bài
                 </span>
               </h2>
@@ -394,7 +394,7 @@ export const KpiRewardsView: React.FC = () => {
               placeholder="Tìm kiếm dự án, sub-task, deadline..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 transition-all"
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-success-500 transition-all"
             />
           </div>
         </div>
@@ -451,14 +451,14 @@ export const KpiRewardsView: React.FC = () => {
                         </td>
                         <td className="py-3.5 px-4 font-bold text-slate-800 border-r border-slate-300">
                           <div className="flex items-center gap-2">
-                            <img src={currentEmployee.avatar} alt="" className="w-5 h-5 rounded-full object-cover border border-emerald-400" />
-                            <span className="text-emerald-900 font-semibold">{job.assigneeName}</span>
+                            <img src={currentEmployee.avatar} alt="" className="w-5 h-5 rounded-full object-cover border border-success-400" />
+                            <span className="text-success-900 font-semibold">{job.assigneeName}</span>
                           </div>
                         </td>
                         <td className="py-3.5 px-3 text-center font-black text-slate-800 text-sm border-r border-slate-300">
                           {job.viewsCount}
                         </td>
-                        <td className="py-3.5 px-3 text-center font-black text-emerald-700 text-sm bg-emerald-50/50 border-r border-slate-300">
+                        <td className="py-3.5 px-3 text-center font-black text-success-700 text-sm bg-success-50/50 border-r border-slate-300">
                           {job.convertedKpi}
                         </td>
                         <td className="py-3.5 px-3 text-center font-medium text-slate-600 border-r border-slate-300">
@@ -468,8 +468,8 @@ export const KpiRewardsView: React.FC = () => {
                           {job.deadline || '—'}
                         </td>
                         <td className="py-3.5 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-success-100 text-success-800">
+                            <CheckCircle2 className="w-3 h-3 text-success-600" />
                             <span>Đã giao việc</span>
                           </span>
                         </td>
@@ -487,7 +487,7 @@ export const KpiRewardsView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 font-black text-slate-900 text-sm border-r border-slate-300">
                           <div className="flex items-center gap-2">
-                            <FolderGit2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                            <FolderGit2 className="w-4 h-4 text-primary-600 flex-shrink-0" />
                             <span>{group.orderJob}</span>
                           </div>
                         </td>
@@ -500,13 +500,13 @@ export const KpiRewardsView: React.FC = () => {
                         <td className="py-3 px-3 text-center font-bold text-slate-700 border-r border-slate-300">
                           {group.items.reduce((sum, item) => sum + item.viewsCount, 0)}
                         </td>
-                        <td className="py-3 px-3 text-center font-bold text-emerald-700 border-r border-slate-300">
+                        <td className="py-3 px-3 text-center font-bold text-success-700 border-r border-slate-300">
                           {group.items.reduce((sum, item) => sum + item.convertedKpi, 0)}
                         </td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-50 text-primary-700 border border-primary-200">
                             Order Tổng
                           </span>
                         </td>
@@ -519,7 +519,7 @@ export const KpiRewardsView: React.FC = () => {
                           
                           {/* Sub-task description in clean bordered block */}
                           <td className="py-2 px-4 border-r border-slate-300">
-                            <div className="bg-slate-100/90 text-slate-800 px-3 py-1.5 rounded-md border-l-4 border-indigo-500 font-semibold text-xs flex items-center justify-between">
+                            <div className="bg-slate-100/90 text-slate-800 px-3 py-1.5 rounded-md border-l-4 border-primary-500 font-semibold text-xs flex items-center justify-between">
                               <span>Sub-task : {item.subTask || item.orderJob}</span>
                             </div>
                           </td>
@@ -535,7 +535,7 @@ export const KpiRewardsView: React.FC = () => {
                             {item.viewsCount}
                           </td>
 
-                          <td className="py-2 px-3 text-center font-bold text-emerald-700 border-r border-slate-300">
+                          <td className="py-2 px-3 text-center font-bold text-success-700 border-r border-slate-300">
                             {item.convertedKpi}
                           </td>
 
@@ -548,8 +548,8 @@ export const KpiRewardsView: React.FC = () => {
                           </td>
 
                           <td className="py-2 px-3 text-center">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <Check className="w-3 h-3 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-success-50 text-success-700 border border-success-200">
+                              <Check className="w-3 h-3 text-success-600" />
                               <span>Được giao</span>
                             </span>
                           </td>
@@ -569,7 +569,7 @@ export const KpiRewardsView: React.FC = () => {
                   <td className="py-3 px-3 text-center font-black text-sm border-r border-slate-300 text-slate-900">
                     {totalActualViews} views
                   </td>
-                  <td className="py-3 px-3 text-center font-black text-sm border-r border-slate-300 text-emerald-800 bg-emerald-100/70">
+                  <td className="py-3 px-3 text-center font-black text-sm border-r border-slate-300 text-success-800 bg-success-100/70">
                     {totalConvertedKpi} điểm
                   </td>
                   <td className="py-3 px-3 text-center border-r border-slate-300" colSpan={3}>
@@ -586,7 +586,7 @@ export const KpiRewardsView: React.FC = () => {
       {/* Progress & Target Summary Card */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+          <div className="w-10 h-10 rounded-xl bg-success-50 border border-success-200 flex items-center justify-center text-success-700">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
@@ -600,7 +600,7 @@ export const KpiRewardsView: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className={`px-3 py-1.5 rounded-xl text-xs font-bold ${
             completionPercentage >= 100 
-              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+              ? 'bg-success-100 text-success-800 border border-success-200' 
               : 'bg-amber-100 text-amber-800 border border-amber-200'
           }`}>
             {completionPercentage >= 100 ? '✅ Đã hoàn thành chỉ tiêu KPI' : '⏳ Đang tiếp tục thực hiện chỉ tiêu'}

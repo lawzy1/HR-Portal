@@ -232,7 +232,7 @@ export const EditProfileModal: React.FC = () => {
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="relative group cursor-pointer">
-              <img src={avatar || targetEmployee.avatar} alt="" className="w-11 h-11 rounded-full object-cover border-2 border-emerald-500" />
+              <img src={avatar || targetEmployee.avatar} alt="" className="w-11 h-11 rounded-full object-cover border-2 border-success-500" />
               <label className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <Camera className="w-4 h-4 text-white" />
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'avatar')} />
@@ -241,12 +241,12 @@ export const EditProfileModal: React.FC = () => {
             <div>
               <h2 className="text-base font-bold flex items-center gap-2">
                 <span>Chỉnh sửa toàn bộ Hồ sơ Nhân viên</span>
-                <span className="text-xs bg-emerald-600/90 text-white font-mono font-bold px-2 py-0.5 rounded-md">
+                <span className="text-xs bg-success-600/90 text-white font-mono font-bold px-2 py-0.5 rounded-md">
                   {employeeCode || targetEmployee.employeeCode}
                 </span>
               </h2>
               <p className="text-xs text-slate-300">
-                Đang chỉnh sửa cho: <strong className="text-emerald-400">{fullName || targetEmployee.fullName}</strong> ({jobTitle || targetEmployee.jobTitle})
+                Đang chỉnh sửa cho: <strong className="text-success-400">{fullName || targetEmployee.fullName}</strong> ({jobTitle || targetEmployee.jobTitle})
               </p>
             </div>
           </div>
@@ -266,7 +266,7 @@ export const EditProfileModal: React.FC = () => {
             onClick={() => setActiveTab('general')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'general'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -279,7 +279,7 @@ export const EditProfileModal: React.FC = () => {
             onClick={() => setActiveTab('contract')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'contract'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -292,7 +292,7 @@ export const EditProfileModal: React.FC = () => {
             onClick={() => setActiveTab('contact')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'contact'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -305,7 +305,7 @@ export const EditProfileModal: React.FC = () => {
             onClick={() => setActiveTab('documents')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'documents'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -318,7 +318,7 @@ export const EditProfileModal: React.FC = () => {
             onClick={() => setActiveTab('bank')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'bank'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -331,7 +331,7 @@ export const EditProfileModal: React.FC = () => {
             onClick={() => setActiveTab('relatives')}
             className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'relatives'
-                ? 'border-indigo-600 text-indigo-700 bg-white rounded-t-lg'
+                ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -353,7 +353,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
@@ -364,7 +364,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={employeeCode}
                     onChange={(e) => setEmployeeCode(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-primary-700 focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
@@ -375,7 +375,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-slate-800 focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
@@ -387,7 +387,7 @@ export const EditProfileModal: React.FC = () => {
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="Phòng Thiết kế Nội thất">Phòng Thiết kế Nội thất</option>
                     <option value="Phòng Thiết kế Kiến trúc">Phòng Thiết kế Kiến trúc</option>
@@ -401,7 +401,7 @@ export const EditProfileModal: React.FC = () => {
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as EmployeeStatus)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="Chính thức">Chính thức</option>
                     <option value="Thử việc">Thử việc</option>
@@ -415,7 +415,7 @@ export const EditProfileModal: React.FC = () => {
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as UserRole)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="employee">Nhân viên (Employee)</option>
                     <option value="admin">Quản trị viên (Admin)</option>
@@ -432,7 +432,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -441,7 +441,7 @@ export const EditProfileModal: React.FC = () => {
                   <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
@@ -454,7 +454,7 @@ export const EditProfileModal: React.FC = () => {
                   <select
                     value={maritalStatus}
                     onChange={(e) => setMaritalStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="Độc thân">Độc thân</option>
                     <option value="Đã kết hôn">Đã kết hôn</option>
@@ -470,7 +470,7 @@ export const EditProfileModal: React.FC = () => {
                     value={avatar}
                     onChange={(e) => setAvatar(e.target.value)}
                     placeholder="https://..."
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                   <label className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer flex items-center space-x-1 shrink-0">
                     <Upload className="w-3.5 h-3.5" />
@@ -492,7 +492,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -501,7 +501,7 @@ export const EditProfileModal: React.FC = () => {
                   <select
                     value={contractType}
                     onChange={(e) => setContractType(e.target.value as ContractType)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-indigo-700 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold text-primary-700 focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="Thử việc">Thử việc</option>
                     <option value="HĐ xác định thời hạn (1 năm)">HĐ xác định thời hạn (1 năm)</option>
@@ -518,7 +518,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={contractStartDate}
                     onChange={(e) => setContractStartDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -528,7 +528,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={contractEndDate}
                     onChange={(e) => setContractEndDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 text-rose-700 font-bold"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 text-rose-700 font-bold"
                   />
                 </div>
 
@@ -538,7 +538,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={contractRenewalDate}
                     onChange={(e) => setContractRenewalDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -551,7 +551,7 @@ export const EditProfileModal: React.FC = () => {
                     step="500000"
                     value={currentSalary}
                     onChange={(e) => setCurrentSalary(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-emerald-700 text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-success-700 text-sm focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -561,7 +561,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={lastSalaryReviewDate}
                     onChange={(e) => setLastSalaryReviewDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -578,7 +578,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3.5 py-2 font-bold text-blue-700 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2 font-bold text-primary-700 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
@@ -588,7 +588,7 @@ export const EditProfileModal: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2 font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
@@ -600,7 +600,7 @@ export const EditProfileModal: React.FC = () => {
                   rows={2}
                   value={permanentAddress}
                   onChange={(e) => setPermanentAddress(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 ></textarea>
               </div>
 
@@ -610,7 +610,7 @@ export const EditProfileModal: React.FC = () => {
                   rows={2}
                   value={temporaryAddress}
                   onChange={(e) => setTemporaryAddress(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 ></textarea>
               </div>
             </div>
@@ -626,7 +626,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={idCardNumber}
                     onChange={(e) => setIdCardNumber(e.target.value)}
-                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -635,7 +635,7 @@ export const EditProfileModal: React.FC = () => {
                     type="date"
                     value={idCardIssueDate}
                     onChange={(e) => setIdCardIssueDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -644,7 +644,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={idCardIssuePlace}
                     onChange={(e) => setIdCardIssuePlace(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -656,7 +656,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={taxCode}
                     onChange={(e) => setTaxCode(e.target.value)}
-                    className="w-full px-3.5 py-2 font-mono font-semibold text-indigo-700 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2 font-mono font-semibold text-primary-700 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -665,7 +665,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={socialInsuranceCode}
                     onChange={(e) => setSocialInsuranceCode(e.target.value)}
-                    className="w-full px-3.5 py-2 font-mono font-semibold text-emerald-700 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2 font-mono font-semibold text-success-700 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -683,13 +683,13 @@ export const EditProfileModal: React.FC = () => {
                         <div className="relative">
                           <img src={idCardFrontImage} alt="Mặt trước CCCD" className="w-full h-40 object-cover rounded-xl border border-slate-200" />
                           <label className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold cursor-pointer rounded-xl transition-opacity">
-                            <Upload className="w-6 h-6 mb-1 text-emerald-400" />
+                            <Upload className="w-6 h-6 mb-1 text-success-400" />
                             <span>Thay đổi ảnh mặt trước</span>
                             <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'front')} />
                           </label>
                         </div>
                       ) : (
-                        <label className="flex flex-col items-center justify-center h-36 cursor-pointer text-slate-500 hover:text-indigo-600 transition-colors">
+                        <label className="flex flex-col items-center justify-center h-36 cursor-pointer text-slate-500 hover:text-primary-600 transition-colors">
                           <Upload className="w-7 h-7 mb-1 text-slate-400" />
                           <span className="text-xs font-bold">Chọn tệp ảnh mặt trước</span>
                           <span className="text-[10px] text-slate-400">PNG, JPG, WEBP từ máy tính</span>
@@ -705,13 +705,13 @@ export const EditProfileModal: React.FC = () => {
                         <div className="relative">
                           <img src={idCardBackImage} alt="Mặt sau CCCD" className="w-full h-40 object-cover rounded-xl border border-slate-200" />
                           <label className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold cursor-pointer rounded-xl transition-opacity">
-                            <Upload className="w-6 h-6 mb-1 text-emerald-400" />
+                            <Upload className="w-6 h-6 mb-1 text-success-400" />
                             <span>Thay đổi ảnh mặt sau</span>
                             <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'back')} />
                           </label>
                         </div>
                       ) : (
-                        <label className="flex flex-col items-center justify-center h-36 cursor-pointer text-slate-500 hover:text-indigo-600 transition-colors">
+                        <label className="flex flex-col items-center justify-center h-36 cursor-pointer text-slate-500 hover:text-primary-600 transition-colors">
                           <Upload className="w-7 h-7 mb-1 text-slate-400" />
                           <span className="text-xs font-bold">Chọn tệp ảnh mặt sau</span>
                           <span className="text-[10px] text-slate-400">PNG, JPG, WEBP từ máy tính</span>
@@ -781,7 +781,7 @@ export const EditProfileModal: React.FC = () => {
                                 Xóa ảnh hiện tại
                               </button>
                             </div>
-                            <span className="absolute bottom-2 left-2 bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span className="absolute bottom-2 left-2 bg-success-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" /> Đã tải lên ảnh VNeID
                             </span>
                           </div>
@@ -857,7 +857,7 @@ export const EditProfileModal: React.FC = () => {
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
                   placeholder="VD: Vietcombank, Techcombank, MB Bank..."
-                  className="w-full px-3.5 py-2 font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3.5 py-2 font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -868,7 +868,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={accountNumber}
                     onChange={(e) => setAccountNumber(e.target.value)}
-                    className="w-full px-3.5 py-2 font-mono font-bold text-blue-700 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2 font-mono font-bold text-primary-700 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -877,7 +877,7 @@ export const EditProfileModal: React.FC = () => {
                     type="text"
                     value={accountHolder}
                     onChange={(e) => setAccountHolder(e.target.value.toUpperCase())}
-                    className="w-full px-3.5 py-2 font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 uppercase"
+                    className="w-full px-3.5 py-2 font-mono font-bold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 uppercase"
                   />
                 </div>
               </div>
@@ -888,7 +888,7 @@ export const EditProfileModal: React.FC = () => {
                   type="text"
                   value={bankBranch}
                   onChange={(e) => setBankBranch(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 />
               </div>
             </div>
@@ -902,7 +902,7 @@ export const EditProfileModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddRelative}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary-800 bg-primary-50 hover:bg-primary-100 rounded-lg border border-primary-200 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Thêm người thân mới</span>
@@ -918,7 +918,7 @@ export const EditProfileModal: React.FC = () => {
                   {relatives.map((rel, index) => (
                     <div key={rel.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-indigo-900">Người thân #{index + 1}</span>
+                        <span className="font-bold text-primary-900">Người thân #{index + 1}</span>
                         <div className="flex items-center gap-3">
                           <label className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 cursor-pointer">
                             <input
@@ -928,7 +928,7 @@ export const EditProfileModal: React.FC = () => {
                                 const checked = e.target.checked;
                                 setRelatives(relatives.map(r => r.id === rel.id ? { ...r, isEmergencyContact: checked } : r));
                               }}
-                              className="rounded text-indigo-600 focus:ring-indigo-500"
+                              className="rounded text-primary-600 focus:ring-primary-500"
                             />
                             <span>Liên hệ khẩn cấp</span>
                           </label>
@@ -1002,7 +1002,7 @@ export const EditProfileModal: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-md shadow-indigo-600/20 cursor-pointer"
+              className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors shadow-md shadow-primary-600/20 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Lưu thay đổi hồ sơ nhân viên</span>

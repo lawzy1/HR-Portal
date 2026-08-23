@@ -94,7 +94,7 @@ export const AdminRemindersView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         {filteredReminders.length === 0 ? (
           <div className="p-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-            <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+            <CheckCircle2 className="w-10 h-10 text-success-500 mx-auto mb-2" />
             <p className="font-bold text-slate-800 text-base">Tuyệt vời! Không có cảnh báo nào trong danh mục này.</p>
             <p className="text-xs text-slate-500 mt-1">Hệ thống HR đang vận hành mượt mà.</p>
           </div>
@@ -118,7 +118,7 @@ export const AdminRemindersView: React.FC = () => {
                     ) : rem.severity === 'medium' ? (
                       <AlertTriangle className="w-6 h-6 text-amber-600" />
                     ) : (
-                      <BellRing className="w-6 h-6 text-blue-600" />
+                      <BellRing className="w-6 h-6 text-primary-600" />
                     )}
                   </div>
 
@@ -163,7 +163,7 @@ export const AdminRemindersView: React.FC = () => {
                           setAdminTab('admin-employees');
                         }
                       }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1 shadow-md shadow-blue-500/20 cursor-pointer"
+                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1 shadow-md shadow-primary-500/20 cursor-pointer"
                     >
                       <span>Xử lý ngay</span>
                       <ArrowRight className="w-3.5 h-3.5" />

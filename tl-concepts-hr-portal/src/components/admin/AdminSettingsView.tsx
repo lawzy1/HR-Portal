@@ -105,7 +105,7 @@ export const AdminSettingsView: React.FC = () => {
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h2 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" />
+              <ShieldCheck className="w-5 h-5 text-primary-600" />
               <span>1. Ma trận Phân quyền Tài khoản (RBAC)</span>
             </h2>
           </div>
@@ -115,9 +115,9 @@ export const AdminSettingsView: React.FC = () => {
               <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] tracking-wider border-y border-slate-200">
                 <tr>
                   <th className="py-3 px-3">Quyền hạn / Chức năng</th>
-                  <th className="py-3 px-2 text-center text-blue-700 font-bold">Admin</th>
-                  <th className="py-3 px-2 text-center text-indigo-700 font-bold">HR</th>
-                  <th className="py-3 px-2 text-center text-emerald-700 font-bold">Manager</th>
+                  <th className="py-3 px-2 text-center text-primary-700 font-bold">Admin</th>
+                  <th className="py-3 px-2 text-center text-primary-700 font-bold">HR</th>
+                  <th className="py-3 px-2 text-center text-success-700 font-bold">Manager</th>
                   <th className="py-3 px-2 text-center text-slate-600">Employee</th>
                 </tr>
               </thead>
@@ -126,16 +126,16 @@ export const AdminSettingsView: React.FC = () => {
                   <tr key={idx} className="hover:bg-slate-50">
                     <td className="py-3 px-3 font-medium text-slate-800">{item.feature}</td>
                     <td className="py-3 px-2 text-center">
-                      <Check className="w-4 h-4 text-emerald-600 mx-auto font-bold" />
+                      <Check className="w-4 h-4 text-success-600 mx-auto font-bold" />
                     </td>
                     <td className="py-3 px-2 text-center">
-                      {item.hr ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
+                      {item.hr ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
                     </td>
                     <td className="py-3 px-2 text-center">
-                      {item.manager ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
+                      {item.manager ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
                     </td>
                     <td className="py-3 px-2 text-center">
-                      {item.employee ? <Check className="w-4 h-4 text-emerald-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
+                      {item.employee ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
                     </td>
                   </tr>
                 ))}
@@ -148,7 +148,7 @@ export const AdminSettingsView: React.FC = () => {
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h2 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-              <Sliders className="w-5 h-5 text-indigo-600" />
+              <Sliders className="w-5 h-5 text-primary-600" />
               <span>2. Thông số Bảo hiểm & Công chuẩn</span>
             </h2>
           </div>
@@ -203,7 +203,7 @@ export const AdminSettingsView: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+              className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs shadow-md shadow-primary-600/20 transition-all cursor-pointer"
             >
               Lưu cấu hình thông số
             </button>
@@ -215,7 +215,7 @@ export const AdminSettingsView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h2 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-            <Users className="w-5 h-5 text-emerald-600" />
+            <Users className="w-5 h-5 text-success-600" />
             <span>3. Quản lý Phân quyền theo Nhân viên</span>
           </h2>
         </div>
@@ -242,15 +242,15 @@ export const AdminSettingsView: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3 px-4 font-medium">{emp.jobTitle} ({emp.department})</td>
-                  <td className="py-3 px-4 text-blue-600">{emp.email}</td>
+                  <td className="py-3 px-4 text-primary-600">{emp.email}</td>
                   <td className="py-3 px-4">
                     <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase ${
                       emp.role === 'admin'
                         ? 'bg-purple-100 text-purple-800'
                         : emp.role === 'hr'
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-primary-100 text-primary-800'
                           : emp.role === 'manager'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-success-100 text-success-800'
                             : 'bg-slate-100 text-slate-700'
                     }`}>
                       {emp.role || 'employee'}

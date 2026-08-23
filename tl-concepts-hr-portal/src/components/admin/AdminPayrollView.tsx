@@ -186,7 +186,7 @@ export const AdminPayrollView: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleApproveAllPayroll}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm flex items-center space-x-2 shadow-md shadow-blue-500/20 cursor-pointer"
+            className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Phê duyệt & Chi trả toàn bộ Payroll</span>
@@ -216,7 +216,7 @@ export const AdminPayrollView: React.FC = () => {
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-bold text-slate-500 uppercase">Tổng Lương Thực nhận (Net)</span>
-          <div className="mt-2 text-2xl font-black text-emerald-600">{formatVND(totalCompanyNet)}</div>
+          <div className="mt-2 text-2xl font-black text-success-600">{formatVND(totalCompanyNet)}</div>
           <p className="text-xs text-slate-500 mt-1">Tổng thực chi chuyển khoản ngân hàng</p>
         </div>
       </div>
@@ -265,13 +265,13 @@ export const AdminPayrollView: React.FC = () => {
       {/* Standard Work Days Formula Info Box */}
       <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-400/30">
+          <div className="w-9 h-9 rounded-xl bg-success-500/20 text-success-400 flex items-center justify-center border border-success-400/30">
             <CalendarDays className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-white">Quy chuẩn Ngày Công Tháng {selectedMonth}/{selectedYear}:</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-500/20 text-success-300 border border-success-400/30">
                 5.5 ngày/tuần (T2-T6 + 0.5 T7)
               </span>
             </div>
@@ -283,7 +283,7 @@ export const AdminPayrollView: React.FC = () => {
 
         <div className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 text-right">
           <span className="text-[10px] uppercase font-bold text-slate-400 block">Ngày công chuẩn (Standard):</span>
-          <span className="text-base font-black text-emerald-400 font-mono">{monthWorkInfo.standardWorkDays} ngày công</span>
+          <span className="text-base font-black text-success-400 font-mono">{monthWorkInfo.standardWorkDays} ngày công</span>
         </div>
       </div>
 
@@ -307,7 +307,7 @@ export const AdminPayrollView: React.FC = () => {
                 <th className="py-3 px-3 text-right text-rose-600">Khấu trừ BHXH (10.5%)</th>
                 <th className="py-3 px-3 text-right">Giảm trừ Gia cảnh</th>
                 <th className="py-3 px-3 text-right text-amber-600">Thuế TNCN</th>
-                <th className="py-3 px-3 text-right font-black text-emerald-700">Thực nhận (Net)</th>
+                <th className="py-3 px-3 text-right font-black text-success-700">Thực nhận (Net)</th>
                 <th className="py-3 px-3 text-center">Thao tác</th>
               </tr>
             </thead>
@@ -329,29 +329,29 @@ export const AdminPayrollView: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center font-bold">
-                      <span className="text-slate-500">{ps.standardWorkDays}</span> / <span className="text-blue-700">{ps.actualWorkDays}</span>
+                      <span className="text-slate-500">{ps.standardWorkDays}</span> / <span className="text-primary-700">{ps.actualWorkDays}</span>
                     </td>
                     <td className="py-3 px-3 text-right font-semibold">{formatVND(ps.baseSalary)}</td>
                     <td className="py-3 px-3 text-right text-slate-600">{formatVND(ps.phoneAllowance || 500000)}</td>
                     <td className="py-3 px-3 text-right text-slate-600">{formatVND(ps.lunchAllowance || 1000000)}</td>
-                    <td className="py-3 px-3 text-right font-bold text-indigo-600 bg-indigo-50/40 rounded">
+                    <td className="py-3 px-3 text-right font-bold text-primary-600 bg-primary-50/40 rounded">
                       {formatVND(ps.kpiDesignAllowance || ps.kpiBonus)}
                     </td>
-                    <td className="py-3 px-3 text-right font-semibold text-blue-600">{formatVND(ps.otPay)}</td>
-                    <td className="py-3 px-3 text-right text-emerald-600 font-semibold">{formatVND(ps.projectBonusAmount || 0)}</td>
+                    <td className="py-3 px-3 text-right font-semibold text-primary-600">{formatVND(ps.otPay)}</td>
+                    <td className="py-3 px-3 text-right text-success-600 font-semibold">{formatVND(ps.projectBonusAmount || 0)}</td>
                     <td className="py-3 px-3 text-right text-slate-500">{formatVND(ps.priorMonthAdjustment || 0)}</td>
                     <td className="py-3 px-3 text-right font-extrabold text-slate-900 bg-slate-50">{formatVND(ps.grossIncome)}</td>
                     <td className="py-3 px-3 text-right text-rose-600 font-semibold">-{formatVND(ps.bhxhDeduction + ps.bhytDeduction + ps.bhtnDeduction)}</td>
                     <td className="py-3 px-3 text-right text-slate-500">{formatVND(ps.familyDeduction || 11000000)}</td>
                     <td className="py-3 px-3 text-right text-amber-600 font-semibold">-{formatVND(ps.personalIncomeTax)}</td>
-                    <td className="py-3 px-3 text-right font-black text-emerald-700 text-sm bg-emerald-50/50">
+                    <td className="py-3 px-3 text-right font-black text-success-700 text-sm bg-success-50/50">
                       {formatVND(ps.netSalary)}
                     </td>
                     <td className="py-3 px-3 text-center">
                       <div className="flex items-center justify-center space-x-1">
                         <button
                           onClick={() => handleOpenEditModal(row)}
-                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                          className="px-2.5 py-1 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
                           title="Nhập / Chỉnh sửa Lương"
                         >
                           <Edit className="w-3 h-3" />
@@ -426,7 +426,7 @@ export const AdminPayrollView: React.FC = () => {
                           payslip: { ...prev.payslip, actualWorkDays: act }
                         } : null);
                       }}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-blue-700"
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-primary-700"
                     />
                   </div>
 
@@ -449,8 +449,8 @@ export const AdminPayrollView: React.FC = () => {
               </div>
 
               {/* Allowances & KPI Design Bonus */}
-              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-2">
-                <h4 className="font-bold text-indigo-900 uppercase text-[11px]">2. Phụ cấp & KPI Thưởng Thiết kế</h4>
+              <div className="p-3 bg-primary-50/50 rounded-xl border border-primary-100 space-y-2">
+                <h4 className="font-bold text-primary-900 uppercase text-[11px]">2. Phụ cấp & KPI Thưởng Thiết kế</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-slate-600 mb-1 font-semibold">Phụ cấp Điện thoại:</label>
@@ -500,9 +500,9 @@ export const AdminPayrollView: React.FC = () => {
                           }
                         } : null);
                       }}
-                      className="w-full p-2 bg-white border border-indigo-300 rounded-lg font-extrabold text-indigo-800"
+                      className="w-full p-2 bg-white border border-primary-300 rounded-lg font-extrabold text-primary-800"
                     />
-                    <span className="text-[10px] text-indigo-600 italic">Link từ bảng KPI tháng</span>
+                    <span className="text-[10px] text-primary-600 italic">Link từ bảng KPI tháng</span>
                   </div>
                 </div>
               </div>
@@ -523,7 +523,7 @@ export const AdminPayrollView: React.FC = () => {
                           payslip: { ...prev.payslip, otPay: val }
                         } : null);
                       }}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-blue-700"
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-primary-700"
                     />
                   </div>
 
@@ -539,7 +539,7 @@ export const AdminPayrollView: React.FC = () => {
                           payslip: { ...prev.payslip, projectBonusAmount: val }
                         } : null);
                       }}
-                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-emerald-700"
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-success-700"
                     />
                   </div>
 
@@ -639,7 +639,7 @@ export const AdminPayrollView: React.FC = () => {
                 const calcNet = Math.max(0, calcGross - totalIns - calcPit);
 
                 return (
-                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                  <div className="p-4 bg-success-50 rounded-2xl border border-success-200 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-slate-500 block uppercase">Kết quả tính toán Tự động:</span>
                       <p className="text-xs text-slate-700 mt-0.5">
@@ -648,8 +648,8 @@ export const AdminPayrollView: React.FC = () => {
                     </div>
 
                     <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-emerald-800 block">Thực nhận Net:</span>
-                      <span className="text-xl font-black text-emerald-700">{formatVND(calcNet)}</span>
+                      <span className="text-[10px] uppercase font-bold text-success-800 block">Thực nhận Net:</span>
+                      <span className="text-xl font-black text-success-700">{formatVND(calcNet)}</span>
                     </div>
                   </div>
                 );
@@ -700,7 +700,7 @@ export const AdminPayrollView: React.FC = () => {
                       });
                     }
                   }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 cursor-pointer"
+                  className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold shadow-md shadow-success-600/20 cursor-pointer"
                 >
                   Lưu & Cập nhật Bảng lương
                 </button>

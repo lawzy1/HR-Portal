@@ -72,7 +72,7 @@ export const NewEmployeeModal: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center font-bold">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
@@ -96,7 +96,7 @@ export const NewEmployeeModal: React.FC = () => {
 
           {/* Group 1: Basic Info */}
           <div className="space-y-2">
-            <h3 className="font-bold text-blue-700 uppercase tracking-wider text-[11px]">1. Thông tin Cá nhân & Chức danh</h3>
+            <h3 className="font-bold text-primary-700 uppercase tracking-wider text-[11px]">1. Thông tin Cá nhân & Chức danh</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -106,7 +106,7 @@ export const NewEmployeeModal: React.FC = () => {
                   placeholder="Ví dụ: Nguyễn Hoàng Nam"
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold focus:ring-2 focus:ring-primary-500"
                   required
                 />
               </div>
@@ -118,7 +118,7 @@ export const NewEmployeeModal: React.FC = () => {
                   placeholder="nam.nguyen@tlconcepts.vn"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                   required
                 />
               </div>
@@ -128,7 +128,7 @@ export const NewEmployeeModal: React.FC = () => {
                 <select
                   value={jobTitle}
                   onChange={e => setJobTitle(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-800 focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-800 focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">— Chưa chọn —</option>
                   {JOB_TITLES.map(title => (
@@ -142,7 +142,7 @@ export const NewEmployeeModal: React.FC = () => {
                 <select
                   value={department}
                   onChange={e => setDepartment(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">— Chưa chọn —</option>
                   <option value="Phòng Thiết kế Nội thất">Phòng Thiết kế Nội thất</option>
@@ -158,7 +158,7 @@ export const NewEmployeeModal: React.FC = () => {
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -168,7 +168,7 @@ export const NewEmployeeModal: React.FC = () => {
                   type="date"
                   value={dob}
                   onChange={e => setDob(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -177,7 +177,7 @@ export const NewEmployeeModal: React.FC = () => {
                 <select
                   value={gender}
                   onChange={e => setGender(e.target.value as 'Nam' | 'Nữ' | 'Khác')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">— Chưa chọn —</option>
                   <option value="Nam">Nam</option>
@@ -191,7 +191,7 @@ export const NewEmployeeModal: React.FC = () => {
                 <select
                   value={maritalStatus}
                   onChange={e => setMaritalStatus(e.target.value as 'Độc thân' | 'Đã kết hôn')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">— Chưa chọn —</option>
                   <option value="Độc thân">Độc thân</option>
@@ -203,7 +203,7 @@ export const NewEmployeeModal: React.FC = () => {
 
           {/* Group 2: Dates, Contract & Salary */}
           <div className="space-y-2 pt-2 border-t border-slate-100">
-            <h3 className="font-bold text-blue-700 uppercase tracking-wider text-[11px]">2. Hợp đồng & Lương thưởng</h3>
+            <h3 className="font-bold text-primary-700 uppercase tracking-wider text-[11px]">2. Hợp đồng & Lương thưởng</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -212,7 +212,7 @@ export const NewEmployeeModal: React.FC = () => {
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -221,7 +221,7 @@ export const NewEmployeeModal: React.FC = () => {
                 <select
                   value={contractType}
                   onChange={e => setContractType(e.target.value as ContractType)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">— Chưa chọn —</option>
                   <option value="Thử việc">Thử việc (2 tháng)</option>
@@ -239,7 +239,7 @@ export const NewEmployeeModal: React.FC = () => {
                   placeholder="VD: 18000000"
                   value={currentSalary}
                   onChange={e => setCurrentSalary(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-emerald-700 focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl font-bold text-success-700 focus:ring-2 focus:ring-primary-500"
                 />
               </div>
             </div>
@@ -261,7 +261,7 @@ export const NewEmployeeModal: React.FC = () => {
             <button
               type="submit"
               disabled={createEmployee.isPending}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
+              className="px-5 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white font-bold rounded-xl shadow-md shadow-primary-500/20 transition-all cursor-pointer flex items-center gap-2"
             >
               {createEmployee.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>Lưu & Gửi lời mời đăng nhập</span>

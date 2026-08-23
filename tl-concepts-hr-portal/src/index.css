@@ -1,1 +1,48 @@
 @import "tailwindcss";
+
+/*
+ * TL Concepts brand palette, sampled from TL_Concepts_logo.png:
+ *   coral #e8653b (the flowing accent line)  -> primary (CTAs, links, focus, active state)
+ *   deep teal #005f5a (wordmark + bars)      -> success (positive / approved / active status)
+ *   sage #a8c4c2 (outline squares)           -> sage (subtle structural accents)
+ * Defining these as Tailwind v4 theme scales makes bg-primary-600, text-success-700,
+ * ring-primary-500, bg-sage-100, etc. available everywhere, replacing the old
+ * generic blue/indigo/emerald classes app-wide.
+ */
+@theme {
+  --color-primary-50: #fdf4f1;
+  --color-primary-100: #fbe6df;
+  --color-primary-200: #f6c8b8;
+  --color-primary-300: #eea488;
+  --color-primary-400: #e57e57;
+  --color-primary-500: #e8653b;
+  --color-primary-600: #d1501f;
+  --color-primary-700: #ab3f19;
+  --color-primary-800: #863419;
+  --color-primary-900: #6a2c19;
+  --color-primary-950: #39140a;
+
+  --color-success-50: #f0fdfa;
+  --color-success-100: #ccfbf1;
+  --color-success-200: #99f6e4;
+  --color-success-300: #5eead4;
+  --color-success-400: #2dd4bf;
+  --color-success-500: #14b8a6;
+  --color-success-600: #0d9488;
+  --color-success-700: #0f766e;
+  --color-success-800: #115e59;
+  --color-success-900: #134e4a;
+  --color-success-950: #042f2e;
+
+  --color-sage-50: #f7f8f8;
+  --color-sage-100: #eef1f1;
+  --color-sage-200: #dae2e1;
+  --color-sage-300: #bbcdcc;
+  --color-sage-400: #94b7b5;
+  --color-sage-500: #6ba39f;
+  --color-sage-600: #558b87;
+  --color-sage-700: #47716e;
+  --color-sage-800: #3b5957;
+  --color-sage-900: #304644;
+  --color-sage-950: #1d2a29;
+}

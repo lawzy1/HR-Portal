@@ -36,7 +36,7 @@ export const LeaveManagementView: React.FC = () => {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-emerald-600" />
+            <CalendarDays className="w-5 h-5 text-success-600" />
             <h1 className="text-lg font-extrabold text-slate-900">Quản lý Ngày phép Cá nhân</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -46,7 +46,7 @@ export const LeaveManagementView: React.FC = () => {
 
         <button
           onClick={() => setIsNewLeaveModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-900/10 cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-all shadow-md shadow-success-900/10 cursor-pointer"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Tạo yêu cầu nghỉ phép mới</span>
@@ -54,19 +54,19 @@ export const LeaveManagementView: React.FC = () => {
       </div>
 
       {/* Automatic Balance Accumulation Rule Highlight Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-4 rounded-2xl border border-emerald-800/80 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-success-900 via-teal-900 to-slate-900 text-white p-4 rounded-2xl border border-success-800/80 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-400/30">
-            <Sparkles className="w-5 h-5 text-emerald-300" />
+          <div className="p-2.5 bg-success-500/20 text-success-300 rounded-xl border border-success-400/30">
+            <Sparkles className="w-5 h-5 text-success-300" />
           </div>
           <div>
-            <h3 className="text-xs font-bold uppercase text-emerald-300 tracking-wider">Quy tắc tích lũy phép BambooHR & MISA</h3>
+            <h3 className="text-xs font-bold uppercase text-success-300 tracking-wider">Quy tắc tích lũy phép BambooHR & MISA</h3>
             <p className="text-xs text-slate-100 font-medium mt-0.5">
               <strong>Mỗi tháng làm việc hoàn thành → Tự động cộng +1 ngày phép vào quỹ phép năm.</strong>
             </p>
           </div>
         </div>
-        <span className="text-[11px] bg-emerald-950/80 text-emerald-300 font-mono font-bold px-3 py-1 rounded-lg border border-emerald-700">
+        <span className="text-[11px] bg-success-950/80 text-success-300 font-mono font-bold px-3 py-1 rounded-lg border border-success-700">
           Hạn dùng: {formatDate(leaveBalance.expiryDate)}
         </span>
       </div>
@@ -91,7 +91,7 @@ export const LeaveManagementView: React.FC = () => {
             <span className="text-2xl font-black text-slate-700">{leaveBalance.usedDays}</span>
             <span className="text-xs font-semibold text-slate-500">ngày</span>
           </div>
-          <span className="text-[10px] text-emerald-700 font-semibold block">Đã duyệt chính thức</span>
+          <span className="text-[10px] text-success-700 font-semibold block">Đã duyệt chính thức</span>
         </div>
 
         {/* Pending Days */}
@@ -105,13 +105,13 @@ export const LeaveManagementView: React.FC = () => {
         </div>
 
         {/* Remaining Days (Core) */}
-        <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-300 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-emerald-900 block">Số phép còn lại</span>
+        <div className="bg-success-50 p-4 rounded-2xl border border-success-300 shadow-xs space-y-1">
+          <span className="text-[11px] font-bold text-success-900 block">Số phép còn lại</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-emerald-700">{leaveBalance.remainingDays}</span>
-            <span className="text-xs font-semibold text-emerald-800">ngày</span>
+            <span className="text-2xl font-black text-success-700">{leaveBalance.remainingDays}</span>
+            <span className="text-xs font-semibold text-success-800">ngày</span>
           </div>
-          <span className="text-[10px] text-emerald-800 font-bold block">Khả dụng đăng ký</span>
+          <span className="text-[10px] text-success-800 font-bold block">Khả dụng đăng ký</span>
         </div>
 
         {/* Expiry Date */}
@@ -143,7 +143,7 @@ export const LeaveManagementView: React.FC = () => {
                 onClick={() => setFilterStatus(st)}
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   filterStatus === st 
-                    ? 'bg-emerald-600 text-white shadow-xs' 
+                    ? 'bg-success-600 text-white shadow-xs' 
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
               >
@@ -182,7 +182,7 @@ export const LeaveManagementView: React.FC = () => {
                         <span className="text-[11px] text-slate-500 block">({req.halfDayOption})</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-3.5 font-extrabold text-emerald-800">{req.totalDays} ngày</td>
+                    <td className="py-3.5 px-3.5 font-extrabold text-success-800">{req.totalDays} ngày</td>
                     <td className="py-3.5 px-3.5 text-slate-600 max-w-xs">
                       <p className="truncate">{req.reason}</p>
                       {req.approverComment && (
@@ -192,7 +192,7 @@ export const LeaveManagementView: React.FC = () => {
                     <td className="py-3.5 px-3.5 text-slate-600 font-medium">{req.approverName}</td>
                     <td className="py-3.5 px-3.5">
                       <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border inline-block ${
-                        req.status === 'Đã duyệt' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        req.status === 'Đã duyệt' ? 'bg-success-50 text-success-700 border-success-200' :
                         req.status === 'Chờ duyệt' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                         'bg-rose-50 text-rose-700 border-rose-200'
                       }`}>
@@ -206,7 +206,7 @@ export const LeaveManagementView: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => updateLeaveStatus(currentEmployee.id, req.id, 'Đã duyệt', 'Đã phê duyệt đơn nghỉ phép')}
-                            className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            className="p-1.5 bg-success-100 hover:bg-success-200 text-success-800 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                             title="Mô phỏng Manager bấm Duyệt đơn này"
                           >
                             <Check className="w-3.5 h-3.5" />

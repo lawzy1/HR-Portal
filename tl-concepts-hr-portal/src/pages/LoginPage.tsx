@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Building2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Logo } from '../components/Logo';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Vui lòng nhập email').email('Email không hợp lệ'),
@@ -39,12 +40,10 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-sage-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl space-y-6 border border-slate-100">
         <div className="text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
-            <Building2 className="w-7 h-7" />
-          </div>
+          <Logo size="lg" className="mx-auto shadow-lg" />
           <div>
             <h1 className="text-xl font-black text-slate-900">TL CONCEPTS HR Portal</h1>
             <p className="text-xs text-slate-500 mt-1">Đăng nhập bằng tài khoản được Admin cấp</p>
@@ -58,7 +57,7 @@ export const LoginPage: React.FC = () => {
               type="email"
               autoComplete="email"
               {...register('email')}
-              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all"
             />
             {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>}
           </div>
@@ -69,7 +68,7 @@ export const LoginPage: React.FC = () => {
               type="password"
               autoComplete="current-password"
               {...register('password')}
-              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all"
             />
             {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>}
           </div>
@@ -81,7 +80,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white rounded-xl font-bold text-sm shadow-md shadow-primary-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
             <span>Đăng nhập</span>

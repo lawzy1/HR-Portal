@@ -49,24 +49,24 @@ export const DashboardView: React.FC = () => {
       
       {/* Welcome Hero Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/10 backdrop-blur-3xl rounded-l-full pointer-events-none"></div>
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-success-500/10 backdrop-blur-3xl rounded-l-full pointer-events-none"></div>
         
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <img 
               src={currentEmployee.avatar} 
               alt={currentEmployee.fullName} 
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-emerald-500/40 shadow-lg"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-success-500/40 shadow-lg"
             />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight">{currentEmployee.fullName}</h1>
-                <span className="px-2.5 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-300 rounded-lg border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 text-xs font-bold bg-success-500/20 text-success-300 rounded-lg border border-success-500/30">
                   {currentEmployee.employeeCode}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
-                {currentEmployee.jobTitle} • <span className="text-emerald-400 font-bold">{currentEmployee.department}</span>
+                {currentEmployee.jobTitle} • <span className="text-success-400 font-bold">{currentEmployee.department}</span>
               </p>
               <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
                 <span>Ngày vào làm: {formatDate(currentEmployee.startDate)}</span>
@@ -85,7 +85,7 @@ export const DashboardView: React.FC = () => {
             </button>
             <button
               onClick={() => setIsNewLeaveModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-900/20 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-all shadow-md shadow-success-900/20 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Xin nghỉ phép</span>
@@ -104,7 +104,7 @@ export const DashboardView: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500">Mức lương hiện tại</span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <div className="p-2 bg-success-50 text-success-600 rounded-xl group-hover:bg-success-600 group-hover:text-white transition-colors">
               <CreditCard className="w-5 h-5" />
             </div>
           </div>
@@ -129,10 +129,10 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-emerald-700">{currentEmployee.leaveBalance.remainingDays}</span>
+            <span className="text-2xl font-black text-success-700">{currentEmployee.leaveBalance.remainingDays}</span>
             <span className="text-xs font-semibold text-slate-500">/ {currentEmployee.leaveBalance.totalAccumulated} ngày tích lũy</span>
           </div>
-          <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center justify-between">
+          <p className="text-[11px] text-success-600 font-medium mt-1 flex items-center justify-between">
             <span>+1 ngày phép/tháng hoàn thành</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </p>
@@ -165,18 +165,18 @@ export const DashboardView: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-500">KPI Tháng {latestKpi.month}</span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+            <div className="p-2 bg-success-50 text-success-600 rounded-xl group-hover:bg-success-600 group-hover:text-white transition-colors">
               <Award className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-2xl font-black text-emerald-600">{latestKpi.completionPercentage}%</span>
+            <span className="text-2xl font-black text-success-600">{latestKpi.completionPercentage}%</span>
             <span className="text-xs text-slate-500 font-medium">{latestKpi.kpiConvertedViews}/{latestKpi.kpiTarget} view</span>
           </div>
           {/* Progress bar */}
           <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+              className="bg-success-500 h-full rounded-full transition-all duration-500" 
               style={{ width: `${Math.min(100, latestKpi.completionPercentage)}%` }}
             ></div>
           </div>
@@ -191,7 +191,7 @@ export const DashboardView: React.FC = () => {
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+              <div className="p-2 bg-success-100 text-success-800 rounded-xl">
                 <Receipt className="w-5 h-5" />
               </div>
               <div>
@@ -205,7 +205,7 @@ export const DashboardView: React.FC = () => {
             {latestPayslip && (
               <button
                 onClick={() => setSelectedPayslipId(latestPayslip.id)}
-                className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200/60 transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-xs font-bold text-success-700 hover:text-success-800 bg-success-50 hover:bg-success-100 px-3 py-1.5 rounded-xl border border-success-200/60 transition-colors cursor-pointer"
               >
                 <span>Xem chi tiết phiếu lương</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -232,7 +232,7 @@ export const DashboardView: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[11px]">Trạng thái</span>
-                  <span className="font-bold text-emerald-700 inline-flex items-center gap-1">
+                  <span className="font-bold text-success-700 inline-flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     {latestPayslip.paymentStatus}
                   </span>
@@ -240,16 +240,16 @@ export const DashboardView: React.FC = () => {
               </div>
 
               {/* Net highlight */}
-              <div className="bg-emerald-900 text-white p-4 rounded-xl flex items-center justify-between">
+              <div className="bg-success-900 text-white p-4 rounded-xl flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">THỰC LĨNH CHUYỂN KHOẢN (NET)</p>
+                  <p className="text-[11px] font-bold text-success-300 uppercase tracking-wider">THỰC LĨNH CHUYỂN KHOẢN (NET)</p>
                   <p className="text-xl sm:text-2xl font-black font-mono mt-0.5">{formatVND(latestPayslip.netSalary)}</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs bg-emerald-800 text-emerald-200 px-3 py-1 rounded-lg border border-emerald-700 font-mono">
+                  <span className="text-xs bg-success-800 text-success-200 px-3 py-1 rounded-lg border border-success-700 font-mono">
                     Vietcombank
                   </span>
-                  <p className="text-[10px] text-emerald-300 mt-1">Ngày chuyển: {formatDate(latestPayslip.paymentDate || '')}</p>
+                  <p className="text-[10px] text-success-300 mt-1">Ngày chuyển: {formatDate(latestPayslip.paymentDate || '')}</p>
                 </div>
               </div>
             </div>
@@ -265,7 +265,7 @@ export const DashboardView: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900">KPI & OT Tháng này</h3>
               <button 
                 onClick={() => setActiveTab('kpi')}
-                className="text-xs text-emerald-700 hover:underline font-semibold cursor-pointer"
+                className="text-xs text-success-700 hover:underline font-semibold cursor-pointer"
               >
                 Xem chi tiết
               </button>
@@ -278,7 +278,7 @@ export const DashboardView: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Số view quy đổi KPI:</span>
-                <span className="font-bold text-emerald-700">{latestKpi.kpiConvertedViews} view</span>
+                <span className="font-bold text-success-700">{latestKpi.kpiConvertedViews} view</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Thời gian OT tăng ca:</span>
@@ -286,13 +286,13 @@ export const DashboardView: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Thưởng & Phụ cấp khác:</span>
-                <span className="font-bold text-emerald-700 font-mono">+{formatVND(latestKpi.bonusAmount + latestKpi.benefitAmount)}</span>
+                <span className="font-bold text-success-700 font-mono">+{formatVND(latestKpi.bonusAmount + latestKpi.benefitAmount)}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+          <div className="bg-success-50 p-3 rounded-xl border border-success-200 text-[11px] text-success-900 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-success-600 flex-shrink-0 mt-0.5" />
             <p className="leading-snug">
               KPI hoàn thành <strong>{latestKpi.completionPercentage}%</strong> chỉ tiêu tháng. Đạt thưởng định kỳ xuất sắc!
             </p>
@@ -310,7 +310,7 @@ export const DashboardView: React.FC = () => {
           </div>
           <button
             onClick={() => setActiveTab('leaves')}
-            className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+            className="text-xs font-bold text-success-700 hover:underline cursor-pointer"
           >
             Quản lý tất cả ngày phép
           </button>
@@ -338,12 +338,12 @@ export const DashboardView: React.FC = () => {
                     <td className="py-3 px-3 text-slate-600">
                       {formatDate(req.startDate)} - {formatDate(req.endDate)} ({req.halfDayOption})
                     </td>
-                    <td className="py-3 px-3 font-semibold text-emerald-800">{req.totalDays} ngày</td>
+                    <td className="py-3 px-3 font-semibold text-success-800">{req.totalDays} ngày</td>
                     <td className="py-3 px-3 text-slate-600 max-w-xs truncate">{req.reason}</td>
                     <td className="py-3 px-3 text-slate-600">{req.approverName}</td>
                     <td className="py-3 px-3">
                       <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border ${
-                        req.status === 'Đã duyệt' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        req.status === 'Đã duyệt' ? 'bg-success-50 text-success-700 border-success-200' :
                         req.status === 'Chờ duyệt' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                         'bg-rose-50 text-rose-700 border-rose-200'
                       }`}>

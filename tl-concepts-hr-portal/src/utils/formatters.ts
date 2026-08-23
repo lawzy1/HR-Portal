@@ -25,7 +25,7 @@ export function getStatusBadgeClass(status: string): string {
     case 'Đã duyệt':
     case 'Đang hiệu lực':
     case 'Đã thanh toán':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-200 font-medium';
+      return 'bg-success-50 text-success-700 border-success-200 font-medium';
     case 'Chờ duyệt':
     case 'Sắp hết hạn':
     case 'Chờ thanh toán':
@@ -34,7 +34,7 @@ export function getStatusBadgeClass(status: string): string {
     case 'Hết hạn':
       return 'bg-rose-50 text-rose-700 border-rose-200 font-medium';
     case 'Đã gia hạn':
-      return 'bg-blue-50 text-blue-700 border-blue-200 font-medium';
+      return 'bg-primary-50 text-primary-700 border-primary-200 font-medium';
     default:
       return 'bg-slate-100 text-slate-700 border-slate-200';
   }

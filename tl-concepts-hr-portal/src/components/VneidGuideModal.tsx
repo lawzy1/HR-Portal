@@ -95,7 +95,7 @@ export const VneidGuideModal: React.FC<VneidGuideModalProps> = ({ isOpen, onClos
                       <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
                       <span>Ảnh Mẫu Hướng Dẫn</span>
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-mono">VNeID</span>
+                    <span className="text-[10px] text-success-400 font-mono">VNeID</span>
                   </div>
                 </div>
 

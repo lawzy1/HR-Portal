@@ -374,7 +374,7 @@ export const AdminKpiOtView: React.FC = () => {
               setSubTask('');
               setIsNewJobModalOpen(true);
             }}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm flex items-center space-x-2 shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+            className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm bài mới</span>
@@ -383,7 +383,7 @@ export const AdminKpiOtView: React.FC = () => {
           {/* Download Excel & PDF Buttons */}
           <button
             onClick={handleDownloadExcel}
-            className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            className="px-3.5 py-2.5 bg-success-600 hover:bg-success-700 text-white rounded-xl font-semibold text-xs flex items-center space-x-1.5 shadow-md shadow-success-600/20 transition-all cursor-pointer"
             title="Tải bảng KPI về máy dạng Excel (.csv)"
           >
             <Download className="w-4 h-4" />
@@ -401,7 +401,7 @@ export const AdminKpiOtView: React.FC = () => {
 
           <button
             onClick={() => setIsImportKpiModalOpen(true)}
-            className="px-3 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-semibold text-xs flex items-center space-x-1.5 transition-all cursor-pointer"
+            className="px-3 py-2.5 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-xl font-semibold text-xs flex items-center space-x-1.5 transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Import Excel</span>
@@ -440,24 +440,24 @@ export const AdminKpiOtView: React.FC = () => {
 
         <button
           onClick={handleSyncKpiToProfiles}
-          className="px-4 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all"
+          className="px-4 py-1.5 bg-success-100 hover:bg-success-200 text-success-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all"
         >
-          <Calculator className="w-4 h-4 text-emerald-700" />
+          <Calculator className="w-4 h-4 text-success-700" />
           <span>Đồng bộ điểm KPI sang Payroll</span>
         </button>
       </div>
 
       {/* WORKING DAYS & KPI TARGET CALCULATION STATS (5.5 DAYS/WEEK SCHEDULE) */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-5 rounded-2xl border border-slate-700 shadow-sm">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-primary-950 text-white p-5 rounded-2xl border border-slate-700 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-700/70">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-400/30">
+            <div className="w-10 h-10 rounded-xl bg-success-500/20 text-success-400 flex items-center justify-center border border-success-400/30">
               <CalendarDays className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-extrabold text-white">Quy chuẩn Ngày Công & Định mức KPI Tháng {selectedMonth}/{selectedYear}</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-500/20 text-success-300 border border-success-400/30">
                   Lịch 5.5 ngày/tuần
                 </span>
               </div>
@@ -470,7 +470,7 @@ export const AdminKpiOtView: React.FC = () => {
           <div className="flex items-center gap-3 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
             <div className="text-right">
               <span className="text-[10px] text-slate-400 block font-medium">Định mức KPI / ngày công</span>
-              <span className="text-xs font-bold text-emerald-400">{kpiRatePerDay} view/công</span>
+              <span className="text-xs font-bold text-success-400">{kpiRatePerDay} view/công</span>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -488,7 +488,7 @@ export const AdminKpiOtView: React.FC = () => {
                 max="5"
                 value={kpiRatePerDay}
                 onChange={(e) => setKpiRatePerDay(Math.max(0.1, Number(e.target.value) || 1.5))}
-                className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-xs font-mono font-bold text-center text-white focus:ring-1 focus:ring-emerald-400"
+                className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-xs font-mono font-bold text-center text-white focus:ring-1 focus:ring-success-400"
               />
               <button
                 type="button"
@@ -508,7 +508,7 @@ export const AdminKpiOtView: React.FC = () => {
             <p className="text-base font-bold text-white font-mono mt-0.5">
               {monthWorkInfo.fullWeekdaysCount} <span className="text-xs font-normal text-slate-400">ngày</span>
             </p>
-            <span className="text-[10px] text-emerald-400">={monthWorkInfo.fullWeekdaysCount} công</span>
+            <span className="text-[10px] text-success-400">={monthWorkInfo.fullWeekdaysCount} công</span>
           </div>
 
           <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
@@ -527,20 +527,20 @@ export const AdminKpiOtView: React.FC = () => {
             <span className="text-[10px] text-slate-500">Nghỉ hàng tuần</span>
           </div>
 
-          <div className="bg-emerald-950/80 p-3 rounded-xl border border-emerald-600/40">
-            <span className="text-[11px] text-emerald-300 font-bold block">Tổng Ngày Công Chuẩn</span>
-            <p className="text-lg font-black text-emerald-300 font-mono mt-0.5">
-              {monthWorkInfo.standardWorkDays} <span className="text-xs font-semibold text-emerald-400">công</span>
+          <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
+            <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
+            <p className="text-lg font-black text-success-300 font-mono mt-0.5">
+              {monthWorkInfo.standardWorkDays} <span className="text-xs font-semibold text-success-400">công</span>
             </p>
-            <span className="text-[10px] text-emerald-400 font-medium">Quy chuẩn tháng {selectedMonth}</span>
+            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth}</span>
           </div>
 
-          <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-indigo-950/80 p-3 rounded-xl border border-indigo-500/40">
-            <span className="text-[11px] text-indigo-200 font-bold block">Chỉ tiêu KPI Tháng</span>
+          <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-primary-950/80 p-3 rounded-xl border border-primary-500/40">
+            <span className="text-[11px] text-primary-200 font-bold block">Chỉ tiêu KPI Tháng</span>
             <p className="text-lg font-black text-white font-mono mt-0.5">
-              {monthWorkInfo.calculatedKpiTarget} <span className="text-xs font-semibold text-indigo-300">view</span>
+              {monthWorkInfo.calculatedKpiTarget} <span className="text-xs font-semibold text-primary-300">view</span>
             </p>
-            <span className="text-[10px] text-indigo-300 font-mono">
+            <span className="text-[10px] text-primary-300 font-mono">
               {monthWorkInfo.standardWorkDays} × {kpiRatePerDay} view
             </span>
           </div>
@@ -551,7 +551,7 @@ export const AdminKpiOtView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-800 flex items-center justify-center font-bold">
               <Calculator className="w-4 h-4" />
             </div>
             <div>
@@ -567,7 +567,7 @@ export const AdminKpiOtView: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={handleDownloadExcel}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
+              className="px-3 py-1.5 bg-success-50 hover:bg-success-100 text-success-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Tải file Excel</span>
@@ -580,7 +580,7 @@ export const AdminKpiOtView: React.FC = () => {
                 setSubTask('');
                 setIsNewJobModalOpen(true);
               }}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
+              className="px-3 py-1.5 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Thêm bài mới</span>
@@ -630,7 +630,7 @@ export const AdminKpiOtView: React.FC = () => {
                         <td className="py-3 px-3 text-center font-black text-slate-800 text-sm border-r border-slate-300">
                           {job.viewsCount}
                         </td>
-                        <td className="py-3 px-3 text-center font-black text-emerald-600 text-sm bg-emerald-50/50 border-r border-slate-300">
+                        <td className="py-3 px-3 text-center font-black text-success-600 text-sm bg-success-50/50 border-r border-slate-300">
                           {job.convertedKpi}
                         </td>
                         <td className="py-3 px-3 text-center font-medium text-slate-600 border-r border-slate-300">
@@ -643,14 +643,14 @@ export const AdminKpiOtView: React.FC = () => {
                           <div className="flex items-center justify-center space-x-1">
                             <button
                               onClick={() => startAddSubTask(job.orderJob)}
-                              className="p-1.5 hover:bg-indigo-100 text-indigo-600 rounded-lg cursor-pointer text-[10px] font-bold"
+                              className="p-1.5 hover:bg-primary-100 text-primary-600 rounded-lg cursor-pointer text-[10px] font-bold"
                               title="Thêm Sub-task"
                             >
                               +Sub
                             </button>
                             <button
                               onClick={() => startEditJob(job)}
-                              className="p-1.5 hover:bg-blue-100 text-blue-600 rounded-lg cursor-pointer"
+                              className="p-1.5 hover:bg-primary-100 text-primary-600 rounded-lg cursor-pointer"
                               title="Sửa bài"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -683,7 +683,7 @@ export const AdminKpiOtView: React.FC = () => {
                         <td className="py-3 px-3 text-center font-bold text-slate-500 border-r border-slate-300">
                           {group.items.reduce((sum, item) => sum + item.viewsCount, 0)}
                         </td>
-                        <td className="py-3 px-3 text-center font-bold text-emerald-700 border-r border-slate-300">
+                        <td className="py-3 px-3 text-center font-bold text-success-700 border-r border-slate-300">
                           {group.items.reduce((sum, item) => sum + item.convertedKpi, 0)}
                         </td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
@@ -691,7 +691,7 @@ export const AdminKpiOtView: React.FC = () => {
                         <td className="py-3 px-3 text-center">
                           <button
                             onClick={() => startAddSubTask(group.orderJob)}
-                            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-bold shadow-xs cursor-pointer"
+                            className="px-2 py-1 bg-primary-600 hover:bg-primary-700 text-white rounded text-[11px] font-bold shadow-xs cursor-pointer"
                             title="Thêm Sub-task mới vào Order này"
                           >
                             + Thêm Sub-task
@@ -707,7 +707,7 @@ export const AdminKpiOtView: React.FC = () => {
                           
                           {/* Sub-task rendered directly under Order in light gray block */}
                           <td className="py-2 px-4 border-r border-slate-300">
-                            <div className="bg-slate-100/90 text-slate-800 px-3 py-1.5 rounded-md border-l-4 border-indigo-500 font-semibold text-xs flex items-center justify-between">
+                            <div className="bg-slate-100/90 text-slate-800 px-3 py-1.5 rounded-md border-l-4 border-primary-500 font-semibold text-xs flex items-center justify-between">
                               <span>Sub-task : {item.subTask || item.orderJob}</span>
                             </div>
                           </td>
@@ -720,7 +720,7 @@ export const AdminKpiOtView: React.FC = () => {
                             {item.viewsCount}
                           </td>
 
-                          <td className="py-2 px-3 text-center font-bold text-emerald-700 border-r border-slate-300">
+                          <td className="py-2 px-3 text-center font-bold text-success-700 border-r border-slate-300">
                             {item.convertedKpi}
                           </td>
 
@@ -736,7 +736,7 @@ export const AdminKpiOtView: React.FC = () => {
                             <div className="flex items-center justify-center space-x-1">
                               <button
                                 onClick={() => startEditJob(item)}
-                                className="p-1 hover:bg-blue-100 text-blue-600 rounded cursor-pointer"
+                                className="p-1 hover:bg-primary-100 text-primary-600 rounded cursor-pointer"
                                 title="Sửa Sub-task"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -765,7 +765,7 @@ export const AdminKpiOtView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-success-100 text-success-800 flex items-center justify-center font-bold">
               <Award className="w-4 h-4" />
             </div>
             <div>
@@ -800,7 +800,7 @@ export const AdminKpiOtView: React.FC = () => {
                     <p className="text-[10px] text-slate-500 truncate">{emp.jobTitle}</p>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                    pct >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    pct >= 100 ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
                   }`}>
                     {pct}%
                   </span>
@@ -814,7 +814,7 @@ export const AdminKpiOtView: React.FC = () => {
                   </div>
                   <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                      className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-success-500' : 'bg-amber-500'}`}
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
@@ -822,7 +822,7 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                   <span>Tổng render views: <b>{totalViews} views</b></span>
-                  <span className="font-bold text-emerald-700">{formatVND(Math.round(totalKpi * 500000))}</span>
+                  <span className="font-bold text-success-700">{formatVND(Math.round(totalKpi * 500000))}</span>
                 </div>
               </div>
             );
@@ -834,7 +834,7 @@ export const AdminKpiOtView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-800 flex items-center justify-center">
               <Clock className="w-4 h-4" />
             </div>
             <div>
@@ -849,7 +849,7 @@ export const AdminKpiOtView: React.FC = () => {
 
           <button
             onClick={() => setIsNewOtModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center space-x-1.5 cursor-pointer transition-all"
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 flex items-center space-x-1.5 cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Tạo mới giờ OT</span>
@@ -887,20 +887,20 @@ export const AdminKpiOtView: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 px-4 font-medium">{ot.date}</td>
-                    <td className="py-3 px-4 font-black text-blue-700">
+                    <td className="py-3 px-4 font-black text-primary-700">
                       {ot.hours} giờ {ot.viewsRenderCount ? `(${ot.viewsRenderCount} views)` : ''}
                     </td>
                     <td className="py-3 px-4 max-w-[200px] truncate">{ot.reason}</td>
-                    <td className="py-3 px-4 font-semibold text-indigo-700">
+                    <td className="py-3 px-4 font-semibold text-primary-700">
                       {ot.payType}
                     </td>
-                    <td className="py-3 px-4 font-bold text-emerald-600">{formatVND(ot.amount)}</td>
+                    <td className="py-3 px-4 font-bold text-success-600">{formatVND(ot.amount)}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] ${
                         ot.status === 'Đã hoàn thành' || ot.status === 'Đã duyệt'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          ? 'bg-success-100 text-success-800 border border-success-300'
                           : ot.status === 'Đang thực hiện'
-                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                            ? 'bg-primary-100 text-primary-800 border border-primary-300'
                             : ot.status === 'Upcoming'
                               ? 'bg-amber-100 text-amber-800 border border-amber-300'
                               : 'bg-slate-100 text-slate-700'
@@ -948,7 +948,7 @@ export const AdminKpiOtView: React.FC = () => {
                   placeholder="Ví dụ: 70_Remko_5 interior staging luxury; 4 impressions"
                   value={orderJob}
                   onChange={e => setOrderJob(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary-500"
                   required
                 />
               </div>
@@ -963,7 +963,7 @@ export const AdminKpiOtView: React.FC = () => {
                     placeholder="Ví dụ: 2 bedrooms, 2 living room..."
                     value={subTask}
                     onChange={e => setSubTask(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-indigo-700"
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-primary-700"
                   />
                   <span className="text-[10px] text-slate-400 italic">Hiển thị nằm dưới Order trong bảng</span>
                 </div>
@@ -1002,7 +1002,7 @@ export const AdminKpiOtView: React.FC = () => {
                     step="0.1"
                     value={convertedKpi}
                     onChange={e => setConvertedKpi(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-emerald-700"
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-success-700"
                     required
                   />
                 </div>
@@ -1062,7 +1062,7 @@ export const AdminKpiOtView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 cursor-pointer"
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 cursor-pointer"
                 >
                   {editingJob ? 'Cập nhật bài KPI' : 'Lưu bài KPI'}
                 </button>
@@ -1114,7 +1114,7 @@ export const AdminKpiOtView: React.FC = () => {
                     max="16"
                     value={otHours}
                     onChange={e => setOtHours(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-blue-700"
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-primary-700"
                     required
                   />
                 </div>
@@ -1136,7 +1136,7 @@ export const AdminKpiOtView: React.FC = () => {
                 <select
                   value={otPresetType}
                   onChange={e => setOtPresetType(e.target.value as any)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-indigo-800"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-primary-800"
                 >
                   <option value="AUTO">Tự động (Ngày thường 150%, T7/CN 200%, Lễ 300%)</option>
                   <option value="150">Ngày thường - Thanh toán 150%</option>
@@ -1154,7 +1154,7 @@ export const AdminKpiOtView: React.FC = () => {
                     step="10"
                     value={customOtPercentage}
                     onChange={e => setCustomOtPercentage(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-emerald-700"
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-success-700"
                     placeholder="VD: 150, 200, 250, 300..."
                   />
                 </div>
@@ -1192,12 +1192,12 @@ export const AdminKpiOtView: React.FC = () => {
                 const calcAmt = Math.round(otHours * hourly * (effPct / 100));
 
                 return (
-                  <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200 flex items-center justify-between text-xs">
+                  <div className="p-3 bg-primary-50/70 rounded-xl border border-primary-200 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-bold text-slate-600 block">Tự tính Lương OT ({effPct}%):</span>
                       <span className="text-[11px] text-slate-500">{otHours} giờ x {formatVND(hourly)}/giờ</span>
                     </div>
-                    <span className="text-base font-black text-blue-700">{formatVND(calcAmt)}</span>
+                    <span className="text-base font-black text-primary-700">{formatVND(calcAmt)}</span>
                   </div>
                 );
               })()}
@@ -1212,7 +1212,7 @@ export const AdminKpiOtView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 cursor-pointer"
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 cursor-pointer"
                 >
                   Xác nhận Tạo giờ OT
                 </button>

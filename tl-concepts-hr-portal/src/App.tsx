@@ -43,7 +43,7 @@ function MainContent() {
   const isAdmin = profile?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased selection:bg-primary-500 selection:text-white">
       <Header />
 
       <div className="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row">

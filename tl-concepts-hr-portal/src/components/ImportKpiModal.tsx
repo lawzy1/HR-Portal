@@ -113,7 +113,7 @@ export const ImportKpiModal: React.FC = () => {
         {/* Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-600 rounded-lg text-white">
+            <div className="p-2 bg-success-600 rounded-lg text-white">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
@@ -141,12 +141,12 @@ export const ImportKpiModal: React.FC = () => {
                 onClick={() => setSelectedPreset('sample1')}
                 className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
                   selectedPreset === 'sample1'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
+                    ? 'border-success-500 bg-success-50 text-success-900 font-bold'
                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <div className="flex items-center gap-1.5 text-xs font-bold mb-1">
-                  <Link className="w-3.5 h-3.5 text-emerald-600" />
+                  <Link className="w-3.5 h-3.5 text-success-600" />
                   <span>Bảng KPI Q3/2026</span>
                 </div>
                 <p className="text-[11px] text-slate-500 font-normal">Dữ liệu mẫu chuẩn 42 view render quy đổi, +14h OT, Thưởng 4.2 triệu.</p>
@@ -157,12 +157,12 @@ export const ImportKpiModal: React.FC = () => {
                 onClick={() => setSelectedPreset('custom')}
                 className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
                   selectedPreset === 'custom'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
+                    ? 'border-success-500 bg-success-50 text-success-900 font-bold'
                     : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <div className="flex items-center gap-1.5 text-xs font-bold mb-1">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-success-600" />
                   <span>Dán dữ liệu Excel/CSV</span>
                 </div>
                 <p className="text-[11px] text-slate-500 font-normal">Dán thủ công các cột: Tháng, Năm, View Thực Tế, View Quy Đổi, Target.</p>
@@ -181,13 +181,13 @@ export const ImportKpiModal: React.FC = () => {
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder="VD:&#10;8, 2026, 40, 44, 35&#10;9, 2026, 38, 40, 35"
-                className="w-full p-3 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                className="w-full p-3 text-xs font-mono bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-success-500 text-slate-800"
               ></textarea>
             </div>
           )}
 
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-success-600 flex-shrink-0 mt-0.5" />
             <p className="text-[11px]">
               Dữ liệu sau khi đồng bộ sẽ được cập nhật ngay vào trang <strong>KPI / OT / Thưởng</strong> và đồng bộ sang phần tính toán phiếu lương của tháng tương ứng.
             </p>
@@ -205,7 +205,7 @@ export const ImportKpiModal: React.FC = () => {
             <button
               type="button"
               onClick={handleImportPreset}
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-md shadow-emerald-900/10 cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-colors shadow-md shadow-success-900/10 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>Xác nhận đồng bộ dữ liệu</span>

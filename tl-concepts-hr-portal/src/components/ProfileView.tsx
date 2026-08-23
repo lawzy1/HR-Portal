@@ -37,17 +37,17 @@ export const ProfileView: React.FC = () => {
           <img 
             src={currentEmployee.avatar} 
             alt={currentEmployee.fullName} 
-            className="w-20 h-20 rounded-2xl object-cover ring-4 ring-emerald-500/30 shadow-md"
+            className="w-20 h-20 rounded-2xl object-cover ring-4 ring-success-500/30 shadow-md"
           />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-black text-slate-900">{currentEmployee.fullName}</h1>
-              <span className="px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-200">
+              <span className="px-2.5 py-0.5 text-xs font-bold bg-success-100 text-success-800 rounded-lg border border-success-200">
                 {currentEmployee.employeeCode}
               </span>
             </div>
             <p className="text-xs text-slate-600 font-medium mt-1">
-              {currentEmployee.jobTitle} • <strong className="text-emerald-700">{currentEmployee.department}</strong>
+              {currentEmployee.jobTitle} • <strong className="text-success-700">{currentEmployee.department}</strong>
             </p>
             <div className="flex items-center gap-3 text-xs text-slate-500 mt-2 flex-wrap">
               <span className="flex items-center gap-1">
@@ -67,7 +67,7 @@ export const ProfileView: React.FC = () => {
 
         <button
           onClick={() => setIsEditProfileModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-900/10 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-all shadow-md shadow-success-900/10 cursor-pointer"
         >
           <Edit3 className="w-4 h-4" />
           <span>Chỉnh sửa hồ sơ</span>
@@ -81,10 +81,10 @@ export const ProfileView: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-emerald-600" />
+              <Phone className="w-4 h-4 text-success-600" />
               <span>Thông tin liên hệ & Địa chỉ</span>
             </h3>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+            <span className="text-[11px] font-bold text-success-700 bg-success-50 px-2 py-0.5 rounded-md border border-success-200">
               Đã xác minh
             </span>
           </div>
@@ -128,7 +128,7 @@ export const ProfileView: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-600" />
+              <CreditCard className="w-4 h-4 text-success-600" />
               <span>CCCD / Hộ chiếu & Giấy tờ pháp lý</span>
             </h3>
             <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
@@ -151,11 +151,11 @@ export const ProfileView: React.FC = () => {
             </div>
             <div className="p-3 bg-slate-50 rounded-xl space-y-1">
               <span className="text-slate-500 text-[11px]">Mã số thuế cá nhân (MST)</span>
-              <p className="font-bold text-emerald-800 font-mono">{currentEmployee.documents.taxCode}</p>
+              <p className="font-bold text-success-800 font-mono">{currentEmployee.documents.taxCode}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl space-y-1">
               <span className="text-slate-500 text-[11px]">Mã số BHXH</span>
-              <p className="font-bold text-emerald-800 font-mono">{currentEmployee.documents.socialInsuranceCode}</p>
+              <p className="font-bold text-success-800 font-mono">{currentEmployee.documents.socialInsuranceCode}</p>
             </div>
           </div>
 
@@ -250,7 +250,7 @@ export const ProfileView: React.FC = () => {
                         <Eye className="w-4 h-4" />
                         <span>Xem phóng to</span>
                       </div>
-                      <span className="absolute bottom-1.5 left-1.5 bg-emerald-700/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span className="absolute bottom-1.5 left-1.5 bg-success-700/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
                         ✓ Đã có ảnh VNeID
                       </span>
                     </>
@@ -301,10 +301,10 @@ export const ProfileView: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Landmark className="w-4 h-4 text-emerald-600" />
+              <Landmark className="w-4 h-4 text-success-600" />
               <span>Tài khoản Ngân hàng nhận lương</span>
             </h3>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+            <span className="text-[11px] font-bold text-success-700 bg-success-50 px-2 py-0.5 rounded-md border border-success-200">
               Chính chủ
             </span>
           </div>
@@ -312,15 +312,15 @@ export const ProfileView: React.FC = () => {
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl space-y-3 shadow-md relative overflow-hidden">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">NGÂN HÀNG LIÊN KẾT MISA PAYROLL</p>
+                <p className="text-[10px] uppercase font-bold text-success-400 tracking-wider">NGÂN HÀNG LIÊN KẾT MISA PAYROLL</p>
                 <h4 className="font-extrabold text-sm mt-0.5">{currentEmployee.bankInfo.bankName}</h4>
               </div>
-              <Landmark className="w-7 h-7 text-emerald-400/80" />
+              <Landmark className="w-7 h-7 text-success-400/80" />
             </div>
 
             <div className="pt-2">
               <p className="text-[10px] text-slate-400 font-semibold uppercase">SỐ TÀI KHOẢN</p>
-              <p className="text-xl font-black font-mono tracking-wider text-emerald-300">{currentEmployee.bankInfo.accountNumber}</p>
+              <p className="text-xl font-black font-mono tracking-wider text-success-300">{currentEmployee.bankInfo.accountNumber}</p>
             </div>
 
             <div className="flex justify-between items-end pt-1 text-xs">
@@ -340,12 +340,12 @@ export const ProfileView: React.FC = () => {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Users className="w-4 h-4 text-emerald-600" />
+              <Users className="w-4 h-4 text-success-600" />
               <span>Người thân & Liên hệ khẩn cấp</span>
             </h3>
             <button
               onClick={() => setIsEditProfileModalOpen(true)}
-              className="text-xs font-bold text-emerald-700 hover:underline cursor-pointer"
+              className="text-xs font-bold text-success-700 hover:underline cursor-pointer"
             >
               Thêm / Sửa
             </button>

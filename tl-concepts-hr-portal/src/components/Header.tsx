@@ -1,8 +1,8 @@
 import React from 'react';
 import { useHR } from '../context/HRContext';
 import { useAuth } from '../context/AuthContext';
+import { Logo } from './Logo';
 import {
-  Building2,
   Search,
   PlusCircle,
   ShieldCheck,
@@ -22,20 +22,19 @@ export const Header: React.FC = () => {
 
           {/* Brand & App Identifier */}
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold text-lg shadow-md ${
-              isAdmin
-                ? 'bg-gradient-to-br from-blue-600 to-indigo-800 shadow-blue-900/10'
-                : 'bg-gradient-to-br from-emerald-600 to-teal-800 shadow-emerald-900/10'
-            }`}>
-              <Building2 className="w-5 h-5 text-white" />
+            <div className="relative">
+              <Logo />
+              <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                isAdmin ? 'bg-primary-500' : 'bg-success-500'
+              }`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 text-base tracking-tight">TL CONCEPTS</span>
                 <span className={`px-2.5 py-0.5 text-[11px] font-bold tracking-wide uppercase rounded-md border ${
                   isAdmin
-                    ? 'bg-blue-100 text-blue-800 border-blue-300'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    ? 'bg-primary-100 text-primary-800 border-primary-300'
+                    : 'bg-success-100 text-success-800 border-success-300'
                 }`}>
                   {isAdmin ? 'HR Portal (Admin)' : 'HR Portal (User)'}
                 </span>
@@ -53,7 +52,7 @@ export const Header: React.FC = () => {
               <input
                 type="text"
                 placeholder={isAdmin ? "Tra cứu nhân sự, hợp đồng, đơn phép..." : "Tra cứu phiếu lương, quy trình, chính sách..."}
-                className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     showToast('Đã thực hiện tìm kiếm trên hệ thống');
@@ -69,9 +68,9 @@ export const Header: React.FC = () => {
             {!isAdmin && (
               <button
                 onClick={() => setIsNewLeaveModalOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-success-800 bg-success-50 hover:bg-success-100 border border-success-200 rounded-lg transition-colors cursor-pointer"
               >
-                <PlusCircle className="w-4 h-4 text-emerald-600" />
+                <PlusCircle className="w-4 h-4 text-success-600" />
                 <span>Xin nghỉ phép</span>
               </button>
             )}
@@ -86,7 +85,7 @@ export const Header: React.FC = () => {
               <div className="text-left hidden lg:block">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-bold text-slate-800 truncate max-w-[140px]">{session?.user.email}</span>
-                  {isAdmin && <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />}
+                  {isAdmin && <ShieldCheck className="w-3.5 h-3.5 text-primary-600" />}
                 </div>
                 <span className="text-[11px] text-slate-500 font-medium block">
                   {isAdmin ? 'Admin / HR' : 'Nhân viên'}

@@ -34,7 +34,7 @@ export const PayslipsView: React.FC = () => {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-emerald-600" />
+            <Receipt className="w-5 h-5 text-success-600" />
             <h1 className="text-lg font-extrabold text-slate-900">Quản lý Phiếu lương Cá nhân</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -49,7 +49,7 @@ export const PayslipsView: React.FC = () => {
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-success-500 cursor-pointer"
           >
             <option value={2026}>2026</option>
             <option value={2025}>2025</option>
@@ -60,10 +60,10 @@ export const PayslipsView: React.FC = () => {
 
       {/* Annual Summary Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-emerald-900 to-teal-950 text-white p-5 rounded-2xl shadow-md space-y-1">
-          <span className="text-[11px] uppercase font-bold text-emerald-300 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET {selectedYear})</span>
+        <div className="bg-gradient-to-br from-success-900 to-teal-950 text-white p-5 rounded-2xl shadow-md space-y-1">
+          <span className="text-[11px] uppercase font-bold text-success-300 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET {selectedYear})</span>
           <p className="text-2xl font-black font-mono text-white">{formatVND(totalNetAnnual)}</p>
-          <p className="text-[10px] text-emerald-200">Đã chuyển khoản trực tiếp qua Ngân hàng</p>
+          <p className="text-[10px] text-success-200">Đã chuyển khoản trực tiếp qua Ngân hàng</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
@@ -98,15 +98,15 @@ export const PayslipsView: React.FC = () => {
             {filteredPayslips.map((ps) => (
               <div 
                 key={ps.id} 
-                className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all overflow-hidden flex flex-col justify-between"
+                className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-success-300 transition-all overflow-hidden flex flex-col justify-between"
               >
                 {/* Card Top Header */}
                 <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-emerald-400" />
+                    <Receipt className="w-4 h-4 text-success-400" />
                     <span className="font-bold text-sm">Tháng {ps.month}/{ps.year}</span>
                   </div>
-                  <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                  <span className="text-[10px] font-bold bg-success-500/20 text-success-300 px-2 py-0.5 rounded-md border border-success-500/30">
                     {ps.paymentStatus}
                   </span>
                 </div>
@@ -120,7 +120,7 @@ export const PayslipsView: React.FC = () => {
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <span className="text-slate-500">Lương KPI & OT tăng ca:</span>
-                    <strong className="font-mono text-emerald-700">+{formatVND(ps.kpiBonus + ps.otPay)}</strong>
+                    <strong className="font-mono text-success-700">+{formatVND(ps.kpiBonus + ps.otPay)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
@@ -131,10 +131,10 @@ export const PayslipsView: React.FC = () => {
                   </div>
 
                   {/* Net highlight */}
-                  <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between">
+                  <div className="bg-success-50 p-3.5 rounded-xl border border-success-200 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-emerald-800">THỰC LĨNH (NET)</span>
-                      <p className="text-lg font-black font-mono text-emerald-800 mt-0.5">{formatVND(ps.netSalary)}</p>
+                      <span className="text-[10px] uppercase font-bold text-success-800">THỰC LĨNH (NET)</span>
+                      <p className="text-lg font-black font-mono text-success-800 mt-0.5">{formatVND(ps.netSalary)}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-slate-500 font-medium block">Ngày chuyển lương</span>
@@ -147,7 +147,7 @@ export const PayslipsView: React.FC = () => {
                 <div className="p-3 bg-slate-50 border-t border-slate-100">
                   <button
                     onClick={() => setSelectedPayslipId(ps.id)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors cursor-pointer shadow-xs"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-colors cursor-pointer shadow-xs"
                   >
                     <span>Xem & In phiếu lương chi tiết</span>
                     <ArrowUpRight className="w-4 h-4" />

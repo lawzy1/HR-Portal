@@ -49,7 +49,7 @@ export const AdminContractSalaryView: React.FC = () => {
           <select
             value={selectedEmp?.id}
             onChange={e => setSelectedEmployeeIdForAdmin(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+            className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
           >
             {employees.map(emp => (
               <option key={emp.id} value={emp.id}>
@@ -66,12 +66,12 @@ export const AdminContractSalaryView: React.FC = () => {
           <img 
             src={selectedEmp.avatar} 
             alt={selectedEmp.fullName} 
-            className="w-16 h-16 rounded-2xl object-cover border-2 border-blue-400/40 shadow-md"
+            className="w-16 h-16 rounded-2xl object-cover border-2 border-primary-400/40 shadow-md"
           />
           <div>
             <div className="flex items-center space-x-3">
               <h2 className="text-xl font-extrabold">{selectedEmp.fullName}</h2>
-              <span className="px-2.5 py-0.5 bg-blue-500/30 text-blue-200 font-mono text-xs font-bold rounded-md border border-blue-400/30">
+              <span className="px-2.5 py-0.5 bg-primary-500/30 text-primary-200 font-mono text-xs font-bold rounded-md border border-primary-400/30">
                 {selectedEmp.employeeCode}
               </span>
             </div>
@@ -83,7 +83,7 @@ export const AdminContractSalaryView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-left border-t md:border-t-0 md:border-l border-slate-700/80 pt-4 md:pt-0 md:pl-6">
           <div>
             <span className="text-[11px] uppercase font-bold text-slate-400 block">Lương cơ bản hiện tại</span>
-            <span className="text-lg font-black text-emerald-400">{formatVND(selectedEmp.currentSalary)}</span>
+            <span className="text-lg font-black text-success-400">{formatVND(selectedEmp.currentSalary)}</span>
           </div>
 
           <div>
@@ -93,7 +93,7 @@ export const AdminContractSalaryView: React.FC = () => {
 
           <div>
             <span className="text-[11px] uppercase font-bold text-slate-400 block">Xét duyệt lương gần nhất</span>
-            <span className="text-sm font-bold text-blue-300">{selectedEmp.lastSalaryReviewDate}</span>
+            <span className="text-sm font-bold text-primary-300">{selectedEmp.lastSalaryReviewDate}</span>
           </div>
         </div>
       </div>
@@ -105,7 +105,7 @@ export const AdminContractSalaryView: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-              <FileCheck className="w-5 h-5 text-blue-600" />
+              <FileCheck className="w-5 h-5 text-primary-600" />
               <span>1. Lịch sử Hợp đồng Lao động</span>
             </h3>
             <span className="text-xs text-slate-500">Loại: {selectedEmp.contractType}</span>
@@ -123,7 +123,7 @@ export const AdminContractSalaryView: React.FC = () => {
                     <span className="font-bold text-sm text-slate-900">{contract.contractCode}</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                       contract.status === 'Đang hiệu lực'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-success-100 text-success-800'
                         : contract.status === 'Sắp hết hạn'
                           ? 'bg-amber-100 text-amber-800'
                           : 'bg-slate-200 text-slate-600'
@@ -136,7 +136,7 @@ export const AdminContractSalaryView: React.FC = () => {
                     <p>Loại HĐ: <b>{contract.type}</b></p>
                     <p>Vị trí chuyên môn: <b>{contract.position}</b></p>
                     <p>Thời hạn: <b>{contract.startDate}</b> đến <b>{contract.endDate}</b></p>
-                    <p>Mức lương HĐ: <b className="text-emerald-700">{formatVND(contract.salary)}</b></p>
+                    <p>Mức lương HĐ: <b className="text-success-700">{formatVND(contract.salary)}</b></p>
                     {contract.note && <p className="text-slate-500 italic mt-1">Ghi chú: {contract.note}</p>}
                   </div>
                 </div>
@@ -149,7 +149,7 @@ export const AdminContractSalaryView: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
+              <TrendingUp className="w-5 h-5 text-success-600" />
               <span>2. Lịch sử Diễn biến Thu nhập & Tăng lương</span>
             </h3>
           </div>
@@ -163,7 +163,7 @@ export const AdminContractSalaryView: React.FC = () => {
               selectedEmp.salaryHistory.map(sal => (
                 <div key={sal.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <span className="font-bold text-xs text-primary-700 bg-primary-50 px-2 py-0.5 rounded border border-primary-200">
                       {sal.changeType}
                     </span>
                     <span className="text-xs text-slate-500 font-medium">Áp dụng: {sal.effectiveDate}</span>
@@ -177,7 +177,7 @@ export const AdminContractSalaryView: React.FC = () => {
 
                     <div className="text-right">
                       <span className="text-slate-500 block">Lương mới:</span>
-                      <span className="font-bold text-emerald-600 text-sm">{formatVND(sal.newSalary)}</span>
+                      <span className="font-bold text-success-600 text-sm">{formatVND(sal.newSalary)}</span>
                     </div>
                   </div>
 
@@ -195,7 +195,7 @@ export const AdminContractSalaryView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-            <Receipt className="w-5 h-5 text-indigo-600" />
+            <Receipt className="w-5 h-5 text-primary-600" />
             <span>3. Danh sách Phiếu lương từng tháng của {selectedEmp.fullName}</span>
           </h3>
         </div>
@@ -229,15 +229,15 @@ export const AdminContractSalaryView: React.FC = () => {
                       Tháng {ps.month}/{ps.year}
                     </td>
                     <td className="py-3 px-4">{formatVND(ps.baseSalary)}</td>
-                    <td className="py-3 px-4 text-emerald-600 font-medium">+{formatVND(ps.kpiBonus)}</td>
-                    <td className="py-3 px-4 text-blue-600 font-medium">+{formatVND(ps.otPay)}</td>
+                    <td className="py-3 px-4 text-success-600 font-medium">+{formatVND(ps.kpiBonus)}</td>
+                    <td className="py-3 px-4 text-primary-600 font-medium">+{formatVND(ps.otPay)}</td>
                     <td className="py-3 px-4 font-semibold">{formatVND(ps.grossIncome)}</td>
                     <td className="py-3 px-4 text-rose-600">-{formatVND(ps.bhxhDeduction + ps.personalIncomeTax)}</td>
-                    <td className="py-3 px-4 font-extrabold text-emerald-700 text-sm">{formatVND(ps.netSalary)}</td>
+                    <td className="py-3 px-4 font-extrabold text-success-700 text-sm">{formatVND(ps.netSalary)}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
                         ps.paymentStatus === 'Đã thanh toán' 
-                          ? 'bg-emerald-100 text-emerald-800' 
+                          ? 'bg-success-100 text-success-800' 
                           : 'bg-amber-100 text-amber-800'
                       }`}>
                         {ps.paymentStatus}
@@ -246,7 +246,7 @@ export const AdminContractSalaryView: React.FC = () => {
                     <td className="py-3 px-4 text-center">
                       <button
                         onClick={() => setSelectedPayslipId(ps.id)}
-                        className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold cursor-pointer"
+                        className="px-3 py-1 bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 rounded-lg text-xs font-semibold cursor-pointer"
                       >
                         Xem chi tiết
                       </button>

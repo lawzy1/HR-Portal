@@ -75,7 +75,7 @@ export const NewLeaveModal: React.FC = () => {
         {/* Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-600 rounded-lg text-white">
+            <div className="p-2 bg-success-600 rounded-lg text-white">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
@@ -102,7 +102,7 @@ export const NewLeaveModal: React.FC = () => {
             <select
               value={leaveType}
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
-              className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 font-medium"
+              className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-success-500 text-slate-800 font-medium"
             >
               <option value="Nghỉ phép năm">Nghỉ phép năm (Trừ vào quỹ phép năm)</option>
               <option value="Nghỉ ốm / BHXH">Nghỉ ốm / Khám bệnh (Hưởng chế độ BHXH)</option>
@@ -122,7 +122,7 @@ export const NewLeaveModal: React.FC = () => {
                 type="date" 
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 font-medium"
+                className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-success-500 text-slate-800 font-medium"
                 required
               />
             </div>
@@ -134,7 +134,7 @@ export const NewLeaveModal: React.FC = () => {
                 type="date" 
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 font-medium"
+                className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-success-500 text-slate-800 font-medium"
                 required
               />
             </div>
@@ -153,7 +153,7 @@ export const NewLeaveModal: React.FC = () => {
                   onClick={() => setHalfDayOption(option)}
                   className={`py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
                     halfDayOption === option 
-                      ? 'bg-emerald-50 border-emerald-500 text-emerald-800 font-bold' 
+                      ? 'bg-success-50 border-success-500 text-success-800 font-bold' 
                       : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
@@ -164,12 +164,12 @@ export const NewLeaveModal: React.FC = () => {
           </div>
 
           {/* Days summary calculation badge */}
-          <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between">
+          <div className="bg-success-50/80 p-3.5 rounded-xl border border-success-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs text-emerald-900 font-medium">Tổng số ngày đăng ký nghỉ:</span>
+              <Clock className="w-4 h-4 text-success-600" />
+              <span className="text-xs text-success-900 font-medium">Tổng số ngày đăng ký nghỉ:</span>
             </div>
-            <span className="text-sm font-extrabold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-300 shadow-xs">
+            <span className="text-sm font-extrabold text-success-700 bg-white px-2.5 py-1 rounded-lg border border-success-300 shadow-xs">
               {totalDays} ngày
             </span>
           </div>
@@ -195,7 +195,7 @@ export const NewLeaveModal: React.FC = () => {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Nhập chi tiết lý do và phương án bàn giao công việc..."
-              className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 placeholder-slate-400"
+              className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-success-500 text-slate-800 placeholder-slate-400"
               required
             ></textarea>
           </div>
@@ -211,7 +211,7 @@ export const NewLeaveModal: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-md shadow-emerald-900/10 cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-colors shadow-md shadow-success-900/10 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               Gửi yêu cầu duyệt

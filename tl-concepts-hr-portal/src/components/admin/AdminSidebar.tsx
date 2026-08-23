@@ -8,11 +8,11 @@ import {
   Receipt,
   BellRing,
   ShieldCheck,
-  Building2,
   ChevronRight
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { AdminTabType } from '../../types';
+import { Logo } from '../Logo';
 
 export const AdminSidebar: React.FC = () => {
   const { adminTab, setAdminTab, reminders, employees } = useHR();
@@ -69,12 +69,10 @@ export const AdminSidebar: React.FC = () => {
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold shadow-md shadow-blue-500/20">
-            <Building2 className="w-5 h-5" />
-          </div>
+          <Logo size="sm" />
           <div>
             <h1 className="font-bold text-base text-white tracking-wide">TL CONCEPTS HR</h1>
-            <p className="text-xs text-blue-400 font-medium">Cổng Quản trị HR & Nhân sự</p>
+            <p className="text-xs text-primary-400 font-medium">Cổng Quản trị HR & Nhân sự</p>
           </div>
         </div>
       </div>
@@ -82,7 +80,7 @@ export const AdminSidebar: React.FC = () => {
       {/* Status Banner */}
       <div className="mx-3 my-3 p-3 bg-slate-800/80 rounded-xl border border-slate-700/60">
         <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-success-400 animate-pulse"></span>
           <span className="text-xs font-semibold text-slate-200">Chế độ Admin Portal</span>
         </div>
       </div>
@@ -100,7 +98,7 @@ export const AdminSidebar: React.FC = () => {
               onClick={() => setAdminTab(item.id)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
+                  ? 'bg-primary-600 text-white shadow-md shadow-primary-600/30 font-semibold'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
             >
@@ -115,7 +113,7 @@ export const AdminSidebar: React.FC = () => {
                 {item.badge !== undefined && (
                   <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
                     isActive 
-                      ? 'bg-white text-blue-700' 
+                      ? 'bg-white text-primary-700' 
                       : item.id === 'admin-reminders' 
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
                         : 'bg-slate-800 text-slate-300 border border-slate-700'

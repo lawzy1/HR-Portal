@@ -24,7 +24,7 @@ export const PayslipDetailModal: React.FC = () => {
         {/* Header toolbar */}
         <div className="bg-slate-900 text-white p-4 px-6 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-emerald-400" />
+            <FileText className="w-5 h-5 text-success-400" />
             <span className="font-bold text-sm">Chi tiết Phiếu lương • Tháng {payslip.month}/{payslip.year}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export const PayslipDetailModal: React.FC = () => {
             </button>
             <button
               onClick={() => showToast('Đã tải xuống file PDF phiếu lương thành công')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-success-600 hover:bg-success-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Tải PDF</span>
@@ -57,7 +57,7 @@ export const PayslipDetailModal: React.FC = () => {
           {/* Company branding header */}
           <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-5 gap-4">
             <div>
-              <div className="flex items-center gap-2 text-emerald-700 font-extrabold text-base mb-1">
+              <div className="flex items-center gap-2 text-success-700 font-extrabold text-base mb-1">
                 <Building2 className="w-5 h-5" />
                 <span>CÔNG TY TNHH GIẢI PHÁP CÔNG NGHỆ VIỆT</span>
               </div>
@@ -65,7 +65,7 @@ export const PayslipDetailModal: React.FC = () => {
               <p className="text-xs text-slate-500">MST: 0312984756 • Hotline: 1900 6868</p>
             </div>
             <div className="text-left sm:text-right">
-              <span className="inline-block px-3 py-1 bg-emerald-50 text-emerald-800 font-bold text-xs rounded-lg border border-emerald-200 mb-1">
+              <span className="inline-block px-3 py-1 bg-success-50 text-success-800 font-bold text-xs rounded-lg border border-success-200 mb-1">
                 Mẫu MISA-PAYROLL-01
               </span>
               <p className="text-xs text-slate-500 font-medium">Mã phiếu: <span className="font-mono">{payslip.id}</span></p>
@@ -75,7 +75,7 @@ export const PayslipDetailModal: React.FC = () => {
           {/* Payslip Title */}
           <div className="text-center py-2">
             <h1 className="text-xl font-extrabold uppercase text-slate-900 tracking-tight">PHIẾU LƯƠNG NHÂN VIÊN</h1>
-            <p className="text-xs font-bold text-emerald-700 mt-1">Kỳ tính lương: Tháng {payslip.month}/{payslip.year}</p>
+            <p className="text-xs font-bold text-success-700 mt-1">Kỳ tính lương: Tháng {payslip.month}/{payslip.year}</p>
           </div>
 
           {/* Employee Basic Info Grid */}
@@ -86,7 +86,7 @@ export const PayslipDetailModal: React.FC = () => {
             </div>
             <div>
               <span className="text-slate-500 block text-[11px]">Mã nhân viên</span>
-              <strong className="font-mono text-emerald-800">{currentEmployee.employeeCode}</strong>
+              <strong className="font-mono text-success-800">{currentEmployee.employeeCode}</strong>
             </div>
             <div>
               <span className="text-slate-500 block text-[11px]">Chức vụ</span>
@@ -111,7 +111,7 @@ export const PayslipDetailModal: React.FC = () => {
             
             {/* Column 1: Income / Thống kê Thu nhập */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <div className="bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 flex justify-between items-center">
+              <div className="bg-success-700 text-white text-xs font-bold px-4 py-2.5 flex justify-between items-center">
                 <span>I. THU NHẬP (GROSS)</span>
                 <span>SỐ TIỀN (VNĐ)</span>
               </div>
@@ -129,11 +129,11 @@ export const PayslipDetailModal: React.FC = () => {
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">Lương KPI hoàn thành:</span>
-                  <span className="font-medium font-mono text-emerald-700">+{formatVND(payslip.kpiBonus)}</span>
+                  <span className="font-medium font-mono text-success-700">+{formatVND(payslip.kpiBonus)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">Lương tăng ca OT ({payslip.otHours} giờ):</span>
-                  <span className="font-medium font-mono text-emerald-700">+{formatVND(payslip.otPay)}</span>
+                  <span className="font-medium font-mono text-success-700">+{formatVND(payslip.otPay)}</span>
                 </div>
 
                 {/* Allowances list */}
@@ -147,13 +147,13 @@ export const PayslipDetailModal: React.FC = () => {
                 {payslip.otherBonuses > 0 && (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
                     <span className="text-slate-600">Thưởng khác:</span>
-                    <span className="font-medium font-mono text-emerald-700">+{formatVND(payslip.otherBonuses)}</span>
+                    <span className="font-medium font-mono text-success-700">+{formatVND(payslip.otherBonuses)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between pt-2 text-xs font-bold text-slate-900 border-t-2 border-slate-200">
                   <span>TỔNG THU NHẬP (GROSS):</span>
-                  <span className="font-mono text-emerald-800">{formatVND(payslip.grossIncome)}</span>
+                  <span className="font-mono text-success-800">{formatVND(payslip.grossIncome)}</span>
                 </div>
               </div>
             </div>
@@ -208,24 +208,24 @@ export const PayslipDetailModal: React.FC = () => {
           </div>
 
           {/* NET SALARY HIGHLIGHT BOX */}
-          <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-5 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-gradient-to-r from-success-800 to-teal-900 text-white p-5 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase font-bold text-emerald-200 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET SALARY)</p>
+              <p className="text-xs uppercase font-bold text-success-200 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET SALARY)</p>
               <h2 className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
                 {formatVND(payslip.netSalary)}
               </h2>
-              <p className="text-[11px] text-emerald-100 mt-1">
+              <p className="text-[11px] text-success-100 mt-1">
                 Lương thực chuyển khoản = Tổng Gross - Các khoản bảo hiểm & Thuế
               </p>
             </div>
 
             <div className="text-right">
-              <div className="inline-flex items-center gap-1.5 bg-emerald-500/30 text-emerald-100 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-400/40">
-                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <div className="inline-flex items-center gap-1.5 bg-success-500/30 text-success-100 text-xs font-bold px-3 py-1.5 rounded-xl border border-success-400/40">
+                <CheckCircle2 className="w-4 h-4 text-success-300" />
                 <span>{payslip.paymentStatus}</span>
               </div>
               {payslip.paymentDate && (
-                <p className="text-[11px] text-emerald-200 mt-1">Ngày chuyển: {formatDate(payslip.paymentDate)}</p>
+                <p className="text-[11px] text-success-200 mt-1">Ngày chuyển: {formatDate(payslip.paymentDate)}</p>
               )}
             </div>
           </div>

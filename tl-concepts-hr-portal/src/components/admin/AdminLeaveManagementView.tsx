@@ -117,7 +117,7 @@ export const AdminLeaveManagementView: React.FC = () => {
 
         {pendingRequests.length === 0 ? (
           <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+            <CheckCircle2 className="w-8 h-8 text-success-500 mx-auto mb-2" />
             <p className="font-medium text-slate-700 text-sm">Hiện tại không có đơn xin nghỉ phép nào đang chờ duyệt.</p>
           </div>
         ) : (
@@ -134,7 +134,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-slate-900 text-sm">{req.employeeName}</span>
                       <span className="text-xs font-mono text-slate-500">({req.employeeCode})</span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-800">
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-primary-100 text-primary-800">
                         {req.leaveType}
                       </span>
                     </div>
@@ -156,7 +156,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                       action: 'Đã duyệt',
                       empName: req.employeeName!
                     })}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center space-x-1 transition-all cursor-pointer"
+                    className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold shadow-md shadow-success-600/20 flex items-center space-x-1 transition-all cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Duyệt đơn</span>
@@ -232,14 +232,14 @@ export const AdminLeaveManagementView: React.FC = () => {
                   filteredRequests.map(req => (
                     <tr key={req.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4 font-bold text-slate-900">{req.employeeName}</td>
-                      <td className="py-3 px-4 font-medium text-blue-700">{req.leaveType}</td>
+                      <td className="py-3 px-4 font-medium text-primary-700">{req.leaveType}</td>
                       <td className="py-3 px-4">{req.startDate} ~ {req.endDate}</td>
                       <td className="py-3 px-4 font-semibold">{req.totalDays} ngày ({req.halfDayOption})</td>
                       <td className="py-3 px-4 max-w-[200px] truncate">{req.reason}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
                           req.status === 'Đã duyệt'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-success-100 text-success-800'
                             : req.status === 'Từ chối'
                               ? 'bg-rose-100 text-rose-800'
                               : 'bg-amber-100 text-amber-800'
@@ -261,7 +261,7 @@ export const AdminLeaveManagementView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-800 flex items-center justify-center font-bold">
               <Calendar className="w-4 h-4" />
             </div>
             <div>
@@ -302,13 +302,13 @@ export const AdminLeaveManagementView: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredHolidays.map((h, i) => (
                 <tr key={i} className="hover:bg-slate-50">
-                  <td className="py-3 px-4 font-black text-blue-700 text-sm">Tháng {h.month}</td>
+                  <td className="py-3 px-4 font-black text-primary-700 text-sm">Tháng {h.month}</td>
                   <td className="py-3 px-4 font-bold text-slate-900">{h.date}</td>
                   <td className="py-3 px-4 font-bold text-slate-800">{h.name}</td>
-                  <td className="py-3 px-4 font-extrabold text-emerald-600">{h.daysCount} ngày</td>
+                  <td className="py-3 px-4 font-extrabold text-success-600">{h.daysCount} ngày</td>
                   <td className="py-3 px-4">
                     <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                      h.type === 'Nghỉ lễ Quốc gia' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
+                      h.type === 'Nghỉ lễ Quốc gia' ? 'bg-primary-100 text-primary-800' : 'bg-success-100 text-success-800'
                     }`}>
                       {h.type}
                     </span>
@@ -355,9 +355,9 @@ export const AdminLeaveManagementView: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">{emp.department}</td>
                   <td className="py-3 px-4 font-semibold">{emp.leaveBalance.totalAccumulated} ngày</td>
-                  <td className="py-3 px-4 text-emerald-600 font-bold">{emp.leaveBalance.usedDays} ngày</td>
+                  <td className="py-3 px-4 text-success-600 font-bold">{emp.leaveBalance.usedDays} ngày</td>
                   <td className="py-3 px-4 text-amber-600 font-bold">{emp.leaveBalance.pendingDays} ngày</td>
-                  <td className="py-3 px-4 font-extrabold text-blue-700 text-sm">{emp.leaveBalance.remainingDays} ngày</td>
+                  <td className="py-3 px-4 font-extrabold text-primary-700 text-sm">{emp.leaveBalance.remainingDays} ngày</td>
                   <td className="py-3 px-4 text-slate-500">{emp.leaveBalance.expiryDate}</td>
                 </tr>
               ))}
@@ -383,7 +383,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                 placeholder="Ví dụ: Đồng ý duyệt, chúc làm việc tốt / Từ chối do trùng lịch tiến độ dự án..."
                 value={approverComment}
                 onChange={e => setApproverComment(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -397,7 +397,7 @@ export const AdminLeaveManagementView: React.FC = () => {
               <button
                 onClick={handleConfirmAction}
                 className={`px-4 py-2 text-white rounded-xl text-xs font-bold cursor-pointer ${
-                  selectedReqForComment.action === 'Đã duyệt' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
+                  selectedReqForComment.action === 'Đã duyệt' ? 'bg-success-600 hover:bg-success-700' : 'bg-rose-600 hover:bg-rose-700'
                 }`}
               >
                 Xác nhận {selectedReqForComment.action}

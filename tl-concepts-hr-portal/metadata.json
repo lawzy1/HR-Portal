@@ -1,0 +1,6 @@
+{
+  "name": "TL CONCEPTS HR Portal",
+  "description": "Ứng dụng Quản trị Nhân sự & Portal Dịch vụ Nhân viên dành cho TL CONCEPTS: quản lý hồ sơ, hợp đồng, lịch sử lương, phiếu lương chi tiết, xin nghỉ phép, theo dõi KPI/OT/Thưởng.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

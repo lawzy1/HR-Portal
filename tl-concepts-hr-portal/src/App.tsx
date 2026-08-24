@@ -43,38 +43,36 @@ function MainContent() {
   const isAdmin = profile?.role === 'admin';
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased selection:bg-primary-500 selection:text-white">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 grid grid-cols-1 md:grid-cols-[16rem_1fr] md:grid-rows-[auto_1fr] font-sans antialiased selection:bg-primary-500 selection:text-white">
       <Header />
 
-      <div className="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row">
-        {/* Render Sidebar based on the authenticated user's role (Supabase profile, not client-toggleable) */}
-        {isAdmin ? <AdminSidebar /> : <Sidebar />}
+      {/* Render Sidebar based on the authenticated user's role (Supabase profile, not client-toggleable). Spans the full height alongside the header on desktop. */}
+      {isAdmin ? <AdminSidebar /> : <Sidebar />}
 
-        {/* Main Workspace Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
-          {isAdmin ? (
-            <>
-              {adminTab === 'admin-dashboard' && <AdminDashboardView />}
-              {adminTab === 'admin-employees' && <AdminEmployeeListView />}
-              {adminTab === 'admin-contracts' && <AdminContractSalaryView />}
-              {adminTab === 'admin-leaves' && <AdminLeaveManagementView />}
-              {adminTab === 'admin-kpi' && <AdminKpiOtView />}
-              {adminTab === 'admin-payroll' && <AdminPayrollView />}
-              {adminTab === 'admin-reminders' && <AdminRemindersView />}
-              {adminTab === 'admin-settings' && <AdminSettingsView />}
-            </>
-          ) : (
-            <>
-              {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'profile' && <ProfileView />}
-              {activeTab === 'contracts' && <ContractSalaryView />}
-              {activeTab === 'payslips' && <PayslipsView />}
-              {activeTab === 'leaves' && <LeaveManagementView />}
-              {activeTab === 'kpi' && <KpiRewardsView />}
-            </>
-          )}
-        </main>
-      </div>
+      {/* Main Workspace Area */}
+      <main className="md:col-start-2 md:row-start-2 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
+        {isAdmin ? (
+          <>
+            {adminTab === 'admin-dashboard' && <AdminDashboardView />}
+            {adminTab === 'admin-employees' && <AdminEmployeeListView />}
+            {adminTab === 'admin-contracts' && <AdminContractSalaryView />}
+            {adminTab === 'admin-leaves' && <AdminLeaveManagementView />}
+            {adminTab === 'admin-kpi' && <AdminKpiOtView />}
+            {adminTab === 'admin-payroll' && <AdminPayrollView />}
+            {adminTab === 'admin-reminders' && <AdminRemindersView />}
+            {adminTab === 'admin-settings' && <AdminSettingsView />}
+          </>
+        ) : (
+          <>
+            {activeTab === 'dashboard' && <DashboardView />}
+            {activeTab === 'profile' && <ProfileView />}
+            {activeTab === 'contracts' && <ContractSalaryView />}
+            {activeTab === 'payslips' && <PayslipsView />}
+            {activeTab === 'leaves' && <LeaveManagementView />}
+            {activeTab === 'kpi' && <KpiRewardsView />}
+          </>
+        )}
+      </main>
 
       {/* Global App Modals */}
       <NewLeaveModal />

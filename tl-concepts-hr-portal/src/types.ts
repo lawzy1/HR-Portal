@@ -85,11 +85,6 @@ export interface SalaryHistoryItem {
   approvedBy: string;
 }
 
-export interface Allowance {
-  name: string;
-  amount: number;
-}
-
 export interface KpiJobItem {
   id: string;
   orderJob: string;
@@ -103,40 +98,6 @@ export interface KpiJobItem {
   deadline?: string; // Format: Thứ xx, dd/mm
   month: number;
   year: number;
-}
-
-export interface Payslip {
-  id: string;
-  month: number;
-  year: number;
-  baseSalary: number;
-  standardWorkDays: number;
-  actualWorkDays: number;
-  kpiBonus: number;
-  otHours: number;
-  otPay: number;
-  allowances: Allowance[];
-  phoneAllowance?: number;
-  lunchAllowance?: number;
-  kpiDesignAllowance?: number;
-  projectBonusPercentage?: number; // Thưởng % dự án (VD: tiền VND hoặc số tiền thưởng)
-  projectBonusAmount?: number;
-  priorMonthAdjustment?: number; // Điều chỉnh/khấu trừ tháng trước tính nhầm (+/-)
-  familyDeduction?: number; // Mức giảm trừ gia cảnh
-  taxExemptIncome?: number; // Thu nhập miễn thuế
-  otherBonuses: number;
-  grossIncome: number;
-  bhxhDeduction: number;
-  bhytDeduction: number;
-  bhtnDeduction: number;
-  taxableIncome: number;
-  personalIncomeTax: number;
-  advancePayment: number;
-  otherDeductions: number;
-  netSalary: number;
-  paymentStatus: 'Đã thanh toán' | 'Chờ thanh toán';
-  paymentDate?: string;
-  note?: string;
 }
 
 export interface LeaveRequest {
@@ -244,7 +205,6 @@ export interface Employee {
 
   contracts: ContractItem[];
   salaryHistory: SalaryHistoryItem[];
-  payslips: Payslip[];
   leaveRequests: LeaveRequest[];
   leaveBalance: LeaveBalance;
   kpiData: KpiMonthlyData[];

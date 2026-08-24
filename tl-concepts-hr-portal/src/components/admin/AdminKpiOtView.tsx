@@ -1,89 +1,119 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  TrendingUp, 
-  Clock, 
-  Plus, 
-  CheckCircle2, 
-  XCircle, 
-  Search, 
-  FileSpreadsheet, 
+import React, { useMemo, useState } from 'react';
+import {
+  Clock,
+  Plus,
+  FileSpreadsheet,
   Award,
   Trash2,
   Edit2,
-  RefreshCw,
   Calculator,
   Download,
   Printer,
-  FileText,
-  Calendar,
-  Layers,
-  UserCheck,
-  CalendarDays
+  CalendarDays,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
-import { KpiJobItem, OtRecord } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { useEmployees } from '../../hooks/useEmployees';
+import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import {
+  useAllKpiJobItems,
+  useCreateKpiJobItem,
+  useUpdateKpiJobItem,
+  useDeleteKpiJobItem,
+  useUpsertKpiMonthly,
+} from '../../hooks/useKpi';
+import { useAllOtRecords, useCreateOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
+import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { getMonthWorkDays } from '../../utils/workDays';
+
+// employee_id is a required FK on kpi_job_items now — job assignment is a real
+// employee picker, no more fuzzy assigneeName string matching against full_name.
+type KpiJobRow = NonNullable<ReturnType<typeof useAllKpiJobItems>['data']>[number];
+type OtRecordRow = NonNullable<ReturnType<typeof useAllOtRecords>['data']>[number];
 
 interface JobGroup {
   orderJob: string;
-  items: KpiJobItem[];
+  items: KpiJobRow[];
 }
 
+const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
+  const { data: url } = useSignedImageUrl(path);
+  return url ? (
+    <img src={url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" />
+  ) : (
+    <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 shrink-0" />
+  );
+};
+
+const isSameMonthYear = (dateStr: string, month: number, year: number): boolean => {
+  const d = new Date(dateStr);
+  return d.getMonth() + 1 === month && d.getFullYear() === year;
+};
+
 export const AdminKpiOtView: React.FC = () => {
-  const { 
-    employees, 
-    selectedEmployeeIdForAdmin, 
-    setSelectedEmployeeIdForAdmin,
-    kpiJobList,
-    addKpiJobItem,
-    updateKpiJobItem,
-    deleteKpiJobItem,
-    addOtRecord,
-    updateOtStatus,
-    setIsImportKpiModalOpen,
-    addOrUpdateKpi,
-    showToast
-  } = useHR();
+  const { selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin, setIsImportKpiModalOpen, showToast } = useHR();
+  const { profile } = useAuth();
+
+  const { data: employees } = useEmployees();
+  const { data: companySettings } = useCompanySettings();
+  const employeeList = useMemo(() => employees || [], [employees]);
 
   const [selectedMonth, setSelectedMonth] = useState<number>(7);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [kpiRatePerDay, setKpiRatePerDay] = useState<number>(1.5);
+
+  // Local "what-if" override for the target-calc stepper — defaults to the
+  // company's configured rate but lets the admin preview a different rate
+  // without persisting it (company_settings itself is read-only until Phase 9).
+  const [kpiRateOverride, setKpiRateOverride] = useState<number | null>(null);
+  const effectiveKpiRatePerDay = kpiRateOverride ?? companySettings?.kpi_rate_per_day ?? 1.5;
 
   // Dynamic Standard Working Days calculation (1st to 30/31st of month, 5.5 days/week)
   const monthWorkInfo = useMemo(() => {
-    return getMonthWorkDays(selectedMonth, selectedYear, kpiRatePerDay);
-  }, [selectedMonth, selectedYear, kpiRatePerDay]);
+    return getMonthWorkDays(selectedMonth, selectedYear, effectiveKpiRatePerDay);
+  }, [selectedMonth, selectedYear, effectiveKpiRatePerDay]);
+
+  const { data: currentMonthJobsData } = useAllKpiJobItems(selectedMonth, selectedYear);
+  const currentMonthJobs = useMemo(() => currentMonthJobsData || [], [currentMonthJobsData]);
+
+  const { data: allOtRecordsData } = useAllOtRecords();
+  const allOtRecords: OtRecordRow[] = allOtRecordsData || [];
+
+  const createKpiJobItem = useCreateKpiJobItem();
+  const updateKpiJobItem = useUpdateKpiJobItem();
+  const deleteKpiJobItem = useDeleteKpiJobItem();
+  const upsertKpiMonthly = useUpsertKpiMonthly();
+  const createOtRecord = useCreateOtRecord();
+  const updateOtRecord = useUpdateOtRecord();
 
   // New KPI Job Entry Modal / Form
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
   const [orderJob, setOrderJob] = useState('');
   const [subTask, setSubTask] = useState('');
-  const [assigneeName, setAssigneeName] = useState(employees[0]?.fullName || '');
+  const [jobEmployeeId, setJobEmployeeId] = useState('');
   const [viewsCount, setViewsCount] = useState<number>(4);
   const [convertedKpi, setConvertedKpi] = useState<number>(4.0);
   const [durationDays, setDurationDays] = useState<number>(2.0);
-  const [deadline, setDeadline] = useState<string>('Thứ Bảy, 15/07');
+  const [deadline, setDeadline] = useState<string>('');
   const [deadlineDateInput, setDeadlineDateInput] = useState<string>('');
+  const [completedDateInput, setCompletedDateInput] = useState<string>('');
 
   // Edit Job state
-  const [editingJob, setEditingJob] = useState<KpiJobItem | null>(null);
+  const [editingJob, setEditingJob] = useState<KpiJobRow | null>(null);
 
   // OT Form State (Admin Direct Creation)
   const [isNewOtModalOpen, setIsNewOtModalOpen] = useState(false);
-  const [otEmpId, setOtEmpId] = useState<string>(employees[0]?.id || '');
+  const [otEmpId, setOtEmpId] = useState<string>('');
   const [otDate, setOtDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [otHours, setOtHours] = useState<number>(4);
   const [otViewsRender, setOtViewsRender] = useState<number>(2);
-  const [otReason, setOtReason] = useState<string>('Tăng ca hoàn thiện phối cảnh render dự án gấp');
-  const [otPresetType, setOtPresetType] = useState<'AUTO' | '150' | '200' | '300' | 'CUSTOM'>('AUTO');
+  const [otReason, setOtReason] = useState<string>('');
+  const [otPresetType, setOtPresetType] = useState<'AUTO' | 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'CUSTOM'>('AUTO');
   const [customOtPercentage, setCustomOtPercentage] = useState<number>(150);
   const [otStatus, setOtStatus] = useState<'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming'>('Đã hoàn thành');
 
   const formatVND = (num: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
   };
-
-  const selectedEmp = employees.find(e => e.id === selectedEmployeeIdForAdmin) || employees[0];
 
   // Helper date formatter for Deadline (e.g. "Thứ Ba, 15/08")
   const formatDeadlineFromDateStr = (dateStr: string): string => {
@@ -97,20 +127,30 @@ export const AdminKpiOtView: React.FC = () => {
     return `${dayName}, ${dd}/${mm}`;
   };
 
-  // Filter KPI Job Items for active month/year
-  const currentMonthJobs = useMemo(() => {
-    return kpiJobList.filter(j => j.month === selectedMonth && j.year === selectedYear);
-  }, [kpiJobList, selectedMonth, selectedYear]);
+  const delayLabel = (job: KpiJobRow) => {
+    if (!job.deadline_at || !job.completed_at) return null;
+    const minutes = Math.ceil((new Date(job.completed_at).getTime() - new Date(job.deadline_at).getTime()) / 60000);
+    if (minutes <= 0) return 'Đúng hạn';
+    const hours = Math.floor(minutes / 60);
+    return `Trễ ${hours} giờ ${minutes % 60} phút`;
+  };
+
+  const toIso = (value: string) => value ? new Date(value).toISOString() : null;
+  const toLocalInput = (value: string | null) => {
+    if (!value) return '';
+    const date = new Date(value);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
 
   // Group KPI Jobs by orderJob
   const groupedJobs = useMemo(() => {
     const groups: JobGroup[] = [];
-    const map = new Map<string, KpiJobItem[]>();
+    const map = new Map<string, KpiJobRow[]>();
 
     currentMonthJobs.forEach(job => {
-      const key = (job.orderJob || '').trim();
+      const key = (job.order_job || '').trim();
       if (!map.has(key)) {
-        const arr: KpiJobItem[] = [];
+        const arr: KpiJobRow[] = [];
         map.set(key, arr);
         groups.push({ orderJob: key, items: arr });
       }
@@ -121,42 +161,57 @@ export const AdminKpiOtView: React.FC = () => {
   }, [currentMonthJobs]);
 
   // Handle Add / Edit Job Submit
-  const handleAddJobSubmit = (e: React.FormEvent) => {
+  const handleAddJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderJob.trim()) {
       alert('Vui lòng nhập Order / Job (Tên bài / Dự án)');
       return;
     }
+    if (!jobEmployeeId) {
+      alert('Vui lòng chọn nhân viên thực hiện (Assignee)');
+      return;
+    }
+    if (!profile?.companyId) return;
 
     const finalDeadline = deadline || (deadlineDateInput ? formatDeadlineFromDateStr(deadlineDateInput) : '');
 
     if (editingJob) {
-      updateKpiJobItem(editingJob.id, {
-        orderJob,
-        subTask,
-        parentTask: orderJob,
-        assigneeName,
-        viewsCount,
-        convertedKpi,
-        durationDays,
-        deadline: finalDeadline,
-        month: selectedMonth,
-        year: selectedYear,
+      await updateKpiJobItem.mutateAsync({
+        id: editingJob.id,
+        updates: {
+          order_job: orderJob,
+          sub_task: subTask || null,
+          parent_task: orderJob,
+          employee_id: jobEmployeeId,
+          views_count: viewsCount,
+          converted_kpi: convertedKpi,
+          duration_days: durationDays,
+          deadline: finalDeadline || null,
+          deadline_at: toIso(deadlineDateInput),
+          completed_at: toIso(completedDateInput),
+          month: selectedMonth,
+          year: selectedYear,
+        },
       });
+      showToast('Đã cập nhật chi tiết KPI bài/dự án!');
       setEditingJob(null);
     } else {
-      addKpiJobItem({
-        orderJob,
-        subTask,
-        parentTask: orderJob,
-        assigneeName,
-        viewsCount,
-        convertedKpi,
-        durationDays,
-        deadline: finalDeadline,
+      await createKpiJobItem.mutateAsync({
+        company_id: profile.companyId,
+        order_job: orderJob,
+        sub_task: subTask || null,
+        parent_task: orderJob,
+        employee_id: jobEmployeeId,
+        views_count: viewsCount,
+        converted_kpi: convertedKpi,
+        duration_days: durationDays,
+        deadline: finalDeadline || null,
+        deadline_at: toIso(deadlineDateInput),
+        completed_at: toIso(completedDateInput),
         month: selectedMonth,
         year: selectedYear,
       });
+      showToast('Đã thêm bài / dự án KPI mới thành công!');
     }
 
     // Reset form
@@ -165,20 +220,23 @@ export const AdminKpiOtView: React.FC = () => {
     setViewsCount(4);
     setConvertedKpi(4.0);
     setDurationDays(2.0);
-    setDeadline('Thứ Bảy, 15/07');
+    setDeadline('');
     setDeadlineDateInput('');
+    setCompletedDateInput('');
     setIsNewJobModalOpen(false);
   };
 
-  const startEditJob = (job: KpiJobItem) => {
+  const startEditJob = (job: KpiJobRow) => {
     setEditingJob(job);
-    setOrderJob(job.orderJob);
-    setSubTask(job.subTask || '');
-    setAssigneeName(job.assigneeName);
-    setViewsCount(job.viewsCount);
-    setConvertedKpi(job.convertedKpi);
-    setDurationDays(job.durationDays);
+    setOrderJob(job.order_job);
+    setSubTask(job.sub_task || '');
+    setJobEmployeeId(job.employee_id);
+    setViewsCount(job.views_count || 0);
+    setConvertedKpi(job.converted_kpi || 0);
+    setDurationDays(job.duration_days || 0);
     setDeadline(job.deadline || '');
+    setDeadlineDateInput(toLocalInput(job.deadline_at));
+    setCompletedDateInput(toLocalInput(job.completed_at));
     setIsNewJobModalOpen(true);
   };
 
@@ -193,23 +251,28 @@ export const AdminKpiOtView: React.FC = () => {
     setIsNewJobModalOpen(true);
   };
 
+  const handleDeleteJob = async (id: string) => {
+    await deleteKpiJobItem.mutateAsync(id);
+    showToast('Đã xóa bài/dự án khỏi bảng KPI.');
+  };
+
   // Download KPI as Excel (.csv) matching exact layout
   const handleDownloadExcel = () => {
     const headers = ['STT', 'Order / Job (Tên bài / Dự án)', 'Assignee (Người thực hiện)', 'Số View', 'Quy đổi KPI', 'Thời gian (ngày)', 'Deadline'];
     const rows: (string | number)[][] = [];
 
     groupedJobs.forEach((group, idx) => {
-      const hasSubTasks = group.items.some(i => i.subTask && i.subTask.trim().length > 0);
+      const hasSubTasks = group.items.some(i => i.sub_task && i.sub_task.trim().length > 0);
 
       if (!hasSubTasks && group.items.length === 1) {
         const j = group.items[0];
         rows.push([
           idx + 1,
-          `"${(j.orderJob || '').replace(/"/g, '""')}"`,
-          `"${(j.assigneeName || '').replace(/"/g, '""')}"`,
-          j.viewsCount,
-          j.convertedKpi,
-          j.durationDays,
+          `"${(j.order_job || '').replace(/"/g, '""')}"`,
+          `"${(j.employees?.full_name || '').replace(/"/g, '""')}"`,
+          j.views_count || 0,
+          j.converted_kpi || 0,
+          j.duration_days || 0,
           `"${(j.deadline || '—').replace(/"/g, '""')}"`,
         ]);
       } else {
@@ -228,18 +291,18 @@ export const AdminKpiOtView: React.FC = () => {
         group.items.forEach(j => {
           rows.push([
             '',
-            `"Sub-task : ${(j.subTask || j.orderJob).replace(/"/g, '""')}"`,
-            `"${(j.assigneeName || '').replace(/"/g, '""')}"`,
-            j.viewsCount,
-            j.convertedKpi,
-            j.durationDays,
+            `"Sub-task : ${(j.sub_task || j.order_job).replace(/"/g, '""')}"`,
+            `"${(j.employees?.full_name || '').replace(/"/g, '""')}"`,
+            j.views_count || 0,
+            j.converted_kpi || 0,
+            j.duration_days || 0,
             `"${(j.deadline || '—').replace(/"/g, '""')}"`,
           ]);
         });
       }
     });
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const csvContent = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -251,106 +314,120 @@ export const AdminKpiOtView: React.FC = () => {
     showToast(`Đã tải file Excel KPI Tháng ${selectedMonth}/${selectedYear} về máy!`);
   };
 
-  // Export / Print PDF
+  // Export / Print PDF (browser print — real PDF generation is out of scope, same as PayslipDetailModal)
   const handleDownloadPdf = () => {
     window.print();
   };
 
-  // Sync KPI points directly to employee records & payroll
-  const handleSyncKpiToProfiles = () => {
+  // Sync KPI points directly to employee records & payroll (kpi_monthly upsert)
+  const handleSyncKpiToProfiles = async () => {
+    if (!companySettings || !profile?.companyId) {
+      showToast('Đang tải cấu hình công ty, vui lòng thử lại sau ít giây.');
+      return;
+    }
+
     const dynamicTarget = monthWorkInfo.calculatedKpiTarget;
 
-    employees.forEach(emp => {
-      // Find all jobs assigned to this employee
-      const empJobs = currentMonthJobs.filter(j => 
-        j.assigneeName.toLowerCase().includes(emp.fullName.toLowerCase()) ||
-        emp.fullName.toLowerCase().includes(j.assigneeName.toLowerCase())
-      );
+    await Promise.all(employeeList.map(async (emp) => {
+      // Real employee_id FK match — no more fuzzy assigneeName string matching.
+      const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
 
-      const totalViews = empJobs.reduce((acc, curr) => acc + curr.viewsCount, 0);
-      const totalKpiPoints = empJobs.reduce((acc, curr) => acc + curr.convertedKpi, 0);
-      
-      const target = dynamicTarget || 35; // Dynamically calculated target from 5.5 days/week schedule
-      const completionPct = Math.round((totalKpiPoints / target) * 100) || 100;
-      
-      // Calculate design allowance bonus
-      const bonusAmount = Math.max(2000000, Math.round(totalKpiPoints * 500000));
+      const totalViews = empJobs.reduce((acc, curr) => acc + (curr.views_count || 0), 0);
+      const totalKpiPoints = empJobs.reduce((acc, curr) => acc + (curr.converted_kpi || 0), 0);
 
-      addOrUpdateKpi(emp.id, {
-        id: `kpi-${emp.id}-${selectedMonth}-${selectedYear}`,
+      const target = dynamicTarget || 0;
+      const completionPct = target ? Math.round((totalKpiPoints / target) * 100) : 0;
+
+      // Design allowance bonus, driven by company_settings (not a hard-coded rate/point or floor).
+      const bonusAmount = Math.max(companySettings.kpi_bonus_min, Math.round(totalKpiPoints * companySettings.kpi_bonus_per_point));
+
+      // Real OT hours actually logged by this employee in the period — not a flat placeholder.
+      const otHoursForEmp = allOtRecords
+        .filter(ot => ot.employee_id === emp.id && isSameMonthYear(ot.date, selectedMonth, selectedYear))
+        .reduce((sum, ot) => sum + (ot.hours || 0), 0);
+
+      const otHourlyRate = Math.round((emp.current_salary || 0) / companySettings.standard_work_days / 8);
+
+      await upsertKpiMonthly.mutateAsync({
+        employee_id: emp.id,
+        company_id: profile.companyId,
         month: selectedMonth,
         year: selectedYear,
-        renderedViewsActual: totalViews || target,
-        kpiConvertedViews: totalKpiPoints || target,
-        kpiTarget: target,
-        completionPercentage: completionPct,
-        otHours: 5,
-        otHourlyRate: 200000,
-        bonusAmount,
-        benefitAmount: 1500000,
-        additionsDeductions: [],
-        notes: `Tính toán từ ${empJobs.length} bài/dự án (Chỉ tiêu tháng ${monthWorkInfo.standardWorkDays} ngày công x ${kpiRatePerDay} view/ngày = ${target} view).`
+        rendered_views_actual: totalViews || target,
+        kpi_converted_views: totalKpiPoints || target,
+        kpi_target: target,
+        completion_percentage: completionPct,
+        ot_hours: otHoursForEmp,
+        ot_hourly_rate: otHourlyRate,
+        bonus_amount: bonusAmount,
+        // No real "benefit" data source in this phase — left at 0 for admin to fill in
+        // manually, rather than fabricating a plausible-looking number.
+        benefit_amount: 0,
+        notes: `Tính toán từ ${empJobs.length} bài/dự án (Chỉ tiêu tháng ${monthWorkInfo.standardWorkDays} ngày công x ${effectiveKpiRatePerDay} view/ngày = ${target} view).`,
       });
-    });
+    }));
 
     showToast(`Đã đồng bộ thành công dữ liệu KPI của tất cả nhân viên (Chỉ tiêu: ${dynamicTarget} views theo ${monthWorkInfo.standardWorkDays} ngày công) vào Payroll Tháng ${selectedMonth}/${selectedYear}!`);
   };
 
-  // Calculate OT percentage & rate based on date or custom input
+  // Calculate OT percentage & rate based on date or preset/custom input — driven by company_settings.
   const getEffectiveOtPercentage = (): number => {
-    if (otPresetType === '150') return 150;
-    if (otPresetType === '200') return 200;
-    if (otPresetType === '300') return 300;
+    if (otPresetType === 'WEEKDAY') return companySettings?.ot_weekday_percent ?? 0;
+    if (otPresetType === 'WEEKEND') return companySettings?.ot_weekend_percent ?? 0;
+    if (otPresetType === 'HOLIDAY') return 300; // no company_settings column for holiday/Tết OT rate yet
     if (otPresetType === 'CUSTOM') return customOtPercentage;
 
     // AUTO calculation based on date
-    if (!otDate) return 150;
+    if (!otDate) return companySettings?.ot_weekday_percent ?? 0;
     const d = new Date(otDate);
     const day = d.getDay();
-    if (day === 0 || day === 6) return 200; // Weekend T7, CN
-    return 150; // Regular weekday
+    if (day === 0 || day === 6) return companySettings?.ot_weekend_percent ?? 0; // Weekend T7, CN
+    return companySettings?.ot_weekday_percent ?? 0; // Regular weekday
   };
 
-  // Collect all OT records across all employees
-  const allOtRecords = employees.flatMap(emp => 
-    (emp.otRecords || []).map(ot => ({
-      ...ot,
-      employeeId: emp.id,
-      employeeName: emp.fullName,
-      employeeCode: emp.employeeCode,
-      department: emp.department,
-      hourlyRate: Math.round(emp.currentSalary / 22 / 8),
-    }))
-  );
-
   // Handle Admin direct OT creation
-  const handleAddOtSubmit = (e: React.FormEvent) => {
+  const handleAddOtSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetEmp = employees.find(e => e.id === otEmpId) || employees[0];
+    const targetEmp = employeeList.find(emp => emp.id === otEmpId);
     if (!targetEmp) {
       alert('Vui lòng chọn nhân viên');
       return;
     }
+    if (!companySettings || !profile?.companyId) {
+      alert('Đang tải cấu hình công ty, vui lòng thử lại sau ít giây.');
+      return;
+    }
 
-    const hourly = Math.round(targetEmp.currentSalary / 22 / 8);
+    const hourly = Math.round((targetEmp.current_salary || 0) / companySettings.standard_work_days / 8);
     const effPct = getEffectiveOtPercentage();
     const calcAmount = Math.round(otHours * hourly * (effPct / 100));
 
-    const payLabel = `Thanh toán ${effPct}% (${otPresetType === 'AUTO' ? (effPct === 200 ? 'Cuối tuần' : 'Ngày thường') : 'Admin cấu hình'})`;
+    const payLabel = `Thanh toán ${effPct}% (${otPresetType === 'AUTO' ? (effPct === companySettings.ot_weekend_percent ? 'Cuối tuần' : 'Ngày thường') : 'Admin cấu hình'})`;
 
-    addOtRecord(targetEmp.id, {
+    await createOtRecord.mutateAsync({
+      company_id: profile.companyId,
+      employee_id: targetEmp.id,
       date: otDate,
       hours: otHours,
-      viewsRenderCount: otViewsRender,
+      views_render_count: otViewsRender,
       reason: otReason,
-      approverName: 'Admin HR Manager',
-      payType: payLabel,
-      otPercentage: effPct,
+      pay_type: payLabel,
+      ot_percentage: effPct,
       status: otStatus,
       amount: calcAmount,
     });
 
+    showToast('Đã đăng ký giờ làm OT tăng ca thành công!');
+    setOtReason('');
     setIsNewOtModalOpen(false);
+  };
+
+  // Admin-only status update (approve/reject/etc — enforced by RLS on ot_records)
+  const handleOtStatusChange = async (id: string, status: string) => {
+    await updateOtRecord.mutateAsync({
+      id,
+      updates: { status, approver_id: profile?.id },
+    });
   };
 
   return (
@@ -372,6 +449,7 @@ export const AdminKpiOtView: React.FC = () => {
               setEditingJob(null);
               setOrderJob('');
               setSubTask('');
+              setJobEmployeeId(employeeList[0]?.id || '');
               setIsNewJobModalOpen(true);
             }}
             className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer"
@@ -440,7 +518,8 @@ export const AdminKpiOtView: React.FC = () => {
 
         <button
           onClick={handleSyncKpiToProfiles}
-          className="px-4 py-1.5 bg-success-100 hover:bg-success-200 text-success-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all"
+          disabled={upsertKpiMonthly.isPending}
+          className="px-4 py-1.5 bg-success-100 hover:bg-success-200 text-success-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all disabled:opacity-60"
         >
           <Calculator className="w-4 h-4 text-success-700" />
           <span>Đồng bộ điểm KPI sang Payroll</span>
@@ -470,12 +549,12 @@ export const AdminKpiOtView: React.FC = () => {
           <div className="flex items-center gap-3 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
             <div className="text-right">
               <span className="text-[10px] text-slate-400 block font-medium">Định mức KPI / ngày công</span>
-              <span className="text-xs font-bold text-success-400">{kpiRatePerDay} view/công</span>
+              <span className="text-xs font-bold text-success-400">{effectiveKpiRatePerDay} view/công</span>
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setKpiRatePerDay(prev => Math.max(0.5, Number((prev - 0.1).toFixed(1))))}
+                onClick={() => setKpiRateOverride(Math.max(0.5, Number((effectiveKpiRatePerDay - 0.1).toFixed(1))))}
                 className="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
                 title="Giảm định mức"
               >
@@ -486,13 +565,13 @@ export const AdminKpiOtView: React.FC = () => {
                 step="0.1"
                 min="0.1"
                 max="5"
-                value={kpiRatePerDay}
-                onChange={(e) => setKpiRatePerDay(Math.max(0.1, Number(e.target.value) || 1.5))}
+                value={effectiveKpiRatePerDay}
+                onChange={(e) => setKpiRateOverride(Math.max(0.1, Number(e.target.value) || effectiveKpiRatePerDay))}
                 className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-xs font-mono font-bold text-center text-white focus:ring-1 focus:ring-success-400"
               />
               <button
                 type="button"
-                onClick={() => setKpiRatePerDay(prev => Number((prev + 0.1).toFixed(1)))}
+                onClick={() => setKpiRateOverride(Number((effectiveKpiRatePerDay + 0.1).toFixed(1)))}
                 className="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
                 title="Tăng định mức"
               >
@@ -541,7 +620,7 @@ export const AdminKpiOtView: React.FC = () => {
               {monthWorkInfo.calculatedKpiTarget} <span className="text-xs font-semibold text-primary-300">view</span>
             </p>
             <span className="text-[10px] text-primary-300 font-mono">
-              {monthWorkInfo.standardWorkDays} × {kpiRatePerDay} view
+              {monthWorkInfo.standardWorkDays} × {effectiveKpiRatePerDay} view
             </span>
           </div>
         </div>
@@ -564,7 +643,31 @@ export const AdminKpiOtView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedEmployeeIdForAdmin || employeeList[0]?.id || ''}
+              onChange={e => setSelectedEmployeeIdForAdmin(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+              title="Nhân viên đang chọn để Liên kết Bảng KPI"
+            >
+              {employeeList.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code})</option>
+              ))}
+            </select>
+            <button
+              onClick={() => {
+                if (!selectedEmployeeIdForAdmin && employeeList[0]) {
+                  setSelectedEmployeeIdForAdmin(employeeList[0].id);
+                }
+                setIsImportKpiModalOpen(true);
+              }}
+              className="px-3 py-1.5 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
+              title="Liên kết / Import bảng KPI cho nhân viên đã chọn"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Liên kết Bảng KPI</span>
+            </button>
+
             <button
               onClick={handleDownloadExcel}
               className="px-3 py-1.5 bg-success-50 hover:bg-success-100 text-success-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
@@ -578,6 +681,7 @@ export const AdminKpiOtView: React.FC = () => {
                 setEditingJob(null);
                 setOrderJob('');
                 setSubTask('');
+                setJobEmployeeId(employeeList[0]?.id || '');
                 setIsNewJobModalOpen(true);
               }}
               className="px-3 py-1.5 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
@@ -611,7 +715,7 @@ export const AdminKpiOtView: React.FC = () => {
                 </tr>
               ) : (
                 groupedJobs.map((group, groupIdx) => {
-                  const hasSubTasks = group.items.some(i => i.subTask && i.subTask.trim().length > 0);
+                  const hasSubTasks = group.items.some(i => i.sub_task && i.sub_task.trim().length > 0);
 
                   // CASE 1: Single job without sub-tasks
                   if (!hasSubTasks && group.items.length === 1) {
@@ -622,27 +726,28 @@ export const AdminKpiOtView: React.FC = () => {
                           {groupIdx + 1}
                         </td>
                         <td className="py-3 px-4 font-semibold text-slate-900 leading-snug border-r border-slate-300">
-                          {job.orderJob}
+                          {job.order_job}
                         </td>
                         <td className="py-3 px-4 font-bold text-slate-800 border-r border-slate-300">
-                          {job.assigneeName}
+                          {job.employees?.full_name}
                         </td>
                         <td className="py-3 px-3 text-center font-black text-slate-800 text-sm border-r border-slate-300">
-                          {job.viewsCount}
+                          {job.views_count ?? 0}
                         </td>
                         <td className="py-3 px-3 text-center font-black text-success-600 text-sm bg-success-50/50 border-r border-slate-300">
-                          {job.convertedKpi}
+                          {job.converted_kpi ?? 0}
                         </td>
                         <td className="py-3 px-3 text-center font-medium text-slate-600 border-r border-slate-300">
-                          {job.durationDays ? `${job.durationDays} ngày` : '—'}
+                          {job.duration_days ? `${job.duration_days} ngày` : '—'}
                         </td>
                         <td className="py-3 px-3 text-center font-bold text-rose-700 bg-rose-50/40 border-r border-slate-300">
                           {job.deadline || '—'}
+                          {delayLabel(job) && <span className={`block text-[10px] ${delayLabel(job)?.startsWith('Trễ') ? 'text-rose-700' : 'text-success-700'}`}>{delayLabel(job)}</span>}
                         </td>
                         <td className="py-3 px-3 text-center">
                           <div className="flex items-center justify-center space-x-1">
                             <button
-                              onClick={() => startAddSubTask(job.orderJob)}
+                              onClick={() => startAddSubTask(job.order_job)}
                               className="p-1.5 hover:bg-primary-100 text-primary-600 rounded-lg cursor-pointer text-[10px] font-bold"
                               title="Thêm Sub-task"
                             >
@@ -656,7 +761,7 @@ export const AdminKpiOtView: React.FC = () => {
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => deleteKpiJobItem(job.id)}
+                              onClick={() => handleDeleteJob(job.id)}
                               className="p-1.5 hover:bg-rose-100 text-rose-600 rounded-lg cursor-pointer"
                               title="Xóa bài"
                             >
@@ -681,10 +786,10 @@ export const AdminKpiOtView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-slate-400 italic text-xs border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center font-bold text-slate-500 border-r border-slate-300">
-                          {group.items.reduce((sum, item) => sum + item.viewsCount, 0)}
+                          {group.items.reduce((sum, item) => sum + (item.views_count || 0), 0)}
                         </td>
                         <td className="py-3 px-3 text-center font-bold text-success-700 border-r border-slate-300">
-                          {group.items.reduce((sum, item) => sum + item.convertedKpi, 0)}
+                          {group.items.reduce((sum, item) => sum + (item.converted_kpi || 0), 0)}
                         </td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
@@ -700,36 +805,37 @@ export const AdminKpiOtView: React.FC = () => {
                       </tr>
 
                       {/* Sub-task Rows */}
-                      {group.items.map((item, itemIdx) => (
+                      {group.items.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50 border-b border-slate-200">
                           {/* Blank STT cell */}
                           <td className="py-2.5 px-3 border-r border-slate-300 bg-slate-50/40"></td>
-                          
+
                           {/* Sub-task rendered directly under Order in light gray block */}
                           <td className="py-2 px-4 border-r border-slate-300">
                             <div className="bg-slate-100/90 text-slate-800 px-3 py-1.5 rounded-md border-l-4 border-primary-500 font-semibold text-xs flex items-center justify-between">
-                              <span>Sub-task : {item.subTask || item.orderJob}</span>
+                              <span>Sub-task : {item.sub_task || item.order_job}</span>
                             </div>
                           </td>
 
                           <td className="py-2 px-4 font-bold text-slate-800 border-r border-slate-300">
-                            {item.assigneeName}
+                            {item.employees?.full_name}
                           </td>
 
                           <td className="py-2 px-3 text-center font-bold text-slate-800 border-r border-slate-300">
-                            {item.viewsCount}
+                            {item.views_count ?? 0}
                           </td>
 
                           <td className="py-2 px-3 text-center font-bold text-success-700 border-r border-slate-300">
-                            {item.convertedKpi}
+                            {item.converted_kpi ?? 0}
                           </td>
 
                           <td className="py-2 px-3 text-center text-slate-600 border-r border-slate-300">
-                            {item.durationDays ? `${item.durationDays} ngày` : '—'}
+                            {item.duration_days ? `${item.duration_days} ngày` : '—'}
                           </td>
 
                           <td className="py-2 px-3 text-center font-bold text-rose-700 border-r border-slate-300">
                             {item.deadline || '—'}
+                            {delayLabel(item) && <span className={`block text-[10px] ${delayLabel(item)?.startsWith('Trễ') ? 'text-rose-700' : 'text-success-700'}`}>{delayLabel(item)}</span>}
                           </td>
 
                           <td className="py-2 px-3 text-center">
@@ -742,7 +848,7 @@ export const AdminKpiOtView: React.FC = () => {
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => deleteKpiJobItem(item.id)}
+                                onClick={() => handleDeleteJob(item.id)}
                                 className="p-1 hover:bg-rose-100 text-rose-600 rounded cursor-pointer"
                                 title="Xóa Sub-task"
                               >
@@ -780,24 +886,25 @@ export const AdminKpiOtView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {employees.map(emp => {
-            const empJobs = currentMonthJobs.filter(j => 
-              j.assigneeName.toLowerCase().includes(emp.fullName.toLowerCase()) ||
-              emp.fullName.toLowerCase().includes(j.assigneeName.toLowerCase())
-            );
+          {employeeList.map(emp => {
+            // Real employee_id FK match — no more fuzzy assigneeName string matching.
+            const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
 
-            const totalViews = empJobs.reduce((a, c) => a + c.viewsCount, 0);
-            const totalKpi = empJobs.reduce((a, c) => a + c.convertedKpi, 0);
-            const target = 35;
-            const pct = Math.min(150, Math.round((totalKpi / target) * 100)) || 100;
+            const totalViews = empJobs.reduce((a, c) => a + (c.views_count || 0), 0);
+            const totalKpi = empJobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
+            const target = monthWorkInfo.calculatedKpiTarget || 0;
+            const pct = target ? Math.min(150, Math.round((totalKpi / target) * 100)) : 0;
+            const estimatedBonus = companySettings
+              ? Math.max(companySettings.kpi_bonus_min, Math.round(totalKpi * companySettings.kpi_bonus_per_point))
+              : 0;
 
             return (
               <div key={emp.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                 <div className="flex items-center space-x-3">
-                  <img src={emp.avatar} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                  <RowAvatar path={emp.avatar_url} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-900 text-xs truncate">{emp.fullName}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{emp.jobTitle}</p>
+                    <p className="font-bold text-slate-900 text-xs truncate">{emp.full_name}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{emp.job_title}</p>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                     pct >= 100 ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
@@ -813,7 +920,7 @@ export const AdminKpiOtView: React.FC = () => {
                     <span>{empJobs.length} sub-tasks</span>
                   </div>
                   <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-success-500' : 'bg-amber-500'}`}
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
@@ -822,7 +929,7 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                   <span>Tổng render views: <b>{totalViews} views</b></span>
-                  <span className="font-bold text-success-700">{formatVND(Math.round(totalKpi * 500000))}</span>
+                  <span className="font-bold text-success-700">{formatVND(estimatedBonus)}</span>
                 </div>
               </div>
             );
@@ -848,7 +955,10 @@ export const AdminKpiOtView: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setIsNewOtModalOpen(true)}
+            onClick={() => {
+              setOtEmpId(employeeList[0]?.id || '');
+              setIsNewOtModalOpen(true);
+            }}
             className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 flex items-center space-x-1.5 cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -881,20 +991,23 @@ export const AdminKpiOtView: React.FC = () => {
                 allOtRecords.map(ot => (
                   <tr key={ot.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4 font-bold text-slate-900">
-                      <div>
-                        <span>{ot.employeeName}</span>
-                        <span className="block text-[10px] text-slate-400 font-mono">{ot.employeeCode}</span>
+                      <div className="flex items-center space-x-2.5">
+                        <RowAvatar path={ot.employees?.avatar_url} />
+                        <div>
+                          <span>{ot.employees?.full_name}</span>
+                          <span className="block text-[10px] text-slate-400 font-mono">{ot.employees?.employee_code}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4 font-medium">{ot.date}</td>
                     <td className="py-3 px-4 font-black text-primary-700">
-                      {ot.hours} giờ {ot.viewsRenderCount ? `(${ot.viewsRenderCount} views)` : ''}
+                      {ot.hours} giờ {ot.views_render_count ? `(${ot.views_render_count} views)` : ''}
                     </td>
                     <td className="py-3 px-4 max-w-[200px] truncate">{ot.reason}</td>
                     <td className="py-3 px-4 font-semibold text-primary-700">
-                      {ot.payType}
+                      {ot.pay_type}
                     </td>
-                    <td className="py-3 px-4 font-bold text-success-600">{formatVND(ot.amount)}</td>
+                    <td className="py-3 px-4 font-bold text-success-600">{formatVND(ot.amount || 0)}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] ${
                         ot.status === 'Đã hoàn thành' || ot.status === 'Đã duyệt'
@@ -912,7 +1025,7 @@ export const AdminKpiOtView: React.FC = () => {
                       <div className="flex items-center justify-center space-x-1">
                         <select
                           value={ot.status}
-                          onChange={e => updateOtStatus(ot.employeeId, ot.id, e.target.value as any)}
+                          onChange={e => handleOtStatusChange(ot.id, e.target.value)}
                           className="p-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
                         >
                           <option value="Đã hoàn thành">Đã hoàn thành</option>
@@ -943,7 +1056,7 @@ export const AdminKpiOtView: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Order / Job (Tên bài / Mô tả render dự án) *:
                 </label>
-                <input 
+                <input
                   type="text"
                   placeholder="Ví dụ: 70_Remko_5 interior staging luxury; 4 impressions"
                   value={orderJob}
@@ -953,12 +1066,12 @@ export const AdminKpiOtView: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     sub-task (Hạng mục công việc chia nhỏ):
                   </label>
-                  <input 
+                  <input
                     type="text"
                     placeholder="Ví dụ: 2 bedrooms, 2 living room..."
                     value={subTask}
@@ -971,12 +1084,14 @@ export const AdminKpiOtView: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Assignee (Người thực hiện) *:</label>
                   <select
-                    value={assigneeName}
-                    onChange={e => setAssigneeName(e.target.value)}
+                    value={jobEmployeeId}
+                    onChange={e => setJobEmployeeId(e.target.value)}
                     className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                    required
                   >
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.fullName}>{emp.fullName} ({emp.employeeCode})</option>
+                    <option value="">-- Chọn nhân viên --</option>
+                    {employeeList.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code})</option>
                     ))}
                   </select>
                 </div>
@@ -985,7 +1100,7 @@ export const AdminKpiOtView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Số View:</label>
-                  <input 
+                  <input
                     type="number"
                     step="1"
                     value={viewsCount}
@@ -997,7 +1112,7 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Quy đổi KPI:</label>
-                  <input 
+                  <input
                     type="number"
                     step="0.1"
                     value={convertedKpi}
@@ -1011,7 +1126,7 @@ export const AdminKpiOtView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Thời gian thực hiện (ngày):</label>
-                  <input 
+                  <input
                     type="number"
                     step="0.5"
                     value={durationDays}
@@ -1026,7 +1141,7 @@ export const AdminKpiOtView: React.FC = () => {
                     Deadline (Format: Thứ xx, dd/mm):
                   </label>
                   <div className="space-y-1">
-                    <input 
+                    <input
                       type="text"
                       placeholder="Thứ Bảy, 15/07"
                       value={deadline}
@@ -1035,8 +1150,8 @@ export const AdminKpiOtView: React.FC = () => {
                     />
                     <div className="flex items-center space-x-1">
                       <span className="text-[10px] text-slate-400">Hoặc chọn ngày:</span>
-                      <input 
-                        type="date"
+                      <input
+                        type="datetime-local"
                         value={deadlineDateInput}
                         onChange={e => {
                           const dt = e.target.value;
@@ -1049,6 +1164,16 @@ export const AdminKpiOtView: React.FC = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ngày hoàn thành:</label>
+                  <input
+                    type="datetime-local"
+                    value={completedDateInput}
+                    onChange={e => setCompletedDateInput(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                  />
                 </div>
               </div>
 
@@ -1087,16 +1212,18 @@ export const AdminKpiOtView: React.FC = () => {
                   value={otEmpId}
                   onChange={e => setOtEmpId(e.target.value)}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                  required
                 >
-                  {employees.map(e => (
-                    <option key={e.id} value={e.id}>{e.fullName} ({e.employeeCode}) - {e.jobTitle}</option>
+                  <option value="">-- Chọn nhân viên --</option>
+                  {employeeList.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code}) - {emp.job_title}</option>
                   ))}
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Ngày OT *:</label>
-                <input 
+                <input
                   type="date"
                   value={otDate}
                   onChange={e => setOtDate(e.target.value)}
@@ -1108,7 +1235,7 @@ export const AdminKpiOtView: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Số giờ OT *:</label>
-                  <input 
+                  <input
                     type="number"
                     min="1"
                     max="16"
@@ -1121,7 +1248,7 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">View render OT (Nếu có):</label>
-                  <input 
+                  <input
                     type="number"
                     min="0"
                     value={otViewsRender}
@@ -1135,13 +1262,13 @@ export const AdminKpiOtView: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Phụ cấp & Mức % OT *:</label>
                 <select
                   value={otPresetType}
-                  onChange={e => setOtPresetType(e.target.value as any)}
+                  onChange={e => setOtPresetType(e.target.value as 'AUTO' | 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'CUSTOM')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-primary-800"
                 >
-                  <option value="AUTO">Tự động (Ngày thường 150%, T7/CN 200%, Lễ 300%)</option>
-                  <option value="150">Ngày thường - Thanh toán 150%</option>
-                  <option value="200">Cuối tuần (T7, CN) - Thanh toán 200%</option>
-                  <option value="300">Lễ Tết - Thanh toán 300%</option>
+                  <option value="AUTO">Tự động (Ngày thường {companySettings?.ot_weekday_percent ?? '—'}%, T7/CN {companySettings?.ot_weekend_percent ?? '—'}%, Lễ 300%)</option>
+                  <option value="WEEKDAY">Ngày thường - Thanh toán {companySettings?.ot_weekday_percent ?? '—'}%</option>
+                  <option value="WEEKEND">Cuối tuần (T7, CN) - Thanh toán {companySettings?.ot_weekend_percent ?? '—'}%</option>
+                  <option value="HOLIDAY">Lễ Tết - Thanh toán 300%</option>
                   <option value="CUSTOM">Admin tự nhập mức % OT</option>
                 </select>
               </div>
@@ -1149,7 +1276,7 @@ export const AdminKpiOtView: React.FC = () => {
               {otPresetType === 'CUSTOM' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Nhập Mức % OT tùy chỉnh:</label>
-                  <input 
+                  <input
                     type="number"
                     step="10"
                     value={customOtPercentage}
@@ -1164,7 +1291,7 @@ export const AdminKpiOtView: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Trạng thái OT *:</label>
                 <select
                   value={otStatus}
-                  onChange={e => setOtStatus(e.target.value as any)}
+                  onChange={e => setOtStatus(e.target.value as 'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming')}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                 >
                   <option value="Đã hoàn thành">Đã hoàn thành</option>
@@ -1186,8 +1313,10 @@ export const AdminKpiOtView: React.FC = () => {
 
               {/* Realtime estimated OT Pay display */}
               {(() => {
-                const targetEmp = employees.find(e => e.id === otEmpId) || employees[0];
-                const hourly = targetEmp ? Math.round(targetEmp.currentSalary / 22 / 8) : 0;
+                const targetEmp = employeeList.find(emp => emp.id === otEmpId);
+                const hourly = targetEmp && companySettings
+                  ? Math.round((targetEmp.current_salary || 0) / companySettings.standard_work_days / 8)
+                  : 0;
                 const effPct = getEffectiveOtPercentage();
                 const calcAmt = Math.round(otHours * hourly * (effPct / 100));
 

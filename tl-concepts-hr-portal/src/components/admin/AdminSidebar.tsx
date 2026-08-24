@@ -11,11 +11,13 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useEmployees } from '../../hooks/useEmployees';
 import { AdminTabType } from '../../types';
 import { Logo } from '../Logo';
 
 export const AdminSidebar: React.FC = () => {
-  const { adminTab, setAdminTab, reminders, employees } = useHR();
+  const { adminTab, setAdminTab, reminders } = useHR();
+  const { data: employees } = useEmployees();
 
   const unreadRemindersCount = reminders.filter(r => !r.isRead).length;
 
@@ -29,7 +31,7 @@ export const AdminSidebar: React.FC = () => {
       id: 'admin-employees',
       label: 'Hồ sơ Nhân viên',
       icon: <Users className="w-5 h-5" />,
-      badge: employees.length,
+      badge: employees?.length,
     },
     {
       id: 'admin-contracts',
@@ -65,23 +67,23 @@ export const AdminSidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col h-screen sticky top-0 border-r border-slate-800 shadow-xl z-20">
+    <aside className="w-64 md:col-start-1 md:row-start-1 md:row-span-2 bg-white text-slate-700 flex flex-col h-screen sticky top-0 border-r border-slate-200 z-20">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-5 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Logo size="sm" />
           <div>
-            <h1 className="font-bold text-base text-white tracking-wide">TL CONCEPTS HR</h1>
-            <p className="text-xs text-primary-400 font-medium">Cổng Quản trị HR & Nhân sự</p>
+            <h1 className="font-bold text-base text-slate-900 tracking-wide">TL CONCEPTS HR</h1>
+            <p className="text-xs text-slate-500 font-medium">Cổng Quản trị HR & Nhân sự</p>
           </div>
         </div>
       </div>
 
       {/* Status Banner */}
-      <div className="mx-3 my-3 p-3 bg-slate-800/80 rounded-xl border border-slate-700/60">
+      <div className="mx-3 my-3 p-3 bg-sage-50 rounded-xl border border-sage-200">
         <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-success-400 animate-pulse"></span>
-          <span className="text-xs font-semibold text-slate-200">Chế độ Admin Portal</span>
+          <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></span>
+          <span className="text-xs font-semibold text-sage-800">Chế độ Admin Portal</span>
         </div>
       </div>
 
@@ -96,32 +98,33 @@ export const AdminSidebar: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setAdminTab(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg font-medium text-sm transition-all cursor-pointer ${
+              className={`relative w-full flex items-center justify-between px-3 py-2.5 pl-4 rounded-lg font-medium text-sm transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-primary-600 text-white shadow-md shadow-primary-600/30 font-semibold'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-primary-50 text-primary-700 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
+              {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary-600" />}
               <div className="flex items-center space-x-3">
-                <span className={isActive ? 'text-white' : 'text-slate-400'}>
+                <span className={isActive ? 'text-primary-600' : 'text-slate-400'}>
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
               </div>
-              
+
               <div className="flex items-center space-x-1.5">
                 {item.badge !== undefined && (
                   <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-                    isActive 
-                      ? 'bg-white text-primary-700' 
-                      : item.id === 'admin-reminders' 
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                        : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    isActive
+                      ? 'bg-primary-100 text-primary-700'
+                      : item.id === 'admin-reminders'
+                        ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                        : 'bg-slate-100 text-slate-500 border border-slate-200'
                   }`}>
                     {item.badge}
                   </span>
                 )}
-                {isActive && <ChevronRight className="w-4 h-4 text-white/80" />}
+                {isActive && <ChevronRight className="w-4 h-4 text-primary-500" />}
               </div>
             </button>
           );
@@ -129,10 +132,10 @@ export const AdminSidebar: React.FC = () => {
       </nav>
 
       {/* Footer Info */}
-      <div className="p-4 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+      <div className="p-4 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
         <div>
-          <p className="font-medium text-slate-300">TL CONCEPTS</p>
-          <p className="text-[11px] text-slate-500">TL CONCEPTS HR Portal v2.4</p>
+          <p className="font-medium text-slate-600">TL CONCEPTS</p>
+          <p className="text-[11px] text-slate-400">TL CONCEPTS HR Portal v2.4</p>
         </div>
       </div>
     </aside>

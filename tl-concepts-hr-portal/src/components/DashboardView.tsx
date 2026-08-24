@@ -1,77 +1,87 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useHR } from '../context/HRContext';
+import { useAuth } from '../context/AuthContext';
+import { useEmployee } from '../hooks/useEmployees';
+import { useSignedImageUrl } from '../hooks/useFileUpload';
+import { useContracts } from '../hooks/useContracts';
+import { useLeaveBalance, useLeaveRequests } from '../hooks/useLeave';
+import { useKpiMonthly } from '../hooks/useKpi';
+import { useLatestPayrollRecord } from '../hooks/usePayroll';
 import { formatVND, formatDate } from '../utils/formatters';
-import { 
-  User, 
-  CreditCard, 
-  CalendarDays, 
-  Award, 
-  Receipt, 
-  Clock, 
-  TrendingUp, 
-  PlusCircle, 
+import {
+  CreditCard,
+  CalendarDays,
+  Award,
+  Receipt,
+  PlusCircle,
   ChevronRight,
   ShieldCheck,
-  AlertCircle,
   FileCheck,
-  Building2,
   Sparkles,
   ArrowUpRight
 } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
-  const { 
-    currentEmployee, 
-    setActiveTab, 
-    setIsNewLeaveModalOpen, 
-    setSelectedPayslipId, 
-    setIsEditProfileModalOpen 
+  const {
+    setActiveTab,
+    setIsNewLeaveModalOpen,
+    setSelectedPayslipId,
+    setIsEditProfileModalOpen
   } = useHR();
+  const { profile } = useAuth();
+  const employeeId = profile?.employeeId ?? undefined;
 
-  // Get current month KPI or latest
-  const latestKpi = currentEmployee.kpiData[0] || {
-    month: 8,
-    year: 2026,
-    renderedViewsActual: 38,
-    kpiConvertedViews: 42,
-    kpiTarget: 35,
-    completionPercentage: 120,
-    otHours: 12,
-    bonusAmount: 3500000,
-    benefitAmount: 3300000,
-  };
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
 
-  // Get latest payslip
-  const latestPayslip = currentEmployee.payslips[0];
+  const { data: employee } = useEmployee(employeeId);
+  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
+  const { data: contracts } = useContracts(employeeId);
+  const { data: leaveBalance } = useLeaveBalance(employeeId, currentYear);
+  const { data: leaveRequestsData } = useLeaveRequests(employeeId);
+  const leaveRequests = useMemo(() => leaveRequestsData || [], [leaveRequestsData]);
+  const { data: latestKpi } = useKpiMonthly(employeeId, currentMonth, currentYear);
+  const { data: latestPayslip } = useLatestPayrollRecord(employeeId);
+
+  const currentContract = (contracts || [])[0];
+
+  if (!employee) {
+    return <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-sm text-slate-500">Đang tải...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      
+
       {/* Welcome Hero Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-success-500/10 backdrop-blur-3xl rounded-l-full pointer-events-none"></div>
-        
+
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <img 
-              src={currentEmployee.avatar} 
-              alt={currentEmployee.fullName} 
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-success-500/40 shadow-lg"
-            />
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={employee.full_name}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-success-500/40 shadow-lg"
+              />
+            ) : (
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-700 ring-4 ring-success-500/40 shadow-lg" />
+            )}
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight">{currentEmployee.fullName}</h1>
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight">{employee.full_name}</h1>
                 <span className="px-2.5 py-0.5 text-xs font-bold bg-success-500/20 text-success-300 rounded-lg border border-success-500/30">
-                  {currentEmployee.employeeCode}
+                  {employee.employee_code}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
-                {currentEmployee.jobTitle} • <span className="text-success-400 font-bold">{currentEmployee.department}</span>
+                {employee.job_title} • <span className="text-success-400 font-bold">{employee.department}</span>
               </p>
               <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
-                <span>Ngày vào làm: {formatDate(currentEmployee.startDate)}</span>
+                <span>Ngày vào làm: {employee.start_date ? formatDate(employee.start_date) : '—'}</span>
                 <span>•</span>
-                <span>HĐ: {currentEmployee.contractType}</span>
+                <span>HĐ: {employee.contract_type || '—'}</span>
               </p>
             </div>
           </div>
@@ -94,55 +104,58 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* 4 Core Metric Quick Cards */}
+      {/* Core Metrics: bento-style row - one featured card + two compact ones, then a KPI spotlight strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Card 1: Salary */}
-        <div 
+
+        {/* Card 1: Salary (featured, spans 2 cols) */}
+        <div
           onClick={() => setActiveTab('contracts')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          className="relative sm:col-span-2 bg-white pl-6 p-5 rounded-2xl border border-slate-200 shadow-soft-xs hover:shadow-soft-md transition-all cursor-pointer group"
         >
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-success-500" />
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500">Mức lương hiện tại</span>
             <div className="p-2 bg-success-50 text-success-600 rounded-xl group-hover:bg-success-600 group-hover:text-white transition-colors">
               <CreditCard className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-xl font-black text-slate-900 font-mono tracking-tight">
-            {formatVND(currentEmployee.currentSalary)}
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+            {formatVND(employee.current_salary || 0)}
           </p>
-          <p className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
-            <span>Review gần nhất: {formatDate(currentEmployee.lastSalaryReviewDate)}</span>
+          <p className="text-[11px] text-slate-500 mt-1.5 flex items-center justify-between">
+            <span>Review gần nhất: {employee.last_salary_review_date ? formatDate(employee.last_salary_review_date) : 'Chưa có'}</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </p>
         </div>
 
         {/* Card 2: Remaining Leave */}
-        <div 
+        <div
           onClick={() => setActiveTab('leaves')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          className="relative bg-white pl-6 p-5 rounded-2xl border border-slate-200 shadow-soft-xs hover:shadow-soft-md transition-all cursor-pointer group"
         >
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-sage-500" />
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500">Phép năm còn lại</span>
-            <div className="p-2 bg-teal-50 text-teal-600 rounded-xl group-hover:bg-teal-600 group-hover:text-white transition-colors">
+            <div className="p-2 bg-sage-50 text-sage-700 rounded-xl group-hover:bg-sage-600 group-hover:text-white transition-colors">
               <CalendarDays className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-success-700">{currentEmployee.leaveBalance.remainingDays}</span>
-            <span className="text-xs font-semibold text-slate-500">/ {currentEmployee.leaveBalance.totalAccumulated} ngày tích lũy</span>
+            <span className="text-2xl font-black text-slate-900">{leaveBalance?.remaining_days ?? 0}</span>
+            <span className="text-xs font-semibold text-slate-500">/ {leaveBalance?.total_accumulated ?? 0} ngày</span>
           </div>
-          <p className="text-[11px] text-success-600 font-medium mt-1 flex items-center justify-between">
-            <span>+1 ngày phép/tháng hoàn thành</span>
+          <p className="text-[11px] text-slate-500 font-medium mt-1.5 flex items-center justify-between">
+            <span>+1 ngày/tháng hoàn thành</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </p>
         </div>
 
         {/* Card 3: Contract expiry */}
-        <div 
+        <div
           onClick={() => setActiveTab('contracts')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          className="relative bg-white pl-6 p-5 rounded-2xl border border-slate-200 shadow-soft-xs hover:shadow-soft-md transition-all cursor-pointer group"
         >
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-amber-500" />
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500">Thời hạn Hợp đồng</span>
             <div className="p-2 bg-amber-50 text-amber-600 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-colors">
@@ -150,45 +163,55 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <p className="text-sm font-extrabold text-slate-900 truncate">
-            {currentEmployee.contractEndDate === '2099-12-31' ? 'Không xác định thời hạn' : formatDate(currentEmployee.contractEndDate)}
+            {currentContract ? (currentContract.end_date ? formatDate(currentContract.end_date) : 'Không xác định thời hạn') : 'Chưa có hợp đồng'}
           </p>
-          <p className="text-[11px] text-amber-700 font-medium mt-1 flex items-center justify-between">
-            <span>Gia hạn: {formatDate(currentEmployee.contractRenewalDate)}</span>
+          <p className="text-[11px] text-slate-500 font-medium mt-1.5 flex items-center justify-between">
+            <span>{currentContract ? `Loại HĐ: ${currentContract.type}` : ''}</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </p>
         </div>
 
-        {/* Card 4: Current KPI % */}
-        <div 
+        {/* KPI spotlight strip - full width, ring visual instead of a flat bar */}
+        <div
           onClick={() => setActiveTab('kpi')}
-          className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+          className="sm:col-span-2 lg:col-span-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5 sm:p-6 rounded-2xl shadow-soft-md hover:shadow-soft-lg transition-all cursor-pointer group flex items-center gap-5"
         >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500">KPI Tháng {latestKpi.month}</span>
-            <div className="p-2 bg-success-50 text-success-600 rounded-xl group-hover:bg-success-600 group-hover:text-white transition-colors">
-              <Award className="w-5 h-5" />
+          <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full grid place-items-center shrink-0">
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{ background: `conic-gradient(white ${Math.min(100, latestKpi?.completion_percentage || 0)}%, rgb(255 255 255 / 0.25) 0)` }}
+            />
+            <div className="absolute inset-[5px] bg-primary-700 rounded-full" />
+            <span className="relative text-sm sm:text-base font-black">{latestKpi?.completion_percentage ?? 0}%</span>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-primary-100">
+              <Award className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-wide">KPI Tháng {currentMonth}</span>
             </div>
+            {latestKpi ? (
+              <>
+                <p className="text-sm sm:text-base font-bold mt-1">
+                  {latestKpi.kpi_converted_views ?? 0}/{latestKpi.kpi_target ?? 0} view quy đổi
+                </p>
+                <p className="text-[11px] text-primary-100 mt-1">{latestKpi.ot_hours ?? 0} giờ OT &bull; Thưởng & phụ cấp {formatVND((latestKpi.bonus_amount || 0) + (latestKpi.benefit_amount || 0))}</p>
+              </>
+            ) : (
+              <p className="text-sm sm:text-base font-bold mt-1">Chưa có dữ liệu KPI tháng này</p>
+            )}
           </div>
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-2xl font-black text-success-600">{latestKpi.completionPercentage}%</span>
-            <span className="text-xs text-slate-500 font-medium">{latestKpi.kpiConvertedViews}/{latestKpi.kpiTarget} view</span>
-          </div>
-          {/* Progress bar */}
-          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            <div 
-              className="bg-success-500 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${Math.min(100, latestKpi.completionPercentage)}%` }}
-            ></div>
-          </div>
+
+          <ChevronRight className="w-5 h-5 text-primary-100 group-hover:translate-x-1 transition-transform shrink-0 hidden sm:block" />
         </div>
 
       </div>
 
       {/* Row 2: Latest Payslip Summary & Monthly KPI / OT Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Latest Payslip Summary Card (2 cols) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-soft-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-success-100 text-success-800 rounded-xl">
@@ -201,7 +224,7 @@ export const DashboardView: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             {latestPayslip && (
               <button
                 onClick={() => setSelectedPayslipId(latestPayslip.id)}
@@ -218,23 +241,23 @@ export const DashboardView: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-xs">
                 <div>
                   <span className="text-slate-500 block text-[11px]">Lương Gross</span>
-                  <strong className="text-slate-900 font-mono text-xs">{formatVND(latestPayslip.grossIncome)}</strong>
+                  <strong className="text-slate-900 font-mono text-xs">{formatVND(latestPayslip.gross_income)}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[11px]">Bảo hiểm (10.5%)</span>
+                  <span className="text-slate-500 block text-[11px]">Bảo hiểm</span>
                   <strong className="text-rose-700 font-mono text-xs">
-                    -{formatVND(latestPayslip.bhxhDeduction + latestPayslip.bhytDeduction + latestPayslip.bhtnDeduction)}
+                    -{formatVND(latestPayslip.bhxh_deduction + latestPayslip.bhyt_deduction + latestPayslip.bhtn_deduction)}
                   </strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[11px]">Thuế TNCN</span>
-                  <strong className="text-rose-700 font-mono text-xs">-{formatVND(latestPayslip.personalIncomeTax)}</strong>
+                  <strong className="text-rose-700 font-mono text-xs">-{formatVND(latestPayslip.personal_income_tax)}</strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[11px]">Trạng thái</span>
                   <span className="font-bold text-success-700 inline-flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    {latestPayslip.paymentStatus}
+                    {latestPayslip.payment_status}
                   </span>
                 </div>
               </div>
@@ -243,13 +266,12 @@ export const DashboardView: React.FC = () => {
               <div className="bg-success-900 text-white p-4 rounded-xl flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-bold text-success-300 uppercase tracking-wider">THỰC LĨNH CHUYỂN KHOẢN (NET)</p>
-                  <p className="text-xl sm:text-2xl font-black font-mono mt-0.5">{formatVND(latestPayslip.netSalary)}</p>
+                  <p className="text-xl sm:text-2xl font-black font-mono mt-0.5">{formatVND(latestPayslip.net_salary)}</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs bg-success-800 text-success-200 px-3 py-1 rounded-lg border border-success-700 font-mono">
-                    Vietcombank
-                  </span>
-                  <p className="text-[10px] text-success-300 mt-1">Ngày chuyển: {formatDate(latestPayslip.paymentDate || '')}</p>
+                  {latestPayslip.payment_date && (
+                    <p className="text-[10px] text-success-300 mt-1">Ngày chuyển: {formatDate(latestPayslip.payment_date)}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -259,11 +281,11 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Monthly KPI, OT, Bonus Quick Summary (1 col) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-soft-xs flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900">KPI & OT Tháng này</h3>
-              <button 
+              <button
                 onClick={() => setActiveTab('kpi')}
                 className="text-xs text-success-700 hover:underline font-semibold cursor-pointer"
               >
@@ -274,35 +296,37 @@ export const DashboardView: React.FC = () => {
             <div className="mt-4 space-y-3 text-xs">
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Số view render thực tế:</span>
-                <span className="font-bold text-slate-900">{latestKpi.renderedViewsActual} view</span>
+                <span className="font-bold text-slate-900">{latestKpi?.rendered_views_actual ?? 0} view</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Số view quy đổi KPI:</span>
-                <span className="font-bold text-success-700">{latestKpi.kpiConvertedViews} view</span>
+                <span className="font-bold text-success-700">{latestKpi?.kpi_converted_views ?? 0} view</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Thời gian OT tăng ca:</span>
-                <span className="font-bold text-amber-700">{latestKpi.otHours} giờ</span>
+                <span className="font-bold text-amber-700">{latestKpi?.ot_hours ?? 0} giờ</span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Thưởng & Phụ cấp khác:</span>
-                <span className="font-bold text-success-700 font-mono">+{formatVND(latestKpi.bonusAmount + latestKpi.benefitAmount)}</span>
+                <span className="font-bold text-success-700 font-mono">+{formatVND((latestKpi?.bonus_amount || 0) + (latestKpi?.benefit_amount || 0))}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-success-50 p-3 rounded-xl border border-success-200 text-[11px] text-success-900 flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-success-600 flex-shrink-0 mt-0.5" />
-            <p className="leading-snug">
-              KPI hoàn thành <strong>{latestKpi.completionPercentage}%</strong> chỉ tiêu tháng. Đạt thưởng định kỳ xuất sắc!
-            </p>
-          </div>
+          {latestKpi && (
+            <div className="bg-success-50 p-3 rounded-xl border border-success-200 text-[11px] text-success-900 flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-success-600 flex-shrink-0 mt-0.5" />
+              <p className="leading-snug">
+                KPI hoàn thành <strong>{latestKpi.completion_percentage ?? 0}%</strong> chỉ tiêu tháng.
+              </p>
+            </div>
+          )}
         </div>
 
       </div>
 
       {/* Row 3: Recent Leave Requests */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-soft-xs space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900">Yêu cầu Nghỉ phép gần đây</h3>
@@ -316,7 +340,7 @@ export const DashboardView: React.FC = () => {
           </button>
         </div>
 
-        {currentEmployee.leaveRequests.length === 0 ? (
+        {leaveRequests.length === 0 ? (
           <p className="text-xs text-slate-400 italic py-4">Chưa có yêu cầu nghỉ phép nào.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -327,20 +351,18 @@ export const DashboardView: React.FC = () => {
                   <th className="py-2.5 px-3">Thời gian</th>
                   <th className="py-2.5 px-3">Số ngày</th>
                   <th className="py-2.5 px-3">Lý do</th>
-                  <th className="py-2.5 px-3">Người duyệt</th>
                   <th className="py-2.5 px-3 rounded-r-lg">Trạng thái</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {currentEmployee.leaveRequests.slice(0, 4).map((req) => (
+                {leaveRequests.slice(0, 4).map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-3 font-bold text-slate-900">{req.leaveType}</td>
+                    <td className="py-3 px-3 font-bold text-slate-900">{req.leave_type}</td>
                     <td className="py-3 px-3 text-slate-600">
-                      {formatDate(req.startDate)} - {formatDate(req.endDate)} ({req.halfDayOption})
+                      {formatDate(req.start_date)} - {formatDate(req.end_date)} ({req.half_day_option})
                     </td>
-                    <td className="py-3 px-3 font-semibold text-success-800">{req.totalDays} ngày</td>
+                    <td className="py-3 px-3 font-semibold text-success-800">{req.total_days} ngày</td>
                     <td className="py-3 px-3 text-slate-600 max-w-xs truncate">{req.reason}</td>
-                    <td className="py-3 px-3 text-slate-600">{req.approverName}</td>
                     <td className="py-3 px-3">
                       <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border ${
                         req.status === 'Đã duyệt' ? 'bg-success-50 text-success-700 border-success-200' :

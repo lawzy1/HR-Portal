@@ -14,6 +14,17 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+// Wildcard is fine here: this endpoint authorizes via the caller's JWT
+// (Authorization header), not cookies, so there's no session to leak to a
+// hostile origin — and the app is deployed to multiple origins (localhost,
+// Vercel preview URLs, production) that would otherwise need to be
+// enumerated and kept in sync.
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 interface CreateEmployeeBody {
   fullName: string;
   email: string;
@@ -32,11 +43,19 @@ interface CreateEmployeeBody {
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
 }
 
 Deno.serve(async (req: Request) => {
+  // Browsers send an OPTIONS preflight before the real POST for any
+  // cross-origin request with a custom header (Authorization included).
+  // Must return 2xx with the CORS headers or the browser blocks the POST
+  // entirely — it never even reaches the "Method not allowed" check below.
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
+
   if (req.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }

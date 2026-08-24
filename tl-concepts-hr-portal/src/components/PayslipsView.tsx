@@ -1,35 +1,35 @@
 import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
+import { useAuth } from '../context/AuthContext';
+import { useEmployee } from '../hooks/useEmployees';
+import { usePayrollRecords } from '../hooks/usePayroll';
 import { formatVND, formatDate } from '../utils/formatters';
-import { 
-  Receipt, 
-  Search, 
-  Filter, 
-  ArrowUpRight, 
-  CheckCircle2, 
-  ShieldCheck, 
-  DollarSign,
-  Printer,
+import {
+  Receipt,
+  ArrowUpRight,
   Calendar
 } from 'lucide-react';
 
 export const PayslipsView: React.FC = () => {
-  const { currentEmployee, setSelectedPayslipId } = useHR();
+  const { setSelectedPayslipId } = useHR();
+  const { profile } = useAuth();
+  const employeeId = profile?.employeeId ?? undefined;
+
+  const { data: employee } = useEmployee(employeeId);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const { data: payslipsData, isLoading } = usePayrollRecords(employeeId, selectedYear);
+  const payslips = payslipsData || [];
 
-  // Calculate annual statistics
-  const filteredPayslips = currentEmployee.payslips.filter(p => p.year === selectedYear);
-
-  const totalGrossAnnual = filteredPayslips.reduce((acc, p) => acc + p.grossIncome, 0);
-  const totalNetAnnual = filteredPayslips.reduce((acc, p) => acc + p.netSalary, 0);
-  const totalTaxInsuranceAnnual = filteredPayslips.reduce(
-    (acc, p) => acc + p.bhxhDeduction + p.bhytDeduction + p.bhtnDeduction + p.personalIncomeTax, 
+  const totalGrossAnnual = payslips.reduce((acc, p) => acc + p.gross_income, 0);
+  const totalNetAnnual = payslips.reduce((acc, p) => acc + p.net_salary, 0);
+  const totalTaxInsuranceAnnual = payslips.reduce(
+    (acc, p) => acc + p.bhxh_deduction + p.bhyt_deduction + p.bhtn_deduction + p.personal_income_tax,
     0
   );
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header Banner */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -38,7 +38,7 @@ export const PayslipsView: React.FC = () => {
             <h1 className="text-lg font-extrabold text-slate-900">Quản lý Phiếu lương Cá nhân</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Tra cứu toàn bộ phiếu lương hàng tháng của <strong className="text-slate-800">{currentEmployee.fullName}</strong> ({currentEmployee.employeeCode})
+            Tra cứu toàn bộ phiếu lương hàng tháng của <strong className="text-slate-800">{employee?.full_name}</strong> ({employee?.employee_code})
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export const PayslipsView: React.FC = () => {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-[11px] uppercase font-bold text-rose-600 tracking-wider">TỔNG THUẾ & BẢO HIỂM ĐÃ ĐÓNG</span>
           <p className="text-2xl font-black font-mono text-rose-700">-{formatVND(totalTaxInsuranceAnnual)}</p>
-          <p className="text-[10px] text-slate-400">BHXH 8%, BHYT 1.5%, BHTN 1% & Thuế TNCN</p>
+          <p className="text-[10px] text-slate-400">BHXH, BHYT, BHTN & Thuế TNCN</p>
         </div>
       </div>
 
@@ -88,16 +88,18 @@ export const PayslipsView: React.FC = () => {
           </span>
         </div>
 
-        {filteredPayslips.length === 0 ? (
+        {isLoading ? (
+          <div className="bg-white p-8 text-center rounded-2xl border border-slate-200 text-xs text-slate-400">Đang tải...</div>
+        ) : payslips.length === 0 ? (
           <div className="bg-white p-8 text-center rounded-2xl border border-slate-200 text-xs text-slate-400 space-y-2">
             <p className="font-semibold text-slate-600">Chưa có dữ liệu phiếu lương năm {selectedYear}</p>
-            <p>Vui lòng chuyển sang chọn năm 2026 để xem phiếu lương gần nhất.</p>
+            <p>Vui lòng chọn năm khác hoặc liên hệ Phòng Nhân sự.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPayslips.map((ps) => (
-              <div 
-                key={ps.id} 
+            {payslips.map((ps) => (
+              <div
+                key={ps.id}
                 className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-success-300 transition-all overflow-hidden flex flex-col justify-between"
               >
                 {/* Card Top Header */}
@@ -107,26 +109,26 @@ export const PayslipsView: React.FC = () => {
                     <span className="font-bold text-sm">Tháng {ps.month}/{ps.year}</span>
                   </div>
                   <span className="text-[10px] font-bold bg-success-500/20 text-success-300 px-2 py-0.5 rounded-md border border-success-500/30">
-                    {ps.paymentStatus}
+                    {ps.payment_status}
                   </span>
                 </div>
 
                 {/* Card Body */}
                 <div className="p-5 space-y-3.5 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">Lương cơ bản ({ps.actualWorkDays}/{ps.standardWorkDays} công):</span>
-                    <strong className="font-mono text-slate-800">{formatVND(ps.baseSalary)}</strong>
+                    <span className="text-slate-500">Lương cơ bản ({ps.actual_work_days}/{ps.standard_work_days} công):</span>
+                    <strong className="font-mono text-slate-800">{formatVND(ps.base_salary)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <span className="text-slate-500">Lương KPI & OT tăng ca:</span>
-                    <strong className="font-mono text-success-700">+{formatVND(ps.kpiBonus + ps.otPay)}</strong>
+                    <strong className="font-mono text-success-700">+{formatVND(ps.kpi_bonus + ps.ot_pay)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <span className="text-slate-500">Tổng khấu trừ Bảo hiểm & Thuế:</span>
                     <strong className="font-mono text-rose-700">
-                      -{formatVND(ps.bhxhDeduction + ps.bhytDeduction + ps.bhtnDeduction + ps.personalIncomeTax)}
+                      -{formatVND(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}
                     </strong>
                   </div>
 
@@ -134,11 +136,11 @@ export const PayslipsView: React.FC = () => {
                   <div className="bg-success-50 p-3.5 rounded-xl border border-success-200 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-success-800">THỰC LĨNH (NET)</span>
-                      <p className="text-lg font-black font-mono text-success-800 mt-0.5">{formatVND(ps.netSalary)}</p>
+                      <p className="text-lg font-black font-mono text-success-800 mt-0.5">{formatVND(ps.net_salary)}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-slate-500 font-medium block">Ngày chuyển lương</span>
-                      <span className="text-xs font-bold text-slate-800">{formatDate(ps.paymentDate || '')}</span>
+                      <span className="text-xs font-bold text-slate-800">{ps.payment_date ? formatDate(ps.payment_date) : '—'}</span>
                     </div>
                   </div>
                 </div>

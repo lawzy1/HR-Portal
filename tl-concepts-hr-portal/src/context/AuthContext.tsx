@@ -43,10 +43,20 @@ async function fetchProfile(userId: string): Promise<AuthProfile | null> {
   };
 }
 
+async function fetchSessionTimeout(companyId: string): Promise<number> {
+  const { data } = await supabase
+    .from('company_settings')
+    .select('session_timeout_minutes')
+    .eq('company_id', companyId)
+    .maybeSingle();
+  return data?.session_timeout_minutes || 30;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30);
 
   useEffect(() => {
     let isMounted = true;
@@ -55,7 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!isMounted) return;
       setSession(data.session);
       if (data.session?.user) {
-        setProfile(await fetchProfile(data.session.user.id));
+        const nextProfile = await fetchProfile(data.session.user.id);
+        setProfile(nextProfile);
+        if (nextProfile) setSessionTimeoutMinutes(await fetchSessionTimeout(nextProfile.companyId));
       }
       setLoading(false);
     });
@@ -63,7 +75,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!isMounted) return;
       setSession(newSession);
-      setProfile(newSession?.user ? await fetchProfile(newSession.user.id) : null);
+      const nextProfile = newSession?.user ? await fetchProfile(newSession.user.id) : null;
+      setProfile(nextProfile);
+      if (nextProfile) setSessionTimeoutMinutes(await fetchSessionTimeout(nextProfile.companyId));
     });
 
     return () => {
@@ -71,6 +85,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    let timer = window.setTimeout(() => supabase.auth.signOut(), sessionTimeoutMinutes * 60_000);
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => supabase.auth.signOut(), sessionTimeoutMinutes * 60_000);
+    };
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((event) => window.addEventListener(event, reset, { passive: true }));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((event) => window.removeEventListener(event, reset));
+    };
+  }, [session, sessionTimeoutMinutes]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

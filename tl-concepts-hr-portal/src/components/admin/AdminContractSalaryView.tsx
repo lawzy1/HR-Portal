@@ -1,34 +1,28 @@
-import React, { useState } from 'react';
-import { 
-  FileCheck, 
-  Calendar, 
-  Clock, 
-  TrendingUp, 
-  Search, 
-  ChevronDown, 
-  Receipt, 
-  AlertTriangle,
-  CheckCircle2,
-  Building2,
-  DollarSign
-} from 'lucide-react';
+import React from 'react';
+import { FileCheck, TrendingUp, Receipt, AlertTriangle } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useEmployees, useEmployee } from '../../hooks/useEmployees';
+import { useContracts, useSalaryHistory, useContractLegalWarnings } from '../../hooks/useContracts';
+import { useEmployeePayrollHistory } from '../../hooks/usePayroll';
+import { formatVND, formatDate } from '../../utils/formatters';
 
 export const AdminContractSalaryView: React.FC = () => {
-  const { 
-    employees, 
-    selectedEmployeeIdForAdmin, 
-    setSelectedEmployeeIdForAdmin,
-    setSelectedPayslipId
-  } = useHR();
+  const { selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin, setSelectedPayslipId } = useHR();
 
-  const [searchEmpQuery, setSearchEmpQuery] = useState('');
+  const { data: employees } = useEmployees();
+  const allEmployees = employees || [];
+  const selectedId = selectedEmployeeIdForAdmin || allEmployees[0]?.id;
 
-  const selectedEmp = employees.find(e => e.id === selectedEmployeeIdForAdmin) || employees[0];
+  const { data: selectedEmp } = useEmployee(selectedId);
+  const { data: contracts } = useContracts(selectedId);
+  const { data: salaryHistory } = useSalaryHistory(selectedId);
+  const { data: legalWarnings } = useContractLegalWarnings(selectedId);
+  const { data: payslipsData } = useEmployeePayrollHistory(selectedId);
+  const payslips = payslipsData || [];
 
-  const formatVND = (num: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
-  };
+  if (!selectedEmp) {
+    return <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-sm text-slate-500">Chưa có nhân viên nào.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -43,100 +37,97 @@ export const AdminContractSalaryView: React.FC = () => {
           </p>
         </div>
 
-        {/* Employee Dropdown Selector */}
         <div className="flex items-center space-x-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
           <span className="text-xs font-bold text-slate-500 uppercase px-1">Chọn nhân viên:</span>
           <select
-            value={selectedEmp?.id}
-            onChange={e => setSelectedEmployeeIdForAdmin(e.target.value)}
+            value={selectedId}
+            onChange={(e) => setSelectedEmployeeIdForAdmin(e.target.value)}
             className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
           >
-            {employees.map(emp => (
+            {allEmployees.map((emp) => (
               <option key={emp.id} value={emp.id}>
-                {emp.employeeCode} - {emp.fullName} ({emp.department})
+                {emp.employee_code} - {emp.full_name} ({emp.department})
               </option>
             ))}
           </select>
         </div>
       </div>
 
+      {(legalWarnings || []).length > 0 && (
+        <div className="space-y-2">
+          {legalWarnings!.map((w, i) => (
+            <div
+              key={i}
+              className={`flex items-start gap-2.5 p-3.5 rounded-xl border text-xs font-semibold ${
+                w.severity === 'high' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{w.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Selected Employee Summary Banner */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="flex items-center space-x-4">
-          <img 
-            src={selectedEmp.avatar} 
-            alt={selectedEmp.fullName} 
-            className="w-16 h-16 rounded-2xl object-cover border-2 border-primary-400/40 shadow-md"
-          />
-          <div>
-            <div className="flex items-center space-x-3">
-              <h2 className="text-xl font-extrabold">{selectedEmp.fullName}</h2>
-              <span className="px-2.5 py-0.5 bg-primary-500/30 text-primary-200 font-mono text-xs font-bold rounded-md border border-primary-400/30">
-                {selectedEmp.employeeCode}
-              </span>
-            </div>
-            <p className="text-sm text-slate-300 mt-0.5">{selectedEmp.jobTitle} • {selectedEmp.department}</p>
+        <div>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-xl font-extrabold">{selectedEmp.full_name}</h2>
+            <span className="px-2.5 py-0.5 bg-primary-500/30 text-primary-200 font-mono text-xs font-bold rounded-md border border-primary-400/30">
+              {selectedEmp.employee_code}
+            </span>
           </div>
+          <p className="text-sm text-slate-300 mt-0.5">{selectedEmp.job_title} • {selectedEmp.department}</p>
         </div>
 
-        {/* Highlighted Contract & Salary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-left border-t md:border-t-0 md:border-l border-slate-700/80 pt-4 md:pt-0 md:pl-6">
           <div>
             <span className="text-[11px] uppercase font-bold text-slate-400 block">Lương cơ bản hiện tại</span>
-            <span className="text-lg font-black text-success-400">{formatVND(selectedEmp.currentSalary)}</span>
+            <span className="text-lg font-black text-success-400">{formatVND(selectedEmp.current_salary || 0)}</span>
           </div>
-
           <div>
-            <span className="text-[11px] uppercase font-bold text-slate-400 block">Ngày gia hạn HĐ tiếp</span>
-            <span className="text-sm font-bold text-amber-300">{selectedEmp.contractRenewalDate}</span>
+            <span className="text-[11px] uppercase font-bold text-slate-400 block">Ngày bắt đầu làm việc</span>
+            <span className="text-sm font-bold text-amber-300">{selectedEmp.start_date ? formatDate(selectedEmp.start_date) : '—'}</span>
           </div>
-
           <div>
             <span className="text-[11px] uppercase font-bold text-slate-400 block">Xét duyệt lương gần nhất</span>
-            <span className="text-sm font-bold text-primary-300">{selectedEmp.lastSalaryReviewDate}</span>
+            <span className="text-sm font-bold text-primary-300">{selectedEmp.last_salary_review_date ? formatDate(selectedEmp.last_salary_review_date) : '—'}</span>
           </div>
         </div>
       </div>
 
       {/* Contract & Salary History Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Left Column: Contract History */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
               <FileCheck className="w-5 h-5 text-primary-600" />
               <span>1. Lịch sử Hợp đồng Lao động</span>
             </h3>
-            <span className="text-xs text-slate-500">Loại: {selectedEmp.contractType}</span>
+            <span className="text-xs text-slate-500">Loại: {selectedEmp.contract_type || '—'}</span>
           </div>
 
           <div className="space-y-3">
-            {selectedEmp.contracts.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-xs">
-                Chưa có dữ liệu lịch sử hợp đồng.
-              </div>
+            {!contracts || contracts.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-xs">Chưa có dữ liệu lịch sử hợp đồng.</div>
             ) : (
-              selectedEmp.contracts.map(contract => (
+              contracts.map((contract) => (
                 <div key={contract.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-900">{contract.contractCode}</span>
+                    <span className="font-bold text-sm text-slate-900">{contract.contract_code}</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      contract.status === 'Đang hiệu lực'
-                        ? 'bg-success-100 text-success-800'
-                        : contract.status === 'Sắp hết hạn'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-slate-200 text-slate-600'
+                      contract.status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' :
+                      contract.status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
                     }`}>
                       {contract.status}
                     </span>
                   </div>
-
                   <div className="text-xs text-slate-600 space-y-1">
                     <p>Loại HĐ: <b>{contract.type}</b></p>
                     <p>Vị trí chuyên môn: <b>{contract.position}</b></p>
-                    <p>Thời hạn: <b>{contract.startDate}</b> đến <b>{contract.endDate}</b></p>
-                    <p>Mức lương HĐ: <b className="text-success-700">{formatVND(contract.salary)}</b></p>
+                    <p>Thời hạn: <b>{contract.start_date}</b> đến <b>{contract.end_date || 'Không xác định'}</b></p>
+                    <p>Mức lương HĐ: <b className="text-success-700">{formatVND(contract.salary || 0)}</b></p>
                     {contract.note && <p className="text-slate-500 italic mt-1">Ghi chú: {contract.note}</p>}
                   </div>
                 </div>
@@ -145,7 +136,6 @@ export const AdminContractSalaryView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: Salary Adjustments History */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
@@ -155,34 +145,27 @@ export const AdminContractSalaryView: React.FC = () => {
           </div>
 
           <div className="space-y-3">
-            {selectedEmp.salaryHistory.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-xs">
-                Chưa có ghi nhận điều chỉnh lương.
-              </div>
+            {!salaryHistory || salaryHistory.length === 0 ? (
+              <div className="p-6 text-center text-slate-400 text-xs">Chưa có ghi nhận điều chỉnh lương.</div>
             ) : (
-              selectedEmp.salaryHistory.map(sal => (
+              salaryHistory.map((sal) => (
                 <div key={sal.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-primary-700 bg-primary-50 px-2 py-0.5 rounded border border-primary-200">
-                      {sal.changeType}
-                    </span>
-                    <span className="text-xs text-slate-500 font-medium">Áp dụng: {sal.effectiveDate}</span>
+                    <span className="font-bold text-xs text-primary-700 bg-primary-50 px-2 py-0.5 rounded border border-primary-200">{sal.change_type}</span>
+                    <span className="text-xs text-slate-500 font-medium">Áp dụng: {sal.effective_date}</span>
                   </div>
-
                   <div className="flex items-center justify-between pt-1 text-xs">
                     <div>
                       <span className="text-slate-500 block">Lương cũ:</span>
-                      <span className="line-through text-slate-400">{formatVND(sal.oldSalary)}</span>
+                      <span className="line-through text-slate-400">{formatVND(sal.old_salary || 0)}</span>
                     </div>
-
                     <div className="text-right">
                       <span className="text-slate-500 block">Lương mới:</span>
-                      <span className="font-bold text-success-600 text-sm">{formatVND(sal.newSalary)}</span>
+                      <span className="font-bold text-success-600 text-sm">{formatVND(sal.new_salary)}</span>
                     </div>
                   </div>
-
                   <p className="text-xs text-slate-600 pt-1 border-t border-slate-200/60">
-                    Lý do: <span className="italic">{sal.reason}</span> (Người duyệt: {sal.approvedBy})
+                    Lý do: <span className="italic">{sal.reason}</span> (Người duyệt: {sal.approved_by})
                   </p>
                 </div>
               ))
@@ -191,12 +174,12 @@ export const AdminContractSalaryView: React.FC = () => {
         </div>
       </div>
 
-      {/* Monthly Payslips Table for Selected Employee */}
+      {/* Monthly Payslips Table */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
             <Receipt className="w-5 h-5 text-primary-600" />
-            <span>3. Danh sách Phiếu lương từng tháng của {selectedEmp.fullName}</span>
+            <span>3. Danh sách Phiếu lương từng tháng của {selectedEmp.full_name}</span>
           </h3>
         </div>
 
@@ -216,31 +199,27 @@ export const AdminContractSalaryView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {selectedEmp.payslips.length === 0 ? (
+              {payslips.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-400">
                     Chưa có phiếu lương được phát hành cho nhân viên này.
                   </td>
                 </tr>
               ) : (
-                selectedEmp.payslips.map(ps => (
+                payslips.map((ps) => (
                   <tr key={ps.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-4 font-bold text-slate-900">
-                      Tháng {ps.month}/{ps.year}
-                    </td>
-                    <td className="py-3 px-4">{formatVND(ps.baseSalary)}</td>
-                    <td className="py-3 px-4 text-success-600 font-medium">+{formatVND(ps.kpiBonus)}</td>
-                    <td className="py-3 px-4 text-primary-600 font-medium">+{formatVND(ps.otPay)}</td>
-                    <td className="py-3 px-4 font-semibold">{formatVND(ps.grossIncome)}</td>
-                    <td className="py-3 px-4 text-rose-600">-{formatVND(ps.bhxhDeduction + ps.personalIncomeTax)}</td>
-                    <td className="py-3 px-4 font-extrabold text-success-700 text-sm">{formatVND(ps.netSalary)}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">Tháng {ps.month}/{ps.year}</td>
+                    <td className="py-3 px-4">{formatVND(ps.base_salary)}</td>
+                    <td className="py-3 px-4 text-success-600 font-medium">+{formatVND(ps.kpi_bonus)}</td>
+                    <td className="py-3 px-4 text-primary-600 font-medium">+{formatVND(ps.ot_pay)}</td>
+                    <td className="py-3 px-4 font-semibold">{formatVND(ps.gross_income)}</td>
+                    <td className="py-3 px-4 text-rose-600">-{formatVND(ps.bhxh_deduction + ps.personal_income_tax)}</td>
+                    <td className="py-3 px-4 font-extrabold text-success-700 text-sm">{formatVND(ps.net_salary)}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                        ps.paymentStatus === 'Đã thanh toán' 
-                          ? 'bg-success-100 text-success-800' 
-                          : 'bg-amber-100 text-amber-800'
+                        ps.payment_status === 'Đã thanh toán' ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {ps.paymentStatus}
+                        {ps.payment_status}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">

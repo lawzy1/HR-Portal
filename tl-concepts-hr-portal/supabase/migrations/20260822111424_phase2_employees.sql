@@ -1,12 +1,11 @@
 -- Phase 2: employees, employee_sensitive_info, employee_relatives.
 --
--- Design decision: per BRD Mục 1 ("Employee Self-Service: tự TRA CỨU hồ sơ"),
--- employees are read-only on their own record in v1 — only Admin/HR writes.
--- The prototype's EditProfileModal let a logged-in employee edit their own
--- job_title/department/salary via the client, which is exactly the kind of
--- privilege-escalation surface Mục 5 of the BRD calls out to close. This is
--- a v1 default, easy to loosen later (e.g. self-edit of just phone/address)
--- once real business rules are confirmed — not a hard architectural wall.
+-- NOTE: this migration originally made all writes admin-only. That was
+-- reversed in 20260824062409_phase2_employee_self_edit.sql once the real
+-- use case was confirmed: employees self-onboard (fill their own personal
+-- info, upload CCCD/MST/bank info) rather than HR entering it for them.
+-- See that migration for the actual write policies in effect — the ones
+-- below are superseded.
 --
 -- Deletion: no DELETE policy/grant at all. "Delete employee" in the UI must
 -- become a soft-delete (status = 'Đã nghỉ việc'), matching the BRD's

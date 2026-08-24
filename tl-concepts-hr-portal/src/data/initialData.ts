@@ -144,37 +144,6 @@ export const INITIAL_EMPLOYEES: Employee[] = [
         approvedBy: 'Trần Văn Long (Ban Giám Đốc TL CONCEPTS)',
       },
     ],
-    payslips: [
-      {
-        id: 'ps-2026-07',
-        month: 7,
-        year: 2026,
-        baseSalary: 28000000,
-        standardWorkDays: 22,
-        actualWorkDays: 22,
-        kpiBonus: 3500000,
-        otHours: 12,
-        otPay: 2863636,
-        allowances: [
-          { name: 'Phụ cấp ăn trưa', amount: 1000000 },
-          { name: 'Phụ cấp đi lại & xăng xe', amount: 800000 },
-          { name: 'Trách nhiệm Trưởng nhóm Thiết kế', amount: 1500000 },
-        ],
-        otherBonuses: 1000000,
-        grossIncome: 38663636,
-        bhxhDeduction: 2240000,
-        bhytDeduction: 420000,
-        bhtnDeduction: 280000,
-        taxableIncome: 32723636,
-        personalIncomeTax: 2840000,
-        advancePayment: 0,
-        otherDeductions: 0,
-        netSalary: 32883636,
-        paymentStatus: 'Đã thanh toán',
-        paymentDate: '2026-08-05',
-        note: 'Lương tháng 7/2026 chuyển khoản Vietcombank',
-      },
-    ],
     leaveRequests: [
       {
         id: 'lr-101',
@@ -317,35 +286,6 @@ export const INITIAL_EMPLOYEES: Employee[] = [
         approvedBy: 'Trần Văn Long (Ban Giám Đốc)',
       },
     ],
-    payslips: [
-      {
-        id: 'ps-b-2026-07',
-        month: 7,
-        year: 2026,
-        baseSalary: 32000000,
-        standardWorkDays: 22,
-        actualWorkDays: 22,
-        kpiBonus: 4000000,
-        otHours: 10,
-        otPay: 2727272,
-        allowances: [
-          { name: 'Phụ cấp ăn trưa', amount: 1000000 },
-          { name: 'Phụ cấp công tác phí khảo sát', amount: 1500000 },
-        ],
-        otherBonuses: 0,
-        grossIncome: 41227272,
-        bhxhDeduction: 2560000,
-        bhytDeduction: 480000,
-        bhtnDeduction: 320000,
-        taxableIncome: 34867272,
-        personalIncomeTax: 3260000,
-        advancePayment: 0,
-        otherDeductions: 0,
-        netSalary: 34607272,
-        paymentStatus: 'Đã thanh toán',
-        paymentDate: '2026-08-05',
-      },
-    ],
     leaveRequests: [
       {
         id: 'lr-b-1',
@@ -449,35 +389,6 @@ export const INITIAL_EMPLOYEES: Employee[] = [
       }
     ],
     salaryHistory: [],
-    payslips: [
-      {
-        id: 'ps-c-2026-07',
-        month: 7,
-        year: 2026,
-        baseSalary: 35000000,
-        standardWorkDays: 22,
-        actualWorkDays: 22,
-        kpiBonus: 5000000,
-        otHours: 0,
-        otPay: 0,
-        allowances: [
-          { name: 'Phụ cấp trách nhiệm Quản lý Admin', amount: 3000000 },
-          { name: 'Phụ cấp xăng xe & ăn trưa', amount: 1500000 },
-        ],
-        otherBonuses: 0,
-        grossIncome: 44500000,
-        bhxhDeduction: 2800000,
-        bhytDeduction: 525000,
-        bhtnDeduction: 350000,
-        taxableIncome: 37825000,
-        personalIncomeTax: 3950000,
-        advancePayment: 0,
-        otherDeductions: 0,
-        netSalary: 36875000,
-        paymentStatus: 'Đã thanh toán',
-        paymentDate: '2026-08-05',
-      }
-    ],
     leaveRequests: [
       {
         id: 'lr-c-1',
@@ -602,33 +513,6 @@ export const INITIAL_EMPLOYEES: Employee[] = [
         approvedBy: 'Lê Hoàng Nam',
       }
     ],
-    payslips: [
-      {
-        id: 'ps-d-2026-07',
-        month: 7,
-        year: 2026,
-        baseSalary: 18000000,
-        standardWorkDays: 22,
-        actualWorkDays: 22,
-        kpiBonus: 2000000,
-        otHours: 3,
-        otPay: 368181,
-        allowances: [
-          { name: 'Phụ cấp ăn trưa', amount: 800000 },
-        ],
-        otherBonuses: 0,
-        grossIncome: 21168181,
-        bhxhDeduction: 1440000,
-        bhytDeduction: 270000,
-        bhtnDeduction: 180000,
-        taxableIncome: 18478181,
-        personalIncomeTax: 950000,
-        advancePayment: 0,
-        otherDeductions: 0,
-        netSalary: 18328181,
-        paymentStatus: 'Chờ thanh toán',
-      }
-    ],
     leaveRequests: [
       {
         id: 'lr-d-1',
@@ -732,34 +616,6 @@ export const INITIAL_EMPLOYEES: Employee[] = [
       }
     ],
     salaryHistory: [],
-    payslips: [
-      {
-        id: 'ps-e-2026-07',
-        month: 7,
-        year: 2026,
-        baseSalary: 22000000,
-        standardWorkDays: 22,
-        actualWorkDays: 22,
-        kpiBonus: 2500000,
-        otHours: 0,
-        otPay: 0,
-        allowances: [
-          { name: 'Phụ cấp ăn trưa', amount: 1000000 },
-        ],
-        otherBonuses: 0,
-        grossIncome: 25500000,
-        bhxhDeduction: 1760000,
-        bhytDeduction: 330000,
-        bhtnDeduction: 220000,
-        taxableIncome: 22190000,
-        personalIncomeTax: 1450000,
-        advancePayment: 0,
-        otherDeductions: 0,
-        netSalary: 21740000,
-        paymentStatus: 'Đã thanh toán',
-        paymentDate: '2026-08-05',
-      }
-    ],
     leaveRequests: [],
     leaveBalance: {
       totalAccumulated: 2,

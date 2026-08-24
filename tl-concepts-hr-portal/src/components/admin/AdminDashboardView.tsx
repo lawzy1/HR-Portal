@@ -1,32 +1,49 @@
-import React from 'react';
-import { 
-  Users, 
-  UserCheck, 
-  Clock, 
-  FileCheck, 
-  AlertTriangle, 
-  TrendingUp, 
-  Receipt, 
-  Calendar, 
-  BellRing, 
-  UserPlus, 
-  CheckCircle2, 
-  XCircle, 
+import React, { useMemo } from 'react';
+import {
+  Users,
+  Clock,
+  AlertTriangle,
+  Receipt,
+  Calendar,
+  BellRing,
+  UserPlus,
+  CheckCircle2,
   ArrowRight,
   ShieldAlert,
   FileWarning
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useEmployees, useAllEmployeeSensitiveInfo } from '../../hooks/useEmployees';
+import { useAllContracts } from '../../hooks/useContracts';
+import { useAllLeaveRequests } from '../../hooks/useLeave';
+import { useSignedImageUrl } from '../../hooks/useFileUpload';
+
+const RowAvatar: React.FC<{ path: string | null | undefined; alt: string }> = ({ path, alt }) => {
+  const { data: url } = useSignedImageUrl(path);
+  return url ? (
+    <img src={url} alt={alt} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
+  ) : (
+    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 shrink-0" />
+  );
+};
 
 export const AdminDashboardView: React.FC = () => {
-  const { 
-    employees, 
-    reminders, 
-    setAdminTab, 
+  const {
+    reminders,
+    setAdminTab,
     setSelectedEmployeeIdForAdmin,
     setIsNewEmployeeModalOpen,
     resolveReminder
   } = useHR();
+
+  const { data: employeesData } = useEmployees();
+  const employees = useMemo(() => employeesData || [], [employeesData]);
+  const { data: allContractsData } = useAllContracts();
+  const allContracts = useMemo(() => allContractsData || [], [allContractsData]);
+  const { data: allLeaveRequestsData } = useAllLeaveRequests();
+  const allLeaveRequests = useMemo(() => allLeaveRequestsData || [], [allLeaveRequestsData]);
+  const { data: allSensitiveInfoData } = useAllEmployeeSensitiveInfo();
+  const allSensitiveInfo = useMemo(() => allSensitiveInfoData || [], [allSensitiveInfoData]);
 
   // Metrics computation
   const totalEmployees = employees.length;
@@ -34,28 +51,40 @@ export const AdminDashboardView: React.FC = () => {
   const probationCount = employees.filter(e => e.status === 'Thử việc').length;
   const newJoinerCount = employees.filter(e => e.status === 'Mới tiếp nhận').length;
 
-  // Contracts expiring in < 60 days
-  const expiringContracts = employees.filter(
-    e => e.contractEndDate && e.contractEndDate !== '2099-12-31'
-  );
+  // Contracts expiring — most recently started contract per employee, if it
+  // has a finite end date (an indefinite contract has end_date null). Same
+  // dedupe pattern as HRContext's reminders useMemo.
+  const expiringContractsCount = useMemo(() => {
+    const latestContractByEmployee = new Map<string, (typeof allContracts)[number]>();
+    allContracts.forEach(c => {
+      const existing = latestContractByEmployee.get(c.employee_id);
+      if (!existing || c.start_date > existing.start_date) {
+        latestContractByEmployee.set(c.employee_id, c);
+      }
+    });
+    let count = 0;
+    latestContractByEmployee.forEach(c => {
+      if (c.end_date) count += 1;
+    });
+    return count;
+  }, [allContracts]);
 
   // Pending leave requests across company
-  const pendingLeaves = employees.flatMap(e => 
-    e.leaveRequests.filter(l => l.status === 'Chờ duyệt').map(l => ({ ...l, employee: e }))
-  );
-
-  // Pending payroll
-  const pendingPayrollPayslips = employees.flatMap(e => 
-    e.payslips.filter(p => p.paymentStatus === 'Chờ thanh toán').map(p => ({ ...p, employee: e }))
-  );
+  const pendingLeaves = allLeaveRequests.filter(l => l.status === 'Chờ duyệt');
 
   // Missing docs count
-  const missingDocsCount = employees.filter(e => !e.documents.idCardFrontImage || !e.documents.taxCode).length;
+  const missingDocsCount = useMemo(() => {
+    const sensitiveByEmployee = new Map(allSensitiveInfo.map(s => [s.employee_id, s]));
+    return employees.filter(e => {
+      const info = sensitiveByEmployee.get(e.id);
+      return !info || !info.id_card_front_url || !info.tax_code;
+    }).length;
+  }, [employees, allSensitiveInfo]);
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-soft-xs">
         <div>
           <div className="flex items-center space-x-3 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-100 text-primary-700">
@@ -80,7 +109,7 @@ export const AdminDashboardView: React.FC = () => {
             <UserPlus className="w-4 h-4" />
             <span>Thêm nhân viên mới</span>
           </button>
-          
+
           <button
             onClick={() => setAdminTab('admin-payroll')}
             className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-medium text-sm flex items-center space-x-2 transition-all cursor-pointer"
@@ -91,10 +120,11 @@ export const AdminDashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Metrics Cards Grid */}
+      {/* Top Metrics: bento-style row - featured headcount card + two compact ones, then a full-width alert strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Employees */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+        {/* Total Employees (featured, spans 2 cols) */}
+        <div className="relative sm:col-span-2 bg-white pl-6 p-5 rounded-2xl border border-slate-200 shadow-soft-xs hover:shadow-soft-md transition-all">
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-primary-500" />
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng nhân sự</span>
             <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center">
@@ -102,31 +132,29 @@ export const AdminDashboardView: React.FC = () => {
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-slate-900">{totalEmployees}</span>
-            <span className="text-xs font-medium text-success-600 bg-success-50 px-2 py-0.5 rounded-md">
-              100% nhân sự active
-            </span>
+            <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">{totalEmployees}</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600 flex justify-between">
-            <span>Chính thức: <b>{officialCount}</b></span>
-            <span>Thử việc: <b>{probationCount}</b></span>
-            <span>Mới: <b>{newJoinerCount}</b></span>
+          <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between">
+            <span>Chính thức: <b className="text-slate-800">{officialCount}</b></span>
+            <span>Thử việc: <b className="text-slate-800">{probationCount}</b></span>
+            <span>Mới: <b className="text-slate-800">{newJoinerCount}</b></span>
           </div>
         </div>
 
         {/* Expiring Contracts Alert */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+        <div className="relative bg-white pl-6 p-5 rounded-2xl border border-slate-200 shadow-soft-xs hover:shadow-soft-md transition-all">
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-amber-500" />
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">HĐ Sắp hết hạn (30-60d)</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">HĐ Sắp hết hạn</span>
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <FileWarning className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-amber-600">{expiringContracts.length}</span>
-            <button 
+            <span className="text-3xl font-extrabold text-slate-900">{expiringContractsCount}</span>
+            <button
               onClick={() => setAdminTab('admin-contracts')}
-              className="text-xs text-primary-600 font-semibold hover:underline flex items-center space-x-1"
+              className="text-xs text-amber-700 font-semibold hover:underline flex items-center space-x-1 cursor-pointer"
             >
               <span>Xem tất cả</span>
               <ArrowRight className="w-3 h-3" />
@@ -138,56 +166,55 @@ export const AdminDashboardView: React.FC = () => {
         </div>
 
         {/* Pending Leave Requests */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+        <div className="relative bg-white pl-6 p-5 rounded-2xl border border-slate-200 shadow-soft-xs hover:shadow-soft-md transition-all">
+          <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-sage-500" />
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đơn phép chờ duyệt</span>
-            <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-sage-50 text-sage-700 flex items-center justify-center">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-primary-600">{pendingLeaves.length}</span>
-            <button 
+            <span className="text-3xl font-extrabold text-slate-900">{pendingLeaves.length}</span>
+            <button
               onClick={() => setAdminTab('admin-leaves')}
-              className="text-xs text-primary-600 font-semibold hover:underline flex items-center space-x-1"
+              className="text-xs text-sage-700 font-semibold hover:underline flex items-center space-x-1 cursor-pointer"
             >
               <span>Phê duyệt</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
           <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
-            {pendingLeaves.length > 0 ? `${pendingLeaves[0].employee.fullName} vừa gửi đơn phép` : 'Không có đơn phép tồn đọng'}
+            {pendingLeaves.length > 0 ? `${pendingLeaves[0].employees?.full_name || ''} vừa gửi đơn phép` : 'Không có đơn phép tồn đọng'}
           </p>
         </div>
 
-        {/* Missing Documents Alert */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hồ sơ chưa hoàn thiện</span>
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5" />
+        {/* Missing Documents Alert - full-width spotlight strip */}
+        <div className="sm:col-span-2 lg:col-span-4 bg-rose-50 border border-rose-200 rounded-2xl p-5 shadow-soft-xs hover:shadow-soft-md transition-all flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-soft-xs">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-extrabold text-rose-700">{missingDocsCount}</span>
+              <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Hồ sơ chưa hoàn thiện</span>
             </div>
+            <p className="text-xs text-rose-700 mt-0.5">Thiếu ảnh CCCD hoặc mã số thuế cá nhân &mdash; cần bổ sung sớm.</p>
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-3xl font-extrabold text-rose-600">{missingDocsCount}</span>
-            <button 
-              onClick={() => setAdminTab('admin-reminders')}
-              className="text-xs text-rose-600 font-semibold hover:underline flex items-center space-x-1"
-            >
-              <span>Xem chi tiết</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
-            Thiếu ảnh CCCD hoặc mã số thuế cá nhân.
-          </p>
+          <button
+            onClick={() => setAdminTab('admin-reminders')}
+            className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>Xem chi tiết</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
-      {/* Main Grid: Reminders List & HR Tasks Checklist */}
+      {/* Main Grid: Reminders List & Employee Quick List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 cols): Automatic Alerts & Reminders */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-soft-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
@@ -198,7 +225,7 @@ export const AdminDashboardView: React.FC = () => {
                 <p className="text-xs text-slate-500">Hệ thống tự động phát hiện lịch hết hạn HĐ, xét lương, và đơn phép</p>
               </div>
             </div>
-            
+
             <button
               onClick={() => setAdminTab('admin-reminders')}
               className="text-xs font-semibold text-primary-600 hover:text-primary-800 transition-colors"
@@ -216,11 +243,11 @@ export const AdminDashboardView: React.FC = () => {
               </div>
             ) : (
               reminders.slice(0, 5).map(rem => (
-                <div 
+                <div
                   key={rem.id}
                   className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-4 ${
-                    rem.severity === 'high' 
-                      ? 'bg-rose-50/50 border-rose-200 text-rose-900' 
+                    rem.severity === 'high'
+                      ? 'bg-rose-50/50 border-rose-200 text-rose-900'
                       : rem.severity === 'medium'
                         ? 'bg-amber-50/50 border-amber-200 text-amber-900'
                         : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -289,113 +316,46 @@ export const AdminDashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column (1 col): HR Checklist & Shortcuts */}
-        <div className="space-y-6">
-          {/* HR Operations Checklist */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="font-bold text-slate-900 text-base mb-3 flex items-center justify-between">
-              <span>Danh mục Công việc HR</span>
-              <span className="text-xs font-normal text-slate-500">Tháng 08/2026</span>
-            </h3>
-
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center space-x-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-success-600 shrink-0" />
-                  <span className="text-xs font-medium text-slate-700">Tái ký HĐ cho Nguyễn Văn An</span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-100 text-success-700">Đã xong</span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
-                <div className="flex items-center space-x-2.5">
-                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="text-xs font-medium text-slate-800">Rà soát thử việc Phạm Minh Đức</span>
-                </div>
-                <button 
-                  onClick={() => setAdminTab('admin-contracts')}
-                  className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-800 hover:bg-amber-300"
-                >
-                  Xử lý
-                </button>
-              </div>
-
-              <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 flex items-center justify-between">
-                <div className="flex items-center space-x-2.5">
-                  <FileWarning className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span className="text-xs font-medium text-slate-800">Thu thập CCCD Phạm Minh Đức</span>
-                </div>
-                <button 
-                  onClick={() => {
-                    setSelectedEmployeeIdForAdmin('emp-04');
-                    setAdminTab('admin-employees');
-                  }}
-                  className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-200 text-rose-800 hover:bg-rose-300"
-                >
-                  Yêu cầu
-                </button>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center space-x-2.5">
-                  <Clock className="w-4 h-4 text-primary-600 shrink-0" />
-                  <span className="text-xs font-medium text-slate-700">Duyệt Payroll Tháng 07/2026</span>
-                </div>
-                <button 
-                  onClick={() => setAdminTab('admin-payroll')}
-                  className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-100 text-primary-700 hover:bg-primary-200"
-                >
-                  Chi trả
-                </button>
-              </div>
-            </div>
+        {/* Right Column (1 col): Employee Quick List */}
+        <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-6 shadow-soft-xs h-fit">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-slate-900 text-sm">Danh sách Nhân sự Nổi bật</h3>
+            <button
+              onClick={() => setAdminTab('admin-employees')}
+              className="text-xs text-primary-600 font-semibold hover:underline"
+            >
+              Tất cả ({employees.length})
+            </button>
           </div>
 
-          {/* Employee Quick List */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-slate-900 text-sm">Danh sách Nhân sự Nổi bật</h3>
-              <button 
-                onClick={() => setAdminTab('admin-employees')}
-                className="text-xs text-primary-600 font-semibold hover:underline"
+          <div className="divide-y divide-slate-100">
+            {employees.slice(0, 4).map(emp => (
+              <div
+                key={emp.id}
+                onClick={() => {
+                  setSelectedEmployeeIdForAdmin(emp.id);
+                  setAdminTab('admin-employees');
+                }}
+                className="py-2.5 flex items-center justify-between hover:bg-slate-50 rounded-lg px-2 transition-colors cursor-pointer"
               >
-                Tất cả ({employees.length})
-              </button>
-            </div>
-
-            <div className="divide-y divide-slate-100">
-              {employees.slice(0, 4).map(emp => (
-                <div 
-                  key={emp.id}
-                  onClick={() => {
-                    setSelectedEmployeeIdForAdmin(emp.id);
-                    setAdminTab('admin-employees');
-                  }}
-                  className="py-2.5 flex items-center justify-between hover:bg-slate-50 rounded-lg px-2 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <img 
-                      src={emp.avatar} 
-                      alt={emp.fullName} 
-                      className="w-8 h-8 rounded-full object-cover border border-slate-200"
-                    />
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">{emp.fullName}</p>
-                      <p className="text-[11px] text-slate-500">{emp.jobTitle}</p>
-                    </div>
+                <div className="flex items-center space-x-3">
+                  <RowAvatar path={emp.avatar_url} alt={emp.full_name} />
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">{emp.full_name}</p>
+                    <p className="text-[11px] text-slate-500">{emp.job_title}</p>
                   </div>
-                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                    emp.status === 'Chính thức' 
-                      ? 'bg-success-100 text-success-700' 
-                      : emp.status === 'Thử việc'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-primary-100 text-primary-700'
-                  }`}>
-                    {emp.status || 'Chính thức'}
-                  </span>
                 </div>
-              ))}
-            </div>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                  emp.status === 'Chính thức'
+                    ? 'bg-success-100 text-success-700'
+                    : emp.status === 'Thử việc'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-primary-100 text-primary-700'
+                }`}>
+                  {emp.status || 'Chính thức'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -33,6 +33,7 @@ export type AdminTabType =
   | 'admin-kpi' 
   | 'admin-payroll' 
   | 'admin-reminders' 
+  | 'admin-reports'
   | 'admin-settings';
 
 export interface Relative {
@@ -163,7 +164,7 @@ export interface KpiMonthlyData {
 
 export interface HrReminder {
   id: string;
-  category: 'contract' | 'salary_review' | 'missing_doc' | 'payroll' | 'leave_request';
+  category: 'contract' | 'salary_review' | 'missing_doc' | 'payroll' | 'leave_request' | 'ot_request' | 'work_event';
   title: string;
   message: string;
   employeeId?: string;
@@ -210,4 +211,3 @@ export interface Employee {
   kpiData: KpiMonthlyData[];
   otRecords?: OtRecord[];
 }
-

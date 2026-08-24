@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
-import type { Tables } from '../lib/database.types';
+import type { Tables, TablesInsert, TablesUpdate } from '../lib/database.types';
 
 export type DbContract = Tables<'contracts'>;
 export type DbSalaryHistory = Tables<'salary_history'>;
@@ -35,6 +35,30 @@ export function useAllContracts() {
       if (error) throw error;
       return data;
     },
+  });
+}
+
+export function useCreateContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TablesInsert<'contracts'>) => {
+      const { data, error } = await supabase.from('contracts').insert(input).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+  });
+}
+
+export function useUpdateContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: TablesUpdate<'contracts'> }) => {
+      const { data, error } = await supabase.from('contracts').update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
   });
 }
 

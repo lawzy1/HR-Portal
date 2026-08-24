@@ -5,6 +5,7 @@ import { useEmployee } from '../hooks/useEmployees';
 import { useContracts, useSalaryHistory, useContractLegalWarnings } from '../hooks/useContracts';
 import { usePayrollRecords } from '../hooks/usePayroll';
 import { formatVND, formatDate } from '../utils/formatters';
+import { ContractDocumentLink } from './ContractDocumentLink';
 import {
   FileCheck,
   TrendingUp,
@@ -156,7 +157,10 @@ export const ContractSalaryView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {contracts.map((ctr) => (
                     <tr key={ctr.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-3 font-bold font-mono text-success-800">{ctr.contract_code}</td>
+                      <td className="py-3.5 px-3">
+                        <span className="block font-bold font-mono text-success-800">{ctr.contract_code}</span>
+                        <ContractDocumentLink path={ctr.document_path} name={ctr.document_name} />
+                      </td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{ctr.type}</td>
                       <td className="py-3.5 px-3 text-slate-700">{ctr.position}</td>
                       <td className="py-3.5 px-3 text-slate-600">

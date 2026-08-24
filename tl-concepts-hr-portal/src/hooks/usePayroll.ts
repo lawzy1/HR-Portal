@@ -97,6 +97,21 @@ export function useAllPayrollRecords(month: number, year: number) {
   });
 }
 
+export function useAllPayrollHistory() {
+  return useQuery({
+    queryKey: ['payroll_records', 'all-history'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payroll_records')
+        .select('*, employees(full_name, employee_code, job_title)')
+        .order('year', { ascending: false })
+        .order('month', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 // kpi_bonus and ot_pay are entered directly here — not looked up from
 // kpi_monthly/ot_records, per the reduced Phase 6 scope.
 export function useUpsertPayrollRecord() {

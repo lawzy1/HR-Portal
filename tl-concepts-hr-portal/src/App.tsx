@@ -26,6 +26,7 @@ import { AdminLeaveManagementView } from './components/admin/AdminLeaveManagemen
 import { AdminKpiOtView } from './components/admin/AdminKpiOtView';
 import { AdminPayrollView } from './components/admin/AdminPayrollView';
 import { AdminRemindersView } from './components/admin/AdminRemindersView';
+import { AdminReportsAuditView } from './components/admin/AdminReportsAuditView';
 import { AdminSettingsView } from './components/admin/AdminSettingsView';
 
 // Modals
@@ -60,6 +61,7 @@ function MainContent() {
             {adminTab === 'admin-kpi' && <AdminKpiOtView />}
             {adminTab === 'admin-payroll' && <AdminPayrollView />}
             {adminTab === 'admin-reminders' && <AdminRemindersView />}
+            {adminTab === 'admin-reports' && <AdminReportsAuditView />}
             {adminTab === 'admin-settings' && <AdminSettingsView />}
           </>
         ) : (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Search,
   UserPlus,
@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 import { VneidGuideModal } from '../VneidGuideModal';
 import { VNEID_SAMPLE_IMAGE } from '../../constants/vneidSample';
+import { useRecordAuditEvent } from '../../hooks/useAuditLogs';
 
 const Avatar: React.FC<{ path: string | null; alt: string; className: string }> = ({ path, alt, className }) => {
   const { data: url } = useSignedImageUrl(path);
@@ -70,6 +71,7 @@ export const AdminEmployeeListView: React.FC = () => {
   const { data: employees } = useEmployees();
   const offboardEmployee = useOffboardEmployee();
   const updateSensitiveInfo = useUpsertEmployeeSensitiveInfo();
+  const { mutate: recordAuditEvent } = useRecordAuditEvent();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('ALL');
@@ -96,6 +98,11 @@ export const AdminEmployeeListView: React.FC = () => {
   const { data: selectedEmp } = useEmployee(selectedId);
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(selectedId);
   const { data: relatives } = useEmployeeRelatives(selectedId);
+
+  useEffect(() => {
+    if (!sensitiveInfo?.employee_id) return;
+    recordAuditEvent({ action: 'VIEW', entityType: 'employee_sensitive_info', entityId: sensitiveInfo.employee_id });
+  }, [sensitiveInfo?.employee_id, recordAuditEvent]);
 
   const handleVerificationStatus = async (status: string) => {
     if (!selectedEmp || !profile) return;

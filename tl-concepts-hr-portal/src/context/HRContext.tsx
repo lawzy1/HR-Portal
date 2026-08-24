@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   Employee,
-  ContractItem,
-  SalaryHistoryItem,
   TabType,
   AdminTabType,
   HrReminder
@@ -10,7 +8,18 @@ import {
 import { INITIAL_EMPLOYEES } from '../data/initialData';
 import { useEmployees, useAllEmployeeSensitiveInfo } from '../hooks/useEmployees';
 import { useAllContracts } from '../hooks/useContracts';
-import { useAllLeaveRequests } from '../hooks/useLeave';
+import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
+import { useAllOtRecords } from '../hooks/useOt';
+import { useAllPayrollHistory } from '../hooks/usePayroll';
+import { useHrDataRefresh } from '../hooks/useHrDataRefresh';
+
+const DAY_MS = 86_400_000;
+const daysUntil = (date: string) => Math.ceil((new Date(`${date}T00:00:00`).getTime() - Date.now()) / DAY_MS);
+const nextAnnualReview = (date: string) => {
+  const next = new Date(`${date}T00:00:00`);
+  next.setFullYear(next.getFullYear() + 1);
+  return next.toISOString().slice(0, 10);
+};
 
 interface HRContextType {
   // Active navigation tabs
@@ -54,7 +63,8 @@ interface HRContextType {
 const HRContext = createContext<HRContextType | undefined>(undefined);
 
 export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [employees, setEmployees] = useState<Employee[]>(() => {
+  useHrDataRefresh();
+  const [employees] = useState<Employee[]>(() => {
     const local = localStorage.getItem('misa_bamboo_hr_employees_v2');
     if (local) {
       try {
@@ -86,7 +96,6 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
 
   // Reminders list state
-  const [resolvedReminderIds, setResolvedReminderIds] = useState<string[]>([]);
   const [readReminderIds, setReadReminderIds] = useState<string[]>([]);
 
   // Toast message
@@ -119,6 +128,12 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const allLeaveRequests = useMemo(() => allLeaveRequestsData || [], [allLeaveRequestsData]);
   const { data: allSensitiveInfoData } = useAllEmployeeSensitiveInfo();
   const allSensitiveInfo = useMemo(() => allSensitiveInfoData || [], [allSensitiveInfoData]);
+  const { data: allOtData } = useAllOtRecords();
+  const allOt = useMemo(() => allOtData || [], [allOtData]);
+  const { data: allWorkEventsData } = useAllWorkEvents();
+  const allWorkEvents = useMemo(() => allWorkEventsData || [], [allWorkEventsData]);
+  const { data: allPayrollData } = useAllPayrollHistory();
+  const allPayroll = useMemo(() => allPayrollData || [], [allPayrollData]);
 
   const reminders = useMemo<HrReminder[]>(() => {
     const generated: HrReminder[] = [];
@@ -134,6 +149,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
     latestContractByEmployee.forEach(c => {
       if (!c.end_date) return;
+      const remainingDays = daysUntil(c.end_date);
+      if (remainingDays < 0 || remainingDays > 60) return;
       const empName = c.employees?.full_name || '';
       generated.push({
         id: `rem-ctr-${c.id}`,
@@ -145,24 +162,27 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         dueDate: c.end_date,
         isRead: readReminderIds.includes(`rem-ctr-${c.id}`),
         createdAt: c.created_at,
-        severity: 'high',
+        severity: remainingDays <= 30 ? 'high' : 'medium',
       });
     });
 
     // 2. Salary review due
     realEmployees.forEach(emp => {
       if (emp.last_salary_review_date) {
+        const reviewDate = nextAnnualReview(emp.last_salary_review_date);
+        const remainingDays = daysUntil(reviewDate);
+        if (remainingDays > 30) return;
         generated.push({
           id: `rem-sal-${emp.id}`,
           category: 'salary_review',
           title: 'Đến kỳ xét duyệt / tăng lương',
-          message: `${emp.full_name} đến kỳ đánh giá hiệu suất & xem xét điều chỉnh lương vào ngày ${emp.last_salary_review_date}.`,
+          message: `${emp.full_name} ${remainingDays < 0 ? 'đã quá kỳ' : 'đến kỳ'} đánh giá hiệu suất và xem xét điều chỉnh lương.`,
           employeeId: emp.id,
           employeeName: emp.full_name,
-          dueDate: emp.last_salary_review_date,
+          dueDate: reviewDate,
           isRead: readReminderIds.includes(`rem-sal-${emp.id}`),
           createdAt: emp.created_at,
-          severity: 'medium',
+          severity: remainingDays < 0 ? 'high' : 'medium',
         });
       }
     });
@@ -205,16 +225,68 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       }
     });
 
-    return generated.filter(r => !resolvedReminderIds.includes(r.id));
-  }, [realEmployees, allContracts, allLeaveRequests, allSensitiveInfo, readReminderIds, resolvedReminderIds]);
+    // 5. Pending OT and WFH/late requests.
+    allOt.forEach(record => {
+      if (record.status !== 'Chờ duyệt') return;
+      const empName = record.employees?.full_name || '';
+      generated.push({
+        id: `rem-ot-${record.id}`,
+        category: 'ot_request',
+        title: 'Yêu cầu OT chờ phê duyệt',
+        message: `${empName} đăng ký ${record.hours} giờ OT ngày ${record.date}.`,
+        employeeId: record.employee_id,
+        employeeName: empName,
+        dueDate: record.date,
+        isRead: readReminderIds.includes(`rem-ot-${record.id}`),
+        createdAt: record.created_at,
+        severity: 'medium',
+      });
+    });
+
+    allWorkEvents.forEach(record => {
+      if (record.status !== 'pending') return;
+      const empName = record.employees?.full_name || '';
+      generated.push({
+        id: `rem-work-${record.id}`,
+        category: 'work_event',
+        title: 'Yêu cầu WFH/đi muộn chờ duyệt',
+        message: `${empName} gửi yêu cầu ${record.event_type} ngày ${record.event_date}.`,
+        employeeId: record.employee_id,
+        employeeName: empName,
+        dueDate: record.event_date,
+        isRead: readReminderIds.includes(`rem-work-${record.id}`),
+        createdAt: record.created_at,
+        severity: 'medium',
+      });
+    });
+
+    // 6. Payroll not yet published or paid.
+    allPayroll.forEach(record => {
+      if (record.publish_status === 'published' && record.payment_status === 'Đã thanh toán') return;
+      const empName = record.employees?.full_name || '';
+      generated.push({
+        id: `rem-pay-${record.id}`,
+        category: 'payroll',
+        title: record.publish_status === 'published' ? 'Phiếu lương chưa thanh toán' : 'Phiếu lương chưa phát hành',
+        message: `Phiếu lương tháng ${record.month}/${record.year} của ${empName} đang ở trạng thái ${record.payment_status}.`,
+        employeeId: record.employee_id,
+        employeeName: empName,
+        isRead: readReminderIds.includes(`rem-pay-${record.id}`),
+        createdAt: record.created_at,
+        severity: record.publish_status === 'published' ? 'high' : 'medium',
+      });
+    });
+
+    return generated;
+  }, [realEmployees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, readReminderIds]);
 
   const markReminderAsRead = (id: string) => {
-    setReadReminderIds(prev => [...prev, id]);
+    setReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
   };
 
   const resolveReminder = (id: string) => {
-    setResolvedReminderIds(prev => [...prev, id]);
-    showToast('Đã đánh dấu xử lý xong nhắc nhở.');
+    setReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    showToast('Đã đánh dấu đã đọc. Cảnh báo sẽ tự mất khi dữ liệu gốc được xử lý.');
   };
 
   return (

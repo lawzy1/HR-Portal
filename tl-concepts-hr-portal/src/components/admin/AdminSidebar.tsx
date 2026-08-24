@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Receipt,
   BellRing,
+  FileBarChart,
   ShieldCheck,
   ChevronRight
 } from 'lucide-react';
@@ -58,6 +59,11 @@ export const AdminSidebar: React.FC = () => {
       label: 'Thông báo & Cảnh báo',
       icon: <BellRing className="w-5 h-5" />,
       badge: unreadRemindersCount > 0 ? unreadRemindersCount : undefined,
+    },
+    {
+      id: 'admin-reports',
+      label: 'Báo cáo & Audit',
+      icon: <FileBarChart className="w-5 h-5" />,
     },
     {
       id: 'admin-settings',

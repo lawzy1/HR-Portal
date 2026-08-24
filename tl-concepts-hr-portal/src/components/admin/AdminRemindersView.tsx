@@ -2,12 +2,8 @@ import React, { useState } from 'react';
 import { 
   BellRing, 
   AlertTriangle, 
-  Clock, 
   CheckCircle2, 
-  Filter, 
   Calendar, 
-  User, 
-  FileWarning, 
   ArrowRight,
   ShieldAlert
 } from 'lucide-react';
@@ -16,7 +12,6 @@ import { useHR } from '../../context/HRContext';
 export const AdminRemindersView: React.FC = () => {
   const { 
     reminders, 
-    markReminderAsRead, 
     resolveReminder, 
     setAdminTab, 
     setSelectedEmployeeIdForAdmin 
@@ -66,6 +61,8 @@ export const AdminRemindersView: React.FC = () => {
               <option value="salary_review">Kỳ xét lương</option>
               <option value="missing_doc">Thiếu hồ sơ CCCD/MST</option>
               <option value="leave_request">Đơn xin nghỉ phép</option>
+              <option value="ot_request">Yêu cầu OT</option>
+              <option value="work_event">WFH / Đi muộn</option>
               <option value="payroll">Lương & Payroll</option>
             </select>
           </div>
@@ -159,6 +156,10 @@ export const AdminRemindersView: React.FC = () => {
                           setAdminTab('admin-contracts');
                         } else if (rem.category === 'leave_request') {
                           setAdminTab('admin-leaves');
+                        } else if (rem.category === 'ot_request' || rem.category === 'work_event') {
+                          setAdminTab('admin-kpi');
+                        } else if (rem.category === 'payroll') {
+                          setAdminTab('admin-payroll');
                         } else {
                           setAdminTab('admin-employees');
                         }
@@ -174,7 +175,7 @@ export const AdminRemindersView: React.FC = () => {
                     onClick={() => resolveReminder(rem.id)}
                     className="px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer"
                   >
-                    Đã hoàn thành
+                    Đã đọc
                   </button>
                 </div>
               </div>

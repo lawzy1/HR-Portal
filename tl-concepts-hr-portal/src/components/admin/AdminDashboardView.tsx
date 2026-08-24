@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   ArrowRight,
   ShieldAlert,
-  FileWarning
+  FileWarning,
+  FileBarChart
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useEmployees, useAllEmployeeSensitiveInfo } from '../../hooks/useEmployees';
@@ -64,7 +65,9 @@ export const AdminDashboardView: React.FC = () => {
     });
     let count = 0;
     latestContractByEmployee.forEach(c => {
-      if (c.end_date) count += 1;
+      if (!c.end_date) return;
+      const remainingDays = Math.ceil((new Date(`${c.end_date}T00:00:00`).getTime() - Date.now()) / 86_400_000);
+      if (remainingDays >= 0 && remainingDays <= 60) count += 1;
     });
     return count;
   }, [allContracts]);
@@ -116,6 +119,13 @@ export const AdminDashboardView: React.FC = () => {
           >
             <Receipt className="w-4 h-4 text-success-600" />
             <span>Xử lý Payroll</span>
+          </button>
+          <button
+            onClick={() => setAdminTab('admin-reports')}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-medium text-sm flex items-center space-x-2 transition-all cursor-pointer"
+          >
+            <FileBarChart className="w-4 h-4 text-primary-600" />
+            <span>Xuất báo cáo</span>
           </button>
         </div>
       </div>
@@ -293,6 +303,10 @@ export const AdminDashboardView: React.FC = () => {
                             setAdminTab('admin-contracts');
                           } else if (rem.category === 'leave_request') {
                             setAdminTab('admin-leaves');
+                          } else if (rem.category === 'ot_request' || rem.category === 'work_event') {
+                            setAdminTab('admin-kpi');
+                          } else if (rem.category === 'payroll') {
+                            setAdminTab('admin-payroll');
                           } else {
                             setAdminTab('admin-employees');
                           }
@@ -305,9 +319,9 @@ export const AdminDashboardView: React.FC = () => {
                     <button
                       onClick={() => resolveReminder(rem.id)}
                       className="px-2.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-medium cursor-pointer"
-                      title="Đánh dấu đã xong"
+                      title="Đánh dấu đã đọc"
                     >
-                      Đã xong
+                      Đã đọc
                     </button>
                   </div>
                 </div>

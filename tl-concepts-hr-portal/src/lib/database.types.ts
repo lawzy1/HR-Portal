@@ -17,6 +17,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_profile_id: string | null
+          company_id: string
+          created_at: string
+          details: Json
+          entity_id: string | null
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_profile_id?: string | null
+          company_id: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_profile_id?: string | null
+          company_id?: string
+          created_at?: string
+          details?: Json
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string
@@ -134,6 +182,8 @@ export type Database = {
           company_id: string
           contract_code: string
           created_at: string
+          document_name: string | null
+          document_path: string | null
           employee_id: string
           end_date: string | null
           id: string
@@ -148,6 +198,8 @@ export type Database = {
           company_id: string
           contract_code: string
           created_at?: string
+          document_name?: string | null
+          document_path?: string | null
           employee_id: string
           end_date?: string | null
           id?: string
@@ -162,6 +214,8 @@ export type Database = {
           company_id?: string
           contract_code?: string
           created_at?: string
+          document_name?: string | null
+          document_path?: string | null
           employee_id?: string
           end_date?: string | null
           id?: string
@@ -1120,6 +1174,15 @@ export type Database = {
       current_company_id: { Args: never; Returns: string }
       current_employee_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      record_audit_event: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_entity_id?: string
+          p_entity_type: string
+        }
+        Returns: undefined
+      }
       refresh_leave_accrual: {
         Args: { p_employee_id: string; p_year: number }
         Returns: undefined

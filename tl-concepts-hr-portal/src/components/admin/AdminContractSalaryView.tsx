@@ -123,32 +123,19 @@ export const AdminContractSalaryView: React.FC = () => {
             {!contracts || contracts.length === 0 ? (
               <div className="p-6 text-center text-slate-400 text-xs">Chưa có dữ liệu lịch sử hợp đồng.</div>
             ) : (
-              contracts.map((contract) => (
-                <div key={contract.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-sm text-slate-900">{contract.contract_code}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                        contract.status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' :
-                        contract.status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {contract.status}
-                      </span>
-                      <button onClick={() => setEditingContract(contract)} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+              contracts.filter((c) => !c.parent_contract_id).map((contract) => {
+                const addenda = contracts.filter((c) => c.parent_contract_id === contract.id);
+                return (
+                  <div key={contract.id} className="space-y-2">
+                    <ContractCard contract={contract} onEdit={() => setEditingContract(contract)} />
+                    {addenda.map((addendum) => (
+                      <div key={addendum.id} className="ml-4 border-l-2 border-primary-200 pl-3">
+                        <ContractCard contract={addendum} onEdit={() => setEditingContract(addendum)} isAddendum />
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-xs text-slate-600 space-y-1">
-                    <p>Loại HĐ: <b>{contract.type}</b></p>
-                    <p>Vị trí chuyên môn: <b>{contract.position}</b></p>
-                    <p>Thời hạn: <b>{contract.start_date}</b> đến <b>{contract.end_date || 'Không xác định'}</b></p>
-                    <p>Mức lương HĐ: <b className="text-success-700">{formatVND(contract.salary || 0)}</b></p>
-                    <ContractDocumentLink path={contract.document_path} name={contract.document_name} />
-                    {contract.note && <p className="text-slate-500 italic mt-1">Ghi chú: {contract.note}</p>}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -256,8 +243,46 @@ export const AdminContractSalaryView: React.FC = () => {
       </div>
 
       {editingContract !== undefined && (
-        <ContractEditorModal employee={selectedEmp} contract={editingContract} onClose={() => setEditingContract(undefined)} />
+        <ContractEditorModal
+          employee={selectedEmp}
+          contract={editingContract}
+          existingContracts={contracts || []}
+          onClose={() => setEditingContract(undefined)}
+        />
       )}
     </div>
   );
 };
+
+const ContractCard: React.FC<{ contract: DbContract; onEdit: () => void; isAddendum?: boolean }> = ({ contract, onEdit, isAddendum }) => (
+  <div className={`p-4 rounded-xl border space-y-2 ${isAddendum ? 'bg-primary-50/50 border-primary-200/80' : 'bg-slate-50 border-slate-200/80'}`}>
+    <div className="flex items-center justify-between gap-2">
+      <span className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+        {isAddendum && <span className="text-[10px] font-bold px-1.5 py-0.5 bg-primary-100 text-primary-700 rounded">Phụ lục</span>}
+        {contract.contract_code}
+      </span>
+      <div className="flex items-center gap-2">
+        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+          contract.status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' :
+          contract.status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
+        }`}>
+          {contract.status}
+        </span>
+        <button onClick={onEdit} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+    <div className="text-xs text-slate-600 space-y-1">
+      <p>Loại HĐ: <b>{contract.type}</b></p>
+      <p>Vị trí chuyên môn: <b>{contract.position}</b></p>
+      <p>Ngày ký: <b>{contract.signed_date || '—'}</b> • Thời hạn: <b>{contract.start_date}</b> đến <b>{contract.end_date || 'Không xác định'}</b></p>
+      <p>Mức lương HĐ: <b className="text-success-700">{formatVND(contract.salary || 0)}</b>
+        {contract.allowance_amount > 0 && <> • Phụ cấp: <b className="text-success-700">{formatVND(contract.allowance_amount)}</b></>}
+        {contract.kpi_target_month != null && <> • KPI/tháng: <b className="text-primary-700">{contract.kpi_target_month}</b></>}
+      </p>
+      <ContractDocumentLink path={contract.document_path} name={contract.document_name} />
+      {contract.note && <p className="text-slate-500 italic mt-1">Ghi chú: {contract.note}</p>}
+    </div>
+  </div>
+);

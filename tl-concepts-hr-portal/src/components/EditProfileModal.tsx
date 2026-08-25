@@ -30,9 +30,22 @@ import {
   Eye,
   Lock,
   Loader2,
+  Award,
 } from 'lucide-react';
 import { VneidGuideModal } from './VneidGuideModal';
 import { VNEID_SAMPLE_IMAGE } from '../constants/vneidSample';
+
+// Free-text + suggestions, not a rigid enum — studio can define new levels
+// without a schema change or a level-management screen.
+const KPI_LEVEL_SUGGESTIONS = [
+  'Level 1: Junior 3D Artist',
+  'Level 2: 3D Artist',
+  'Level 3: 3D Artist - Interior',
+  'Level 3: 3D Artist - Exterior',
+  'Level 4: Mid-level 3D Artist - Interior',
+  'Level 4: Mid-level 3D Artist - Exterior',
+  'Level 5: Senior 3D Artist',
+];
 
 // Renders a stored Storage path as a signed preview, or a freshly-picked
 // local file before it's uploaded — one component instead of repeating the
@@ -128,6 +141,8 @@ export const EditProfileModal: React.FC = () => {
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState<'Nam' | 'Nữ' | 'Khác'>('Nam');
   const [maritalStatus, setMaritalStatus] = useState<'Độc thân' | 'Đã kết hôn'>('Độc thân');
+  const [kpiLevel, setKpiLevel] = useState('');
+  const [kpiTargetPerDay, setKpiTargetPerDay] = useState<number | ''>('');
 
   // Tab 2: Employment snapshot (admin-only). Contract history itself lives
   // in the Contracts module (M3), not here.
@@ -177,6 +192,8 @@ export const EditProfileModal: React.FC = () => {
     setDob(employee.dob || '');
     setGender((employee.gender as 'Nam' | 'Nữ' | 'Khác') || 'Nam');
     setMaritalStatus((employee.marital_status as 'Độc thân' | 'Đã kết hôn') || 'Độc thân');
+    setKpiLevel(employee.kpi_level || '');
+    setKpiTargetPerDay(employee.kpi_target_per_day ?? '');
 
     setStartDate(employee.start_date || '');
     setContractType(employee.contract_type || 'HĐ xác định thời hạn (1 năm)');
@@ -224,7 +241,29 @@ export const EditProfileModal: React.FC = () => {
 
   const targetLabel = useMemo(() => employee?.full_name || '...', [employee]);
 
-  if (!isEditProfileModalOpen || !employee || !targetEmployeeId) return null;
+  if (!isEditProfileModalOpen) return null;
+
+  if (!targetEmployeeId || !employee) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-200">
+          <Loader2 className="w-7 h-7 mx-auto mb-3 text-primary-600 animate-spin" />
+          <p className="text-sm font-semibold text-slate-800">
+            {targetEmployeeId ? 'Đang tải hồ sơ nhân viên...' : 'Không xác định được nhân viên cần chỉnh sửa.'}
+          </p>
+          {!targetEmployeeId && (
+            <button
+              type="button"
+              onClick={() => setIsEditProfileModalOpen(false)}
+              className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold cursor-pointer"
+            >
+              Đóng
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const handleAddRelative = () => {
     setRelativesState([
@@ -275,6 +314,8 @@ export const EditProfileModal: React.FC = () => {
           contract_type: contractType,
           current_salary: currentSalary,
           last_salary_review_date: lastSalaryReviewDate || null,
+          kpi_level: kpiLevel || null,
+          kpi_target_per_day: kpiTargetPerDay === '' ? null : kpiTargetPerDay,
         });
       }
 
@@ -431,6 +472,55 @@ export const EditProfileModal: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              {isAdmin && (
+                <div className="p-4 bg-primary-50/60 rounded-2xl border border-primary-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-primary-900 flex items-center gap-1.5">
+                      <Award className="w-4 h-4" />
+                      <span>Chỉ tiêu KPI & Level Vị trí công việc (Liên kết Bảng lương)</span>
+                    </p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-white border border-primary-300 rounded-lg text-primary-700">
+                      Định dạng: x view / ngày
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Level vị trí công việc:</label>
+                      <input
+                        type="text"
+                        list="kpi-level-options"
+                        placeholder="VD: Level 5: Senior 3D Artist"
+                        value={kpiLevel}
+                        onChange={(e) => setKpiLevel(e.target.value)}
+                        className={inputClass}
+                      />
+                      <datalist id="kpi-level-options">
+                        {KPI_LEVEL_SUGGESTIONS.map((level) => (
+                          <option key={level} value={level} />
+                        ))}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Chỉ tiêu KPI (x view / ngày):</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={kpiTargetPerDay}
+                          onChange={(e) => setKpiTargetPerDay(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`${inputClass} font-bold text-primary-700`}
+                        />
+                        <span className="text-[11px] text-slate-500 whitespace-nowrap">view / ngày</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Hệ thống tự động tính: <strong>{kpiTargetPerDay || 0} view/ngày × số ngày công chuẩn của tháng = Tổng chỉ tiêu KPI</strong> và đồng bộ sang Bảng lương.
+                  </p>
+                </div>
+              )}
 
               <ImageUploadSlot
                 label="Ảnh Avatar đại diện"

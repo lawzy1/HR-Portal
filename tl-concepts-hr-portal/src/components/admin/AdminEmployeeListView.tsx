@@ -118,6 +118,12 @@ export const AdminEmployeeListView: React.FC = () => {
     showToast('Đã cập nhật trạng thái đối chiếu CCCD.');
   };
 
+  const openSelectedEmployeeEditor = () => {
+    if (!selectedEmp) return;
+    setSelectedEmployeeIdForAdmin(selectedEmp.id);
+    setIsEditProfileModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -136,7 +142,7 @@ export const AdminEmployeeListView: React.FC = () => {
           className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer shrink-0"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Thêm nhân viên mới</span>
+          <span>Mời nhân viên ngoại lệ</span>
         </button>
       </div>
 
@@ -178,6 +184,7 @@ export const AdminEmployeeListView: React.FC = () => {
                 <option value="Chính thức">Chính thức</option>
                 <option value="Thử việc">Thử việc</option>
                 <option value="Mới tiếp nhận">Mới tiếp nhận</option>
+                <option value="Chờ duyệt">Chờ duyệt đăng ký</option>
                 <option value="Đã nghỉ việc">Đã nghỉ việc</option>
               </select>
             </div>
@@ -191,7 +198,7 @@ export const AdminEmployeeListView: React.FC = () => {
           <div className="space-y-2 overflow-y-auto max-h-[620px] pr-1">
             {filteredEmployees.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                {allEmployees.length === 0 ? 'Chưa có nhân viên nào — bấm "Thêm nhân viên mới" để bắt đầu.' : 'Không tìm thấy nhân viên thỏa điều kiện.'}
+                {allEmployees.length === 0 ? 'Chưa có nhân viên nào — nhân viên có thể tự đăng ký tại trang đăng nhập.' : 'Không tìm thấy nhân viên thỏa điều kiện.'}
               </div>
             ) : (
               filteredEmployees.map((emp) => {
@@ -268,7 +275,7 @@ export const AdminEmployeeListView: React.FC = () => {
 
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => setIsEditProfileModalOpen(true)}
+                    onClick={openSelectedEmployeeEditor}
                     className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"
                   >
                     <Edit className="w-3.5 h-3.5" />
@@ -399,7 +406,7 @@ export const AdminEmployeeListView: React.FC = () => {
                     <Eye className="w-4 h-4 text-primary-600" />
                     <span>6. Ảnh CCCD 2 mặt & Tài liệu đính kèm</span>
                   </h3>
-                  <button onClick={() => setIsEditProfileModalOpen(true)} className="text-xs font-bold text-primary-600 hover:underline cursor-pointer">
+                  <button onClick={openSelectedEmployeeEditor} className="text-xs font-bold text-primary-600 hover:underline cursor-pointer">
                     Chỉnh sửa / Tải ảnh mới
                   </button>
                 </div>

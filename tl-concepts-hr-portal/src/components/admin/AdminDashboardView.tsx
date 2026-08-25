@@ -110,7 +110,7 @@ export const AdminDashboardView: React.FC = () => {
             className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Thêm nhân viên mới</span>
+            <span>Mời nhân viên ngoại lệ</span>
           </button>
 
           <button

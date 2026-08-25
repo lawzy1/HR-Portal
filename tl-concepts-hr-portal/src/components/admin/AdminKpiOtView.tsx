@@ -24,12 +24,24 @@ import {
 } from '../../hooks/useKpi';
 import { useAllOtRecords, useCreateOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
+import { useCompanyHolidays } from '../../hooks/useLeave';
 import { getMonthWorkDays } from '../../utils/workDays';
+
+const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
+  { value: 'new_render', label: 'New Render' },
+  { value: 'reprocess', label: 'Re Process (Chỉnh sửa)' },
+];
+
+const categoryBadge = (category: string) =>
+  category === 'reprocess'
+    ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Re Process</span>
+    : <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-success-100 text-success-800 border border-success-300">New Render</span>;
 
 // employee_id is a required FK on kpi_job_items now — job assignment is a real
 // employee picker, no more fuzzy assigneeName string matching against full_name.
 type KpiJobRow = NonNullable<ReturnType<typeof useAllKpiJobItems>['data']>[number];
 type OtRecordRow = NonNullable<ReturnType<typeof useAllOtRecords>['data']>[number];
+type DbEmployeeRow = NonNullable<ReturnType<typeof useEmployees>['data']>[number];
 
 interface JobGroup {
   orderJob: string;
@@ -56,21 +68,27 @@ export const AdminKpiOtView: React.FC = () => {
 
   const { data: employees } = useEmployees();
   const { data: companySettings } = useCompanySettings();
+  const { data: holidays } = useCompanyHolidays();
   const employeeList = useMemo(() => employees || [], [employees]);
 
   const [selectedMonth, setSelectedMonth] = useState<number>(7);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
 
-  // Local "what-if" override for the target-calc stepper — defaults to the
-  // company's configured rate but lets the admin preview a different rate
-  // without persisting it (company_settings itself is read-only until Phase 9).
-  const [kpiRateOverride, setKpiRateOverride] = useState<number | null>(null);
-  const effectiveKpiRatePerDay = kpiRateOverride ?? companySettings?.kpi_rate_per_day ?? 1.5;
+  const holidayDatesInMonth = useMemo(
+    () => (holidays || []).filter((h) => h.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).map((h) => h.date),
+    [holidays, selectedMonth, selectedYear]
+  );
 
-  // Dynamic Standard Working Days calculation (1st to 30/31st of month, 5.5 days/week)
+  // Dynamic Standard Working Days calculation (1st to 30/31st of month, 5.5
+  // days/week, minus any công ty holiday) — works for any month, incl. future ones.
   const monthWorkInfo = useMemo(() => {
-    return getMonthWorkDays(selectedMonth, selectedYear, effectiveKpiRatePerDay);
-  }, [selectedMonth, selectedYear, effectiveKpiRatePerDay]);
+    return getMonthWorkDays(selectedMonth, selectedYear, holidayDatesInMonth);
+  }, [selectedMonth, selectedYear, holidayDatesInMonth]);
+
+  // Mỗi nhân viên có chỉ tiêu KPI/ngày riêng (Hồ sơ nhân viên) — quy đổi ra
+  // KPI chuẩn tháng = chỉ tiêu/ngày × ngày công chuẩn của tháng đó.
+  const getEmployeeKpiTarget = (emp: DbEmployeeRow) =>
+    Number(((emp.kpi_target_per_day || 0) * monthWorkInfo.standardWorkDays).toFixed(1));
 
   const { data: currentMonthJobsData } = useAllKpiJobItems(selectedMonth, selectedYear);
   const currentMonthJobs = useMemo(() => currentMonthJobsData || [], [currentMonthJobsData]);
@@ -90,6 +108,7 @@ export const AdminKpiOtView: React.FC = () => {
   const [orderJob, setOrderJob] = useState('');
   const [subTask, setSubTask] = useState('');
   const [jobEmployeeId, setJobEmployeeId] = useState('');
+  const [jobCategory, setJobCategory] = useState<'new_render' | 'reprocess'>('new_render');
   const [viewsCount, setViewsCount] = useState<number>(4);
   const [convertedKpi, setConvertedKpi] = useState<number>(4.0);
   const [durationDays, setDurationDays] = useState<number>(2.0);
@@ -183,6 +202,7 @@ export const AdminKpiOtView: React.FC = () => {
           sub_task: subTask || null,
           parent_task: orderJob,
           employee_id: jobEmployeeId,
+          category: jobCategory,
           views_count: viewsCount,
           converted_kpi: convertedKpi,
           duration_days: durationDays,
@@ -202,6 +222,7 @@ export const AdminKpiOtView: React.FC = () => {
         sub_task: subTask || null,
         parent_task: orderJob,
         employee_id: jobEmployeeId,
+        category: jobCategory,
         views_count: viewsCount,
         converted_kpi: convertedKpi,
         duration_days: durationDays,
@@ -217,6 +238,7 @@ export const AdminKpiOtView: React.FC = () => {
     // Reset form
     setOrderJob('');
     setSubTask('');
+    setJobCategory('new_render');
     setViewsCount(4);
     setConvertedKpi(4.0);
     setDurationDays(2.0);
@@ -231,6 +253,7 @@ export const AdminKpiOtView: React.FC = () => {
     setOrderJob(job.order_job);
     setSubTask(job.sub_task || '');
     setJobEmployeeId(job.employee_id);
+    setJobCategory(job.category === 'reprocess' ? 'reprocess' : 'new_render');
     setViewsCount(job.views_count || 0);
     setConvertedKpi(job.converted_kpi || 0);
     setDurationDays(job.duration_days || 0);
@@ -244,6 +267,7 @@ export const AdminKpiOtView: React.FC = () => {
     setEditingJob(null);
     setOrderJob(orderName);
     setSubTask('');
+    setJobCategory('new_render');
     setViewsCount(2);
     setConvertedKpi(2.0);
     setDurationDays(1.0);
@@ -326,8 +350,6 @@ export const AdminKpiOtView: React.FC = () => {
       return;
     }
 
-    const dynamicTarget = monthWorkInfo.calculatedKpiTarget;
-
     await Promise.all(employeeList.map(async (emp) => {
       // Real employee_id FK match — no more fuzzy assigneeName string matching.
       const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
@@ -335,7 +357,9 @@ export const AdminKpiOtView: React.FC = () => {
       const totalViews = empJobs.reduce((acc, curr) => acc + (curr.views_count || 0), 0);
       const totalKpiPoints = empJobs.reduce((acc, curr) => acc + (curr.converted_kpi || 0), 0);
 
-      const target = dynamicTarget || 0;
+      // Mỗi nhân viên có chỉ tiêu KPI/ngày riêng (Hồ sơ nhân viên), không
+      // còn dùng chung 1 định mức công ty cho tất cả.
+      const target = getEmployeeKpiTarget(emp);
       const completionPct = target ? Math.round((totalKpiPoints / target) * 100) : 0;
 
       // Design allowance bonus, driven by company_settings (not a hard-coded rate/point or floor).
@@ -363,11 +387,11 @@ export const AdminKpiOtView: React.FC = () => {
         // No real "benefit" data source in this phase — left at 0 for admin to fill in
         // manually, rather than fabricating a plausible-looking number.
         benefit_amount: 0,
-        notes: `Tính toán từ ${empJobs.length} bài/dự án (Chỉ tiêu tháng ${monthWorkInfo.standardWorkDays} ngày công x ${effectiveKpiRatePerDay} view/ngày = ${target} view).`,
+        notes: `Tính toán từ ${empJobs.length} bài/dự án (Chỉ tiêu tháng ${monthWorkInfo.standardWorkDays} ngày công x ${emp.kpi_target_per_day || 0} view/ngày = ${target} view).`,
       });
     }));
 
-    showToast(`Đã đồng bộ thành công dữ liệu KPI của tất cả nhân viên (Chỉ tiêu: ${dynamicTarget} views theo ${monthWorkInfo.standardWorkDays} ngày công) vào Payroll Tháng ${selectedMonth}/${selectedYear}!`);
+    showToast(`Đã đồng bộ thành công chỉ tiêu KPI riêng của từng nhân viên (theo ${monthWorkInfo.standardWorkDays} ngày công tháng ${selectedMonth}/${selectedYear}) vào Payroll!`);
   };
 
   // Calculate OT percentage & rate based on date or preset/custom input — driven by company_settings.
@@ -449,6 +473,7 @@ export const AdminKpiOtView: React.FC = () => {
               setEditingJob(null);
               setOrderJob('');
               setSubTask('');
+              setJobCategory('new_render');
               setJobEmployeeId(employeeList[0]?.id || '');
               setIsNewJobModalOpen(true);
             }}
@@ -515,18 +540,9 @@ export const AdminKpiOtView: React.FC = () => {
             Tổng số bài/dự án đã nhập trong tháng: <b>{currentMonthJobs.length}</b>
           </span>
         </div>
-
-        <button
-          onClick={handleSyncKpiToProfiles}
-          disabled={upsertKpiMonthly.isPending}
-          className="px-4 py-1.5 bg-success-100 hover:bg-success-200 text-success-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all disabled:opacity-60"
-        >
-          <Calculator className="w-4 h-4 text-success-700" />
-          <span>Đồng bộ điểm KPI sang Payroll</span>
-        </button>
       </div>
 
-      {/* WORKING DAYS & KPI TARGET CALCULATION STATS (5.5 DAYS/WEEK SCHEDULE) */}
+      {/* WORKING DAYS CALCULATION STATS (5.5 DAYS/WEEK SCHEDULE, TRỪ LỄ/TẾT) */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-primary-950 text-white p-5 rounded-2xl border border-slate-700 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-700/70">
           <div className="flex items-center gap-3">
@@ -535,53 +551,19 @@ export const AdminKpiOtView: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-extrabold text-white">Quy chuẩn Ngày Công & Định mức KPI Tháng {selectedMonth}/{selectedYear}</h3>
+                <h3 className="text-sm font-extrabold text-white">Quy chuẩn Ngày Công Tháng {selectedMonth}/{selectedYear}</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-500/20 text-success-300 border border-success-400/30">
                   Lịch 5.5 ngày/tuần
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
-                Chu kỳ từ ngày <strong>01/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> đến <strong>{monthWorkInfo.lastDayOfMonth}/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> ({monthWorkInfo.totalCalendarDays} ngày dương lịch)
+                Chu kỳ từ ngày <strong>01/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> đến <strong>{monthWorkInfo.lastDayOfMonth}/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> ({monthWorkInfo.totalCalendarDays} ngày dương lịch) — chỉ tiêu KPI theo từng nhân viên xem ở bảng bên dưới.
               </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 bg-slate-800/80 p-2 rounded-xl border border-slate-700">
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block font-medium">Định mức KPI / ngày công</span>
-              <span className="text-xs font-bold text-success-400">{effectiveKpiRatePerDay} view/công</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setKpiRateOverride(Math.max(0.5, Number((effectiveKpiRatePerDay - 0.1).toFixed(1))))}
-                className="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
-                title="Giảm định mức"
-              >
-                -
-              </button>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                max="5"
-                value={effectiveKpiRatePerDay}
-                onChange={(e) => setKpiRateOverride(Math.max(0.1, Number(e.target.value) || effectiveKpiRatePerDay))}
-                className="w-14 px-1.5 py-1 bg-slate-900 border border-slate-600 rounded-lg text-xs font-mono font-bold text-center text-white focus:ring-1 focus:ring-success-400"
-              />
-              <button
-                type="button"
-                onClick={() => setKpiRateOverride(Number((effectiveKpiRatePerDay + 0.1).toFixed(1)))}
-                className="w-7 h-7 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold flex items-center justify-center transition-colors cursor-pointer"
-                title="Tăng định mức"
-              >
-                +
-              </button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 pt-4 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-4 text-xs">
           <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
             <span className="text-[11px] text-slate-400 block">Thứ 2 - Thứ 6 (x 1.0)</span>
             <p className="text-base font-bold text-white font-mono mt-0.5">
@@ -606,23 +588,92 @@ export const AdminKpiOtView: React.FC = () => {
             <span className="text-[10px] text-slate-500">Nghỉ hàng tuần</span>
           </div>
 
+          <div className="bg-rose-950/70 p-3 rounded-xl border border-rose-700/50">
+            <span className="text-[11px] text-rose-300 block">Nghỉ Lễ/Tết</span>
+            <p className="text-base font-bold text-rose-300 font-mono mt-0.5">
+              -{monthWorkInfo.holidaysDeducted} <span className="text-xs font-normal text-rose-400">công</span>
+            </p>
+            <span className="text-[10px] text-rose-400">{holidayDatesInMonth.length} ngày lễ trong tháng</span>
+          </div>
+
           <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
             <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
             <p className="text-lg font-black text-success-300 font-mono mt-0.5">
               {monthWorkInfo.standardWorkDays} <span className="text-xs font-semibold text-success-400">công</span>
             </p>
-            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth}</span>
+            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth} (đã trừ lễ/Tết)</span>
           </div>
+        </div>
+      </div>
 
-          <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-primary-950/80 p-3 rounded-xl border border-primary-500/40">
-            <span className="text-[11px] text-primary-200 font-bold block">Chỉ tiêu KPI Tháng</span>
-            <p className="text-lg font-black text-white font-mono mt-0.5">
-              {monthWorkInfo.calculatedKpiTarget} <span className="text-xs font-semibold text-primary-300">view</span>
-            </p>
-            <span className="text-[10px] text-primary-300 font-mono">
-              {monthWorkInfo.standardWorkDays} × {effectiveKpiRatePerDay} view
-            </span>
+      {/* KPI TIÊU CHUẨN THÁNG THEO TỪNG NHÂN VIÊN */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-success-100 text-success-800 flex items-center justify-center">
+              <Calculator className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-900 text-base">
+                KPI tiêu chuẩn tháng {selectedMonth < 10 ? '0' + selectedMonth : selectedMonth} cho từng nhân viên
+              </h2>
+              <p className="text-xs text-slate-500">
+                Chỉ tiêu KPI tháng = (Chỉ tiêu x view/ngày) × ({monthWorkInfo.standardWorkDays} ngày công tháng {selectedMonth}). Thay đổi chỉ tiêu & level vị trí được quản lý tập trung trong Hồ sơ nhân viên / Hợp đồng.
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleSyncKpiToProfiles}
+            disabled={upsertKpiMonthly.isPending}
+            className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-60 shadow-md shadow-success-600/20"
+          >
+            <Calculator className="w-4 h-4" />
+            <span>Đồng bộ sang Bảng lương</span>
+          </button>
+        </div>
+
+        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <table className="w-full text-left text-xs text-slate-700 border-collapse">
+            <thead className="bg-slate-100 text-slate-800 uppercase text-[11px] font-bold border-b border-slate-300">
+              <tr>
+                <th className="py-3 px-4 min-w-[220px] border-r border-slate-200">Tên & Mã nhân viên</th>
+                <th className="py-3 px-4 min-w-[180px] border-r border-slate-200">Level vị trí</th>
+                <th className="py-3 px-3 text-center border-r border-slate-200">Chỉ tiêu (x view / ngày)</th>
+                <th className="py-3 px-3 text-center border-r border-slate-200">Ngày công tháng</th>
+                <th className="py-3 px-3 text-center">Số lượng KPI tiêu chuẩn tháng</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {employeeList.length === 0 ? (
+                <tr><td colSpan={5} className="py-8 text-center text-slate-400">Chưa có nhân viên nào.</td></tr>
+              ) : employeeList.map((emp) => (
+                <tr key={emp.id} className="hover:bg-slate-50">
+                  <td className="py-3 px-4 border-r border-slate-200">
+                    <div className="flex items-center gap-2.5">
+                      <RowAvatar path={emp.avatar_url} />
+                      <div>
+                        <p className="font-bold text-slate-900">{emp.full_name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{emp.employee_code} • {emp.department}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 border-r border-slate-200">
+                    {emp.kpi_level
+                      ? <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-primary-50 text-primary-700 border border-primary-200">{emp.kpi_level}</span>
+                      : <span className="text-slate-400 italic">Chưa thiết lập</span>}
+                  </td>
+                  <td className="py-3 px-3 text-center font-bold text-slate-800 border-r border-slate-200">
+                    {emp.kpi_target_per_day != null ? `${emp.kpi_target_per_day} view/ngày` : '—'}
+                  </td>
+                  <td className="py-3 px-3 text-center text-slate-600 border-r border-slate-200">{monthWorkInfo.standardWorkDays} công</td>
+                  <td className="py-3 px-3 text-center">
+                    <span className="text-base font-black text-success-700 font-mono">{getEmployeeKpiTarget(emp)}</span>
+                    <span className="text-[10px] text-slate-400 block">{emp.kpi_target_per_day || 0} view/ngày × {monthWorkInfo.standardWorkDays} công</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -681,6 +732,7 @@ export const AdminKpiOtView: React.FC = () => {
                 setEditingJob(null);
                 setOrderJob('');
                 setSubTask('');
+                setJobCategory('new_render');
                 setJobEmployeeId(employeeList[0]?.id || '');
                 setIsNewJobModalOpen(true);
               }}
@@ -692,12 +744,41 @@ export const AdminKpiOtView: React.FC = () => {
           </div>
         </div>
 
+        {/* Category stat cards: Tất cả / Render Dự Án / Chỉnh Sửa (Re Process) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 rounded-xl border-2 border-primary-300 bg-primary-50/60">
+            <span className="text-[11px] font-bold text-primary-700 uppercase flex items-center justify-between">
+              Tất cả công việc
+              <span className="px-2 py-0.5 rounded bg-primary-100 text-primary-800">{currentMonthJobs.length} bài</span>
+            </span>
+            <p className="text-2xl font-black text-slate-900 mt-1">{currentMonthJobs.reduce((s, j) => s + (j.views_count || 0), 0)} <span className="text-xs font-semibold text-slate-500">views</span></p>
+            <span className="text-xs text-success-700 font-bold">{currentMonthJobs.reduce((s, j) => s + (j.converted_kpi || 0), 0)} KPI quy đổi</span>
+          </div>
+          <div className="p-4 rounded-xl border border-success-200 bg-success-50/60">
+            <span className="text-[11px] font-bold text-success-700 uppercase flex items-center justify-between">
+              View Render Dự Án
+              <span className="px-2 py-0.5 rounded bg-success-100 text-success-800">{currentMonthJobs.filter(j => j.category !== 'reprocess').length} bài</span>
+            </span>
+            <p className="text-2xl font-black text-slate-900 mt-1">{currentMonthJobs.filter(j => j.category !== 'reprocess').reduce((s, j) => s + (j.views_count || 0), 0)} <span className="text-xs font-semibold text-slate-500">views</span></p>
+            <span className="text-xs text-success-700 font-bold">{currentMonthJobs.filter(j => j.category !== 'reprocess').reduce((s, j) => s + (j.converted_kpi || 0), 0)} KPI quy đổi</span>
+          </div>
+          <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60">
+            <span className="text-[11px] font-bold text-amber-700 uppercase flex items-center justify-between">
+              View Chỉnh Sửa (Re Process)
+              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">{currentMonthJobs.filter(j => j.category === 'reprocess').length} bài</span>
+            </span>
+            <p className="text-2xl font-black text-slate-900 mt-1">{currentMonthJobs.filter(j => j.category === 'reprocess').reduce((s, j) => s + (j.views_count || 0), 0)} <span className="text-xs font-semibold text-slate-500">views</span></p>
+            <span className="text-xs text-amber-700 font-bold">{currentMonthJobs.filter(j => j.category === 'reprocess').reduce((s, j) => s + (j.converted_kpi || 0), 0)} KPI quy đổi</span>
+          </div>
+        </div>
+
         <div className="overflow-x-auto border border-slate-300 rounded-xl">
           <table className="w-full text-left text-xs text-slate-700 border-collapse">
             <thead className="bg-slate-100 text-slate-800 uppercase text-[11px] font-bold border-b border-slate-300">
               <tr>
                 <th className="py-3 px-3 text-center w-12 border-r border-slate-300">STT</th>
                 <th className="py-3 px-4 min-w-[320px] border-r border-slate-300">Order / Job (Tên bài / Dự án)</th>
+                <th className="py-3 px-3 text-center border-r border-slate-300">Phân loại</th>
                 <th className="py-3 px-4 min-w-[160px] border-r border-slate-300">Assignee (Người thực hiện)</th>
                 <th className="py-3 px-3 text-center border-r border-slate-300">Số View</th>
                 <th className="py-3 px-3 text-center border-r border-slate-300">Quy đổi KPI</th>
@@ -709,7 +790,7 @@ export const AdminKpiOtView: React.FC = () => {
             <tbody className="divide-y divide-slate-200">
               {groupedJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-slate-400">
                     Chưa có bài/dự án nào trong Tháng {selectedMonth}/{selectedYear}. Bấm "Thêm bài mới" để nhập liệu.
                   </td>
                 </tr>
@@ -727,6 +808,9 @@ export const AdminKpiOtView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 font-semibold text-slate-900 leading-snug border-r border-slate-300">
                           {job.order_job}
+                        </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-300">
+                          {categoryBadge(job.category)}
                         </td>
                         <td className="py-3 px-4 font-bold text-slate-800 border-r border-slate-300">
                           {job.employees?.full_name}
@@ -784,6 +868,9 @@ export const AdminKpiOtView: React.FC = () => {
                         <td className="py-3 px-4 font-black text-slate-900 text-sm border-r border-slate-300" colSpan={1}>
                           {group.orderJob}
                         </td>
+                        <td className="py-3 px-3 text-center border-r border-slate-300">
+                          {new Set(group.items.map(i => i.category)).size === 1 ? categoryBadge(group.items[0].category) : <span className="text-[10px] text-slate-400 italic">Nhiều loại</span>}
+                        </td>
                         <td className="py-3 px-4 text-slate-400 italic text-xs border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center font-bold text-slate-500 border-r border-slate-300">
                           {group.items.reduce((sum, item) => sum + (item.views_count || 0), 0)}
@@ -815,6 +902,10 @@ export const AdminKpiOtView: React.FC = () => {
                             <div className="bg-slate-100/90 text-slate-800 px-3 py-1.5 rounded-md border-l-4 border-primary-500 font-semibold text-xs flex items-center justify-between">
                               <span>Sub-task : {item.sub_task || item.order_job}</span>
                             </div>
+                          </td>
+
+                          <td className="py-2 px-3 text-center border-r border-slate-300">
+                            {categoryBadge(item.category)}
                           </td>
 
                           <td className="py-2 px-4 font-bold text-slate-800 border-r border-slate-300">
@@ -879,7 +970,7 @@ export const AdminKpiOtView: React.FC = () => {
                 Tiến độ KPI của từng nhân viên đến hôm nay
               </h2>
               <p className="text-xs text-slate-500">
-                Tổng hợp số bài, tổng views, tổng điểm quy đổi và % hoàn thành KPI thực tế từ bảng nhập liệu
+                Tổng hợp số bài, tổng views, tách biệt View Render Dự Án vs View Chỉnh Sửa và % hoàn thành KPI thực tế
               </p>
             </div>
           </div>
@@ -889,14 +980,19 @@ export const AdminKpiOtView: React.FC = () => {
           {employeeList.map(emp => {
             // Real employee_id FK match — no more fuzzy assigneeName string matching.
             const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
+            const renderJobs = empJobs.filter(j => j.category !== 'reprocess');
+            const reprocessJobs = empJobs.filter(j => j.category === 'reprocess');
 
             const totalViews = empJobs.reduce((a, c) => a + (c.views_count || 0), 0);
             const totalKpi = empJobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
-            const target = monthWorkInfo.calculatedKpiTarget || 0;
+            const target = getEmployeeKpiTarget(emp);
             const pct = target ? Math.min(150, Math.round((totalKpi / target) * 100)) : 0;
             const estimatedBonus = companySettings
               ? Math.max(companySettings.kpi_bonus_min, Math.round(totalKpi * companySettings.kpi_bonus_per_point))
               : 0;
+
+            const sumViews = (jobs: KpiJobRow[]) => jobs.reduce((a, c) => a + (c.views_count || 0), 0);
+            const sumKpi = (jobs: KpiJobRow[]) => jobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
 
             return (
               <div key={emp.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
@@ -904,7 +1000,7 @@ export const AdminKpiOtView: React.FC = () => {
                   <RowAvatar path={emp.avatar_url} />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-900 text-xs truncate">{emp.full_name}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{emp.job_title}</p>
+                    {emp.kpi_level && <p className="text-[10px] text-primary-600 font-semibold truncate">{emp.kpi_level}</p>}
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                     pct >= 100 ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
@@ -925,10 +1021,25 @@ export const AdminKpiOtView: React.FC = () => {
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
+                  <span className="text-[10px] text-slate-400">
+                    Chỉ tiêu: {emp.kpi_target_per_day || 0} × {monthWorkInfo.standardWorkDays} công
+                  </span>
+                </div>
+
+                {/* Category breakdown */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="px-2 py-1.5 rounded-lg bg-success-50 border border-success-200 text-[10px]">
+                    <span className="block text-success-700 font-bold">Render Dự Án</span>
+                    <span className="text-slate-700">{sumViews(renderJobs)}v • {sumKpi(renderJobs)}đ</span>
+                  </div>
+                  <div className="px-2 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[10px]">
+                    <span className="block text-amber-700 font-bold">Chỉnh Sửa</span>
+                    <span className="text-slate-700">{sumViews(reprocessJobs)}v • {sumKpi(reprocessJobs)}đ</span>
+                  </div>
                 </div>
 
                 <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-200">
-                  <span>Tổng render views: <b>{totalViews} views</b></span>
+                  <span>Tổng: <b>{totalViews} views</b></span>
                   <span className="font-bold text-success-700">{formatVND(estimatedBonus)}</span>
                 </div>
               </div>
@@ -1093,6 +1204,17 @@ export const AdminKpiOtView: React.FC = () => {
                     {employeeList.map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code})</option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Phân loại *:</label>
+                  <select
+                    value={jobCategory}
+                    onChange={e => setJobCategory(e.target.value as 'new_render' | 'reprocess')}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                  >
+                    {JOB_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
               </div>

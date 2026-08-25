@@ -7,15 +7,16 @@ import { useUpdateEmployee } from '../../hooks/useEmployees';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useHR } from '../../context/HRContext';
 
-const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn'];
+const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn', 'Phụ lục hợp đồng'];
 const STATUSES = ['Đang hiệu lực', 'Sắp hết hạn', 'Hết hạn', 'Đã gia hạn'];
 const inputClass = 'w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30';
 
 export const ContractEditorModal: React.FC<{
   employee: DbEmployee;
   contract: DbContract | null;
+  existingContracts?: DbContract[];
   onClose: () => void;
-}> = ({ employee, contract, onClose }) => {
+}> = ({ employee, contract, existingContracts = [], onClose }) => {
   const { showToast } = useHR();
   const createContract = useCreateContract();
   const updateContract = useUpdateContract();
@@ -25,27 +26,37 @@ export const ContractEditorModal: React.FC<{
   const [form, setForm] = useState({
     contract_code: '',
     type: TYPES[1],
+    signed_date: '',
     start_date: '',
     end_date: '',
     position: '',
     salary: '',
+    kpi_target_month: '',
+    allowance_amount: '',
     status: STATUSES[0],
     note: '',
+    parent_contract_id: '',
   });
 
   useEffect(() => {
     setForm({
       contract_code: contract?.contract_code || '',
       type: contract?.type || TYPES[1],
+      signed_date: contract?.signed_date || '',
       start_date: contract?.start_date || '',
       end_date: contract?.end_date || '',
       position: contract?.position || employee.job_title || '',
       salary: contract?.salary?.toString() || employee.current_salary?.toString() || '',
+      kpi_target_month: contract?.kpi_target_month?.toString() || '',
+      allowance_amount: contract?.allowance_amount?.toString() || '',
       status: contract?.status || STATUSES[0],
       note: contract?.note || '',
+      parent_contract_id: contract?.parent_contract_id || '',
     });
     setFile(null);
   }, [contract, employee]);
+
+  const baseContracts = existingContracts.filter((c) => c.id !== contract?.id && !c.parent_contract_id);
 
   const set = (key: keyof typeof form, value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
@@ -72,12 +83,16 @@ export const ContractEditorModal: React.FC<{
       const values = {
         contract_code: form.contract_code.trim(),
         type: form.type,
+        signed_date: form.signed_date || null,
         start_date: form.start_date,
         end_date: form.type === 'HĐ không xác định thời hạn' ? null : form.end_date || null,
         position: form.position.trim() || null,
         salary: form.salary ? Number(form.salary) : null,
+        kpi_target_month: form.kpi_target_month ? Number(form.kpi_target_month) : null,
+        allowance_amount: form.allowance_amount ? Number(form.allowance_amount) : 0,
         status: form.status,
         note: form.note.trim() || null,
+        parent_contract_id: form.parent_contract_id || null,
         document_path: documentPath,
         document_name: documentName,
       };
@@ -123,13 +138,24 @@ export const ContractEditorModal: React.FC<{
           <label className="text-xs font-semibold text-slate-700">Mã hợp đồng
             <input required value={form.contract_code} onChange={e => set('contract_code', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
-          <label className="text-xs font-semibold text-slate-700">Loại hợp đồng
+          <label className="text-xs font-semibold text-slate-700">Loại HĐ
             <select value={form.type} onChange={e => set('type', e.target.value)} className={`${inputClass} mt-1`}>{TYPES.map(value => <option key={value}>{value}</option>)}</select>
           </label>
-          <label className="text-xs font-semibold text-slate-700">Ngày bắt đầu
+          {form.type === 'Phụ lục hợp đồng' && (
+            <label className="text-xs font-semibold text-slate-700">Phụ lục của hợp đồng gốc
+              <select value={form.parent_contract_id} onChange={e => set('parent_contract_id', e.target.value)} className={`${inputClass} mt-1`}>
+                <option value="">-- Chọn hợp đồng gốc --</option>
+                {baseContracts.map(c => <option key={c.id} value={c.id}>{c.contract_code} ({c.type})</option>)}
+              </select>
+            </label>
+          )}
+          <label className="text-xs font-semibold text-slate-700">Ngày ký
+            <input type="date" value={form.signed_date} onChange={e => set('signed_date', e.target.value)} className={`${inputClass} mt-1`} />
+          </label>
+          <label className="text-xs font-semibold text-slate-700">Thời hạn hợp đồng — bắt đầu
             <input required type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
-          <label className="text-xs font-semibold text-slate-700">Ngày kết thúc
+          <label className="text-xs font-semibold text-slate-700">Thời hạn hợp đồng — kết thúc
             <input type="date" disabled={form.type === 'HĐ không xác định thời hạn'} value={form.end_date} onChange={e => set('end_date', e.target.value)} className={`${inputClass} mt-1 disabled:bg-slate-100`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Vị trí
@@ -137,6 +163,12 @@ export const ContractEditorModal: React.FC<{
           </label>
           <label className="text-xs font-semibold text-slate-700">Mức lương
             <input type="number" min="0" value={form.salary} onChange={e => set('salary', e.target.value)} className={`${inputClass} mt-1`} />
+          </label>
+          <label className="text-xs font-semibold text-slate-700">KPI/tháng
+            <input type="number" min="0" step="0.1" value={form.kpi_target_month} onChange={e => set('kpi_target_month', e.target.value)} className={`${inputClass} mt-1`} />
+          </label>
+          <label className="text-xs font-semibold text-slate-700">Phụ cấp
+            <input type="number" min="0" value={form.allowance_amount} onChange={e => set('allowance_amount', e.target.value)} placeholder="0" className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Trạng thái
             <select value={form.status} onChange={e => set('status', e.target.value)} className={`${inputClass} mt-1`}>{STATUSES.map(value => <option key={value}>{value}</option>)}</select>
@@ -148,7 +180,7 @@ export const ContractEditorModal: React.FC<{
               <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
             </span>
           </label>
-          <label className="sm:col-span-2 text-xs font-semibold text-slate-700">Ghi chú
+          <label className="sm:col-span-2 text-xs font-semibold text-slate-700">Ghi chú điều khoản
             <textarea rows={3} value={form.note} onChange={e => set('note', e.target.value)} className={`${inputClass} mt-1 resize-none`} />
           </label>
         </div>

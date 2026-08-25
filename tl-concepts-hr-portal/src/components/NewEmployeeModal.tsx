@@ -76,9 +76,9 @@ export const NewEmployeeModal: React.FC = () => {
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Thêm Hồ sơ Nhân viên TL CONCEPTS</h2>
+              <h2 className="text-lg font-bold text-slate-900">Mời Nhân viên qua Email</h2>
               <p className="text-xs text-slate-500">
-                Hệ thống sẽ gửi lời mời đăng nhập tới email — CCCD/MST/tài khoản ngân hàng bổ sung sau ở màn hồ sơ chi tiết.
+                Luồng ngoại lệ cho người chưa có email công ty. Nhân viên thông thường tự đăng ký tại trang đăng nhập.
               </p>
             </div>
           </div>

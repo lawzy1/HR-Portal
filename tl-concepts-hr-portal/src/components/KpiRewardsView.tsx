@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useKpiJobItems, useKpiMonthly } from '../hooks/useKpi';
-import { useCompanySettings } from '../hooks/useCompanySettings';
+import { useCompanyHolidays } from '../hooks/useLeave';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 import { getMonthWorkDays } from '../utils/workDays';
 import {
@@ -38,13 +38,20 @@ export const KpiRewardsView: React.FC = () => {
   const { data: employee } = useEmployee(employeeId);
   const { data: jobs } = useKpiJobItems(employeeId, selectedMonth, selectedYear);
   const { data: kpiMonthly } = useKpiMonthly(employeeId, selectedMonth, selectedYear);
-  const { data: companySettings } = useCompanySettings();
+  const { data: holidays } = useCompanyHolidays();
 
-  const kpiRatePerDay = companySettings?.kpi_rate_per_day ?? 1.5;
+  const kpiTargetPerDay = employee?.kpi_target_per_day ?? 0;
+
+  const holidayDatesInMonth = useMemo(
+    () => (holidays || []).filter((h) => h.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).map((h) => h.date),
+    [holidays, selectedMonth, selectedYear]
+  );
 
   const workDaysInfo = useMemo(() => {
-    return getMonthWorkDays(selectedMonth, selectedYear, kpiRatePerDay);
-  }, [selectedMonth, selectedYear, kpiRatePerDay]);
+    return getMonthWorkDays(selectedMonth, selectedYear, holidayDatesInMonth);
+  }, [selectedMonth, selectedYear, holidayDatesInMonth]);
+
+  const dynamicKpiTarget = Number((kpiTargetPerDay * workDaysInfo.standardWorkDays).toFixed(1));
 
   const assignedJobs = useMemo(() => jobs || [], [jobs]);
 
@@ -86,7 +93,6 @@ export const KpiRewardsView: React.FC = () => {
     return kpiMonthly?.kpi_converted_views || 0;
   }, [assignedJobs, kpiMonthly]);
 
-  const dynamicKpiTarget = workDaysInfo.calculatedKpiTarget;
   const completionPercentage = dynamicKpiTarget > 0 ? Math.round((totalConvertedKpi / dynamicKpiTarget) * 100) : 100;
 
   if (!employee) {
@@ -153,8 +159,8 @@ export const KpiRewardsView: React.FC = () => {
           </div>
 
           <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 text-right">
-            <span className="text-[10px] text-slate-400 block font-medium">Định mức KPI / ngày công (do Admin cấu hình)</span>
-            <span className="text-sm font-bold text-success-400">{kpiRatePerDay} view/công</span>
+            <span className="text-[10px] text-slate-400 block font-medium">Chỉ tiêu KPI của bạn (do Admin cấu hình)</span>
+            <span className="text-sm font-bold text-success-400">{kpiTargetPerDay} view/công</span>
           </div>
         </div>
 
@@ -168,8 +174,8 @@ export const KpiRewardsView: React.FC = () => {
             <p className="text-base font-bold text-amber-300 font-mono mt-0.5">{workDaysInfo.saturdaysCount} <span className="text-xs font-normal text-slate-400">buổi</span></p>
           </div>
           <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-            <span className="text-[11px] text-slate-400 block">Chủ Nhật (Nghỉ x 0)</span>
-            <p className="text-base font-bold text-slate-400 font-mono mt-0.5">{workDaysInfo.sundaysCount} <span className="text-xs font-normal text-slate-500">ngày</span></p>
+            <span className="text-[11px] text-slate-400 block">Nghỉ Lễ/Tết</span>
+            <p className="text-base font-bold text-rose-300 font-mono mt-0.5">-{workDaysInfo.holidaysDeducted} <span className="text-xs font-normal text-slate-500">công</span></p>
           </div>
           <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
             <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
@@ -377,7 +383,7 @@ export const KpiRewardsView: React.FC = () => {
           <div>
             <h4 className="text-xs font-bold text-slate-900">Tình trạng hoàn thành chỉ tiêu tháng</h4>
             <p className="text-[11px] text-slate-500">
-              Chỉ tiêu: <b>{dynamicKpiTarget} view</b> ({workDaysInfo.standardWorkDays} ngày công × {kpiRatePerDay} view/công) | Đã đạt <b>{totalConvertedKpi} điểm</b> ({completionPercentage}%)
+              Chỉ tiêu: <b>{dynamicKpiTarget} view</b> ({workDaysInfo.standardWorkDays} ngày công × {kpiTargetPerDay} view/công) | Đã đạt <b>{totalConvertedKpi} điểm</b> ({completionPercentage}%)
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { EmployeeOnboardingPage } from '../pages/EmployeeOnboardingPage';
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, profile, loading } = useAuth();
@@ -15,6 +16,10 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (profile && !profile.isActive && profile.employeeId) {
+    return <EmployeeOnboardingPage />;
   }
 
   if (!profile || !profile.isActive) {

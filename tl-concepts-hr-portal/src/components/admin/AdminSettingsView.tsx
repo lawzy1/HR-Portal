@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useCompanySettings, useUpdateCompanySettings } from '../../hooks/useCompanySettings';
-import { useAllProfiles, useUpdateProfileRole } from '../../hooks/useProfiles';
+import { useAllProfiles, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
@@ -44,6 +44,7 @@ export const AdminSettingsView: React.FC = () => {
   const { data: profilesData } = useAllProfiles();
   const profiles = profilesData || [];
   const updateProfileRole = useUpdateProfileRole();
+  const updateProfileAccess = useUpdateProfileAccess();
 
   // Company parameter form state — seeded from the real row once it loads.
   const [bhxhEmployeeRate, setBhxhEmployeeRate] = useState(8);
@@ -66,6 +67,13 @@ export const AdminSettingsView: React.FC = () => {
       {
         onSuccess: () => showToast('Đã cập nhật vai trò phân quyền mới cho nhân viên.'),
       }
+    );
+  };
+
+  const handleAccessChange = (profileId: string, isActive: boolean) => {
+    updateProfileAccess.mutate(
+      { profileId, isActive },
+      { onSuccess: () => showToast(isActive ? 'Đã duyệt và kích hoạt tài khoản.' : 'Đã khóa quyền truy cập tài khoản.') }
     );
   };
 
@@ -208,12 +216,12 @@ export const AdminSettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Role Assignment for Active Employees */}
+      {/* Role assignment and approval for employee self-registration */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h2 className="font-bold text-slate-900 text-base flex items-center space-x-2">
             <Users className="w-5 h-5 text-success-600" />
-            <span>3. Quản lý Phân quyền theo Nhân viên</span>
+            <span>3. Duyệt Tài khoản & Phân quyền Nhân viên</span>
           </h2>
         </div>
 
@@ -225,6 +233,7 @@ export const AdminSettingsView: React.FC = () => {
                 <th className="py-3 px-4">Chức danh & Phòng ban</th>
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Vai trò Phân quyền hiện tại</th>
+                <th className="py-3 px-4">Trạng thái tài khoản</th>
                 <th className="py-3 px-4 text-center">Thay đổi Vai trò</th>
               </tr>
             </thead>
@@ -250,6 +259,20 @@ export const AdminSettingsView: React.FC = () => {
                       }`}>
                         {profile.role}
                       </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        type="button"
+                        onClick={() => handleAccessChange(profile.id, !profile.is_active)}
+                        disabled={updateProfileAccess.isPending}
+                        className={`rounded-lg px-3 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-60 ${
+                          profile.is_active
+                            ? 'bg-success-100 text-success-800 hover:bg-success-200'
+                            : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        }`}
+                      >
+                        {profile.is_active ? 'Đang hoạt động · Khóa' : 'Chờ duyệt · Kích hoạt'}
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <select

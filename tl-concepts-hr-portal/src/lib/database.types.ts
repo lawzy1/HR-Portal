@@ -179,6 +179,7 @@ export type Database = {
       }
       contracts: {
         Row: {
+          allowance_amount: number
           company_id: string
           contract_code: string
           created_at: string
@@ -187,14 +188,18 @@ export type Database = {
           employee_id: string
           end_date: string | null
           id: string
+          kpi_target_month: number | null
           note: string | null
+          parent_contract_id: string | null
           position: string | null
           salary: number | null
+          signed_date: string | null
           start_date: string
           status: string
           type: string
         }
         Insert: {
+          allowance_amount?: number
           company_id: string
           contract_code: string
           created_at?: string
@@ -203,14 +208,18 @@ export type Database = {
           employee_id: string
           end_date?: string | null
           id?: string
+          kpi_target_month?: number | null
           note?: string | null
+          parent_contract_id?: string | null
           position?: string | null
           salary?: number | null
+          signed_date?: string | null
           start_date: string
           status?: string
           type: string
         }
         Update: {
+          allowance_amount?: number
           company_id?: string
           contract_code?: string
           created_at?: string
@@ -219,9 +228,12 @@ export type Database = {
           employee_id?: string
           end_date?: string | null
           id?: string
+          kpi_target_month?: number | null
           note?: string | null
+          parent_contract_id?: string | null
           position?: string | null
           salary?: number | null
+          signed_date?: string | null
           start_date?: string
           status?: string
           type?: string
@@ -239,6 +251,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_parent_contract_id_fkey"
+            columns: ["parent_contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
         ]
@@ -370,6 +389,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employee_sensitive_info_identity_verified_by_fkey"
+            columns: ["identity_verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       employees: {
@@ -387,6 +413,8 @@ export type Database = {
           gender: string | null
           id: string
           job_title: string | null
+          kpi_level: string | null
+          kpi_target_per_day: number | null
           last_salary_review_date: string | null
           marital_status: string | null
           permanent_address: string | null
@@ -410,6 +438,8 @@ export type Database = {
           gender?: string | null
           id?: string
           job_title?: string | null
+          kpi_level?: string | null
+          kpi_target_per_day?: number | null
           last_salary_review_date?: string | null
           marital_status?: string | null
           permanent_address?: string | null
@@ -433,6 +463,8 @@ export type Database = {
           gender?: string | null
           id?: string
           job_title?: string | null
+          kpi_level?: string | null
+          kpi_target_per_day?: number | null
           last_salary_review_date?: string | null
           marital_status?: string | null
           permanent_address?: string | null
@@ -499,6 +531,7 @@ export type Database = {
       }
       kpi_job_items: {
         Row: {
+          category: string
           company_id: string
           completed_at: string | null
           converted_kpi: number | null
@@ -516,6 +549,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          category?: string
           company_id: string
           completed_at?: string | null
           converted_kpi?: number | null
@@ -533,6 +567,7 @@ export type Database = {
           year: number
         }
         Update: {
+          category?: string
           company_id?: string
           completed_at?: string | null
           converted_kpi?: number | null
@@ -672,6 +707,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_balance_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1004,61 +1046,11 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      work_events: {
-        Row: {
-          approver_comment: string | null
-          approver_id: string | null
-          company_id: string
-          created_at: string
-          employee_id: string
-          event_date: string
-          event_type: string
-          id: string
-          minutes: number | null
-          reason: string
-          status: string
-        }
-        Insert: {
-          approver_comment?: string | null
-          approver_id?: string | null
-          company_id: string
-          created_at?: string
-          employee_id: string
-          event_date: string
-          event_type: string
-          id?: string
-          minutes?: number | null
-          reason: string
-          status?: string
-        }
-        Update: {
-          approver_comment?: string | null
-          approver_id?: string | null
-          company_id?: string
-          created_at?: string
-          employee_id?: string
-          event_date?: string
-          event_type?: string
-          id?: string
-          minutes?: number | null
-          reason?: string
-          status?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "work_events_company_id_fkey"
-            columns: ["company_id"]
+            foreignKeyName: "payroll_records_published_by_fkey"
+            columns: ["published_by"]
             isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "work_events_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1152,6 +1144,70 @@ export type Database = {
           },
           {
             foreignKeyName: "salary_history_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_events: {
+        Row: {
+          approver_comment: string | null
+          approver_id: string | null
+          company_id: string
+          created_at: string
+          employee_id: string
+          event_date: string
+          event_type: string
+          id: string
+          minutes: number | null
+          reason: string
+          status: string
+        }
+        Insert: {
+          approver_comment?: string | null
+          approver_id?: string | null
+          company_id: string
+          created_at?: string
+          employee_id: string
+          event_date: string
+          event_type: string
+          id?: string
+          minutes?: number | null
+          reason: string
+          status?: string
+        }
+        Update: {
+          approver_comment?: string | null
+          approver_id?: string | null
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          minutes?: number | null
+          reason?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_events_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_events_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"

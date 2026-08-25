@@ -5,8 +5,51 @@ import type { Tables, TablesUpdate } from '../lib/database.types';
 export type DbEmployee = Tables<'employees'>;
 export type DbEmployeeSensitiveInfo = Tables<'employee_sensitive_info'>;
 export type DbEmployeeRelative = Tables<'employee_relatives'>;
+export type DbEmployeeInvitation = Tables<'employee_invitations'>;
 
 const EMPLOYEES_KEY = ['employees'] as const;
+const EMPLOYEE_INVITATIONS_KEY = ['employee_invitations'] as const;
+
+export function useEmployeeInvitations() {
+  return useQuery({
+    queryKey: EMPLOYEE_INVITATIONS_KEY,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employee_invitations')
+        .select('*')
+        .order('last_sent_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+interface ManageEmployeeInvitationInput {
+  action: 'resend' | 'revoke';
+  employeeId: string;
+}
+
+interface ManageEmployeeInvitationResult {
+  emailDelivered?: boolean;
+  actionLink?: string | null;
+  revoked?: boolean;
+}
+
+export function useManageEmployeeInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ManageEmployeeInvitationInput) => {
+      const { data, error } = await supabase.functions.invoke<ManageEmployeeInvitationResult>('manage-employee-invitation', {
+        body: input,
+      });
+      if (error) throw error;
+      return data!;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EMPLOYEE_INVITATIONS_KEY });
+    },
+  });
+}
 
 // RLS scopes every query to the caller's own company automatically — no
 // company_id filter needed client-side (see employees_select_self_or_admin
@@ -80,8 +123,8 @@ export function useUpdateEmployee() {
   });
 }
 
-// Soft delete only — see the Phase 2 migration comment on why there is no
-// DELETE policy on `employees` at all.
+// Offboarding preserves the record. A separate trusted Edge Function is used
+// for the explicit permanent-delete path after an employee has left.
 export function useOffboardEmployee() {
   const updateEmployee = useUpdateEmployee();
   return {
@@ -89,6 +132,24 @@ export function useOffboardEmployee() {
     mutate: (id: string) => updateEmployee.mutate({ id, updates: { status: 'Đã nghỉ việc' } }),
     mutateAsync: (id: string) => updateEmployee.mutateAsync({ id, updates: { status: 'Đã nghỉ việc' } }),
   };
+}
+
+export function useDeleteOffboardedEmployee() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (employeeId: string) => {
+      const { error } = await supabase.functions.invoke('delete-offboarded-employee', { body: { employeeId } });
+      if (error) throw error;
+    },
+    onSuccess: (_data, employeeId) => {
+      queryClient.invalidateQueries({ queryKey: EMPLOYEES_KEY });
+      queryClient.removeQueries({ queryKey: [...EMPLOYEES_KEY, employeeId] });
+      queryClient.removeQueries({ queryKey: ['employee_sensitive_info', employeeId] });
+      queryClient.removeQueries({ queryKey: ['employee_relatives', employeeId] });
+      queryClient.invalidateQueries({ queryKey: EMPLOYEE_INVITATIONS_KEY });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
 }
 
 // ===== employee_sensitive_info (CCCD/MST/BHXH/bank) — 1:1 with employees =====

@@ -12,17 +12,20 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useAuth } from '../../context/AuthContext';
 import { useEmployees } from '../../hooks/useEmployees';
 import { AdminTabType } from '../../types';
 import { Logo } from '../Logo';
 
 export const AdminSidebar: React.FC = () => {
-  const { adminTab, setAdminTab, reminders } = useHR();
+  const { adminTab, setAdminTab, reminders, pendingOnboardingCount } = useHR();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const { data: employees } = useEmployees();
 
   const unreadRemindersCount = reminders.filter(r => !r.isRead).length;
 
-  const menuItems: { id: AdminTabType; label: string; icon: React.ReactNode; badge?: number }[] = [
+  const menuItems: { id: AdminTabType; label: string; icon: React.ReactNode; badge?: number; adminOnly?: boolean }[] = [
     {
       id: 'admin-dashboard',
       label: 'Tổng quan HR',
@@ -58,17 +61,19 @@ export const AdminSidebar: React.FC = () => {
       id: 'admin-reminders',
       label: 'Thông báo & Cảnh báo',
       icon: <BellRing className="w-5 h-5" />,
-      badge: unreadRemindersCount > 0 ? unreadRemindersCount : undefined,
+      badge: pendingOnboardingCount || (unreadRemindersCount > 0 ? unreadRemindersCount : undefined),
     },
     {
       id: 'admin-reports',
       label: 'Báo cáo & Audit',
       icon: <FileBarChart className="w-5 h-5" />,
+      adminOnly: true,
     },
     {
       id: 'admin-settings',
       label: 'Cài đặt Phân quyền',
       icon: <ShieldCheck className="w-5 h-5" />,
+      adminOnly: true,
     },
   ];
 
@@ -89,7 +94,7 @@ export const AdminSidebar: React.FC = () => {
       <div className="mx-3 my-3 p-3 bg-sage-50 rounded-xl border border-sage-200">
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></span>
-          <span className="text-xs font-semibold text-sage-800">Chế độ Admin Portal</span>
+          <span className="text-xs font-semibold text-sage-800">{isAdmin ? 'Chế độ Admin Portal' : 'Chế độ HR / Kế toán'}</span>
         </div>
       </div>
 
@@ -98,7 +103,7 @@ export const AdminSidebar: React.FC = () => {
         <div className="px-3 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
           Menu Quản trị
         </div>
-        {menuItems.map(item => {
+        {menuItems.filter((item) => isAdmin || !item.adminOnly).map(item => {
           const isActive = adminTab === item.id;
           return (
             <button

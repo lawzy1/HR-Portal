@@ -19,6 +19,16 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   }
 
   if (profile && !profile.isActive && profile.employeeId) {
+    if (profile.onboardingStatus === 'revoked') {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="max-w-md text-center space-y-2">
+            <p className="font-bold text-slate-900">Lời mời kích hoạt đã được thu hồi</p>
+            <p className="text-sm text-slate-500">Vui lòng liên hệ Admin/HR để nhận lời mời mới.</p>
+          </div>
+        </div>
+      );
+    }
     if (profile.onboardingStatus === 'invited') {
       return <Navigate to="/auth/activate" replace />;
     }

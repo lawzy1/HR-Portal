@@ -72,6 +72,7 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 - **Comment tối thiểu, chỉ giải thích lý do không hiển nhiên** (không comment mô tả code làm gì). Nhiều chỗ dùng prefix `// ponytail: <giới hạn cố ý> <khi nào nên nâng cấp>` khi cố tình đơn giản hoá — ví dụ `useLeave.ts:100`, migration `employee_self_registration.sql:8`. Theo đúng convention này khi cắt góc có chủ đích, đừng âm thầm không ghi chú.
 - Tailwind utility classes trực tiếp trong JSX, không có file CSS riêng ngoài `index.css`. Màu chủ đạo: `primary-*` (cam/đỏ TL Concepts), `success-*` (xanh lá), `slate-*` (nền/text).
 - Tiếng Việt cho MỌI text hiển thị cho user (label, toast, placeholder). Tiếng Anh cho code/biến/comment.
+- **Popup xác nhận/nhập liệu:** luôn tái sử dụng `src/components/ConfirmationDialog.tsx` (dựa trên `@radix-ui/react-dialog`) cho thao tác cần xác nhận hoặc cần nhập lý do; tuyệt đối không dùng `window.alert`, `window.confirm`, `window.prompt` hoặc tự dựng thêm popup fixed riêng. Phản hồi ngắn sau thao tác thành công/lỗi dùng `showToast` + `src/components/Toast.tsx`.
 - Không có component test. "Test" = build sạch + tự thao tác qua Browser pane + query DB đối chiếu kết quả.
 
 ## 6. Lessons Learned (từ các session trước, đừng lặp lại)

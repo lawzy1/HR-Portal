@@ -6,10 +6,8 @@ export type DbProfile = Tables<'profiles'>;
 
 // Admin-only company-wide list (RLS enforces this server-side too) — every
 // profile joined with its employee record, for the role-assignment table.
-// The real system only has two roles (see `public.user_role` in
-// supabase/migrations/20260822105256_foundation.sql) — the prototype's
-// four-tier HR/Manager RBAC fantasy was never actually backed by RLS
-// anywhere in this app, only is_admin() (admin vs everyone else).
+// Account and role management stays Admin-only. HR/Kế toán receives access
+// to business tables through `is_backoffice()`, never through this hook.
 export function useAllProfiles() {
   return useQuery({
     queryKey: ['profiles', 'all'],
@@ -27,7 +25,7 @@ export function useAllProfiles() {
 export function useUpdateProfileRole() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ profileId, role }: { profileId: string; role: 'admin' | 'employee' }) => {
+    mutationFn: async ({ profileId, role }: { profileId: string; role: 'admin' | 'hr' | 'employee' }) => {
       const { data, error } = await supabase.from('profiles').update({ role }).eq('id', profileId).select().single();
       if (error) throw error;
       return data;
@@ -66,6 +64,9 @@ export function useReviewEmployeeOnboarding() {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
   });
 }

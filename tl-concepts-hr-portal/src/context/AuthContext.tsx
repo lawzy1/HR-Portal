@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
-export type AppRole = 'admin' | 'employee';
+export type AppRole = 'admin' | 'hr' | 'employee';
 
 export interface AuthProfile {
   id: string;
@@ -10,7 +10,7 @@ export interface AuthProfile {
   employeeId: string | null;
   role: AppRole;
   isActive: boolean;
-  onboardingStatus: 'invited' | 'in_progress' | 'submitted' | 'needs_changes' | 'approved';
+  onboardingStatus: 'invited' | 'in_progress' | 'submitted' | 'needs_changes' | 'approved' | 'revoked';
   onboardingNote: string | null;
 }
 

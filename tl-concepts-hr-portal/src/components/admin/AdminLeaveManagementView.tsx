@@ -39,6 +39,7 @@ type AdjustmentTarget = { employeeId: string; companyId: string; employeeName: s
 export const AdminLeaveManagementView: React.FC = () => {
   const { showToast } = useHR();
   const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const year = new Date().getFullYear();
   const month = new Date().getMonth() + 1;
 
@@ -174,8 +175,10 @@ export const AdminLeaveManagementView: React.FC = () => {
                   <td className="p-2.5">{event.minutes ? `${event.minutes} phút` : '—'}</td>
                   <td className="p-2.5">{event.reason}</td>
                   <td className="p-2.5 space-x-1">
-                    <button onClick={() => handleWorkEventStatus(event.id, 'Đã duyệt')} className="px-2 py-1 rounded bg-success-600 text-white font-bold cursor-pointer">Duyệt</button>
-                    <button onClick={() => handleWorkEventStatus(event.id, 'Từ chối')} className="px-2 py-1 rounded bg-rose-100 text-rose-800 font-bold cursor-pointer">Từ chối</button>
+                    {isAdmin ? <>
+                      <button onClick={() => handleWorkEventStatus(event.id, 'Đã duyệt')} className="px-2 py-1 rounded bg-success-600 text-white font-bold cursor-pointer">Duyệt</button>
+                      <button onClick={() => handleWorkEventStatus(event.id, 'Từ chối')} className="px-2 py-1 rounded bg-rose-100 text-rose-800 font-bold cursor-pointer">Từ chối</button>
+                    </> : <span className="text-[11px] font-semibold text-amber-700">Chờ Admin xử lý</span>}
                   </td>
                 </tr>
               ))}
@@ -221,7 +224,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 shrink-0">
+                {isAdmin ? <div className="flex items-center space-x-2 shrink-0">
                   <button
                     onClick={() => setPendingAction({ requestId: req.id, employeeId: req.employee_id, action: 'Đã duyệt', employeeName: req.employees?.full_name || '' })}
                     className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold shadow-md shadow-success-600/20 flex items-center space-x-1 transition-all cursor-pointer"
@@ -236,7 +239,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                     <XCircle className="w-4 h-4" />
                     <span>Từ chối</span>
                   </button>
-                </div>
+                </div> : <span className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Chờ Admin phê duyệt</span>}
               </div>
             ))}
           </div>

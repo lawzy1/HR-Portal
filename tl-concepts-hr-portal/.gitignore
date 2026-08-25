@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local HR source templates contain employee and compensation data. They are
+# implementation references only and must never be published with the app.
+/templates/

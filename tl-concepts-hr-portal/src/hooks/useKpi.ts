@@ -134,3 +134,39 @@ export function useUpsertKpiMonthly() {
     },
   });
 }
+
+export function useSubmitKpiMonth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ month, year }: { month: number; year: number }) => {
+      const { data, error } = await supabase.rpc('submit_kpi_month', { p_month: month, p_year: year });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+  });
+}
+
+export function useApproveKpiMonth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ month, year }: { month: number; year: number }) => {
+      const { data, error } = await supabase.rpc('approve_kpi_month', { p_month: month, p_year: year });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+  });
+}
+
+export function useRejectKpiMonth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ month, year, reason }: { month: number; year: number; reason: string }) => {
+      const { data, error } = await supabase.rpc('reject_kpi_month', { p_month: month, p_year: year, p_reason: reason });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+  });
+}

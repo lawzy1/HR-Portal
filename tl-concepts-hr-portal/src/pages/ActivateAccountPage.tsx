@@ -1,17 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 export const ActivateAccountPage: React.FC = () => {
-  const { session, loading, refreshProfile } = useAuth();
+  const { session, loading, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCheckingInvitation, setIsCheckingInvitation] = useState(true);
+
+  useEffect(() => {
+    if (!session || profile?.onboardingStatus !== 'invited') {
+      setIsCheckingInvitation(false);
+      return;
+    }
+    let isMounted = true;
+    supabase.rpc('mark_own_invitation_opened').then(({ error: invitationError }) => {
+      if (!isMounted) return;
+      setError(invitationError?.message ?? null);
+      setIsCheckingInvitation(false);
+    });
+    return () => { isMounted = false; };
+  }, [profile?.onboardingStatus, session]);
 
   if (loading) return <Loading />;
   if (!session) {
@@ -27,6 +42,7 @@ export const ActivateAccountPage: React.FC = () => {
     if (password.length < 8) return setError('Mật khẩu cần ít nhất 8 ký tự.');
     if (password !== confirmPassword) return setError('Mật khẩu xác nhận chưa khớp.');
 
+    if (isCheckingInvitation || error) return;
     setIsSaving(true);
     try {
       const { error: passwordError } = await supabase.auth.updateUser({ password });
@@ -49,8 +65,8 @@ export const ActivateAccountPage: React.FC = () => {
         <PasswordField label="Mật khẩu mới" value={password} show={showPassword} onToggle={() => setShowPassword((value) => !value)} onChange={setPassword} />
         <PasswordField label="Xác nhận mật khẩu" value={confirmPassword} show={showPassword} onToggle={() => setShowPassword((value) => !value)} onChange={setConfirmPassword} />
         {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</p>}
-        <button type="submit" disabled={isSaving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173f37] px-4 py-3 text-sm font-bold text-white hover:bg-[#0f302a] disabled:opacity-60">
-          {isSaving && <Loader2 className="h-4 w-4 animate-spin" />} Kích hoạt và điền hồ sơ
+        <button type="submit" disabled={isSaving || isCheckingInvitation || !!error} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173f37] px-4 py-3 text-sm font-bold text-white hover:bg-[#0f302a] disabled:opacity-60">
+          {(isSaving || isCheckingInvitation) && <Loader2 className="h-4 w-4 animate-spin" />} {isCheckingInvitation ? 'Đang kiểm tra lời mời...' : 'Kích hoạt và điền hồ sơ'}
         </button>
       </form>
     </ActivateFrame>

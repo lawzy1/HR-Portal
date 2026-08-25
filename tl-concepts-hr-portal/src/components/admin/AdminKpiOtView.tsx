@@ -10,6 +10,9 @@ import {
   Download,
   Printer,
   CalendarDays,
+  Send,
+  ShieldCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useAuth } from '../../context/AuthContext';
@@ -21,11 +24,16 @@ import {
   useUpdateKpiJobItem,
   useDeleteKpiJobItem,
   useUpsertKpiMonthly,
+  useAllKpiMonthly,
+  useSubmitKpiMonth,
+  useApproveKpiMonth,
+  useRejectKpiMonth,
 } from '../../hooks/useKpi';
 import { useAllOtRecords, useCreateOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { useCompanyHolidays } from '../../hooks/useLeave';
 import { getMonthWorkDays } from '../../utils/workDays';
+import { ConfirmationDialog } from '../ConfirmationDialog';
 
 const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
   { value: 'new_render', label: 'New Render' },
@@ -65,6 +73,7 @@ const isSameMonthYear = (dateStr: string, month: number, year: number): boolean 
 export const AdminKpiOtView: React.FC = () => {
   const { selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin, setIsImportKpiModalOpen, showToast } = useHR();
   const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
 
   const { data: employees } = useEmployees();
   const { data: companySettings } = useCompanySettings();
@@ -92,6 +101,11 @@ export const AdminKpiOtView: React.FC = () => {
 
   const { data: currentMonthJobsData } = useAllKpiJobItems(selectedMonth, selectedYear);
   const currentMonthJobs = useMemo(() => currentMonthJobsData || [], [currentMonthJobsData]);
+  const { data: monthlyKpiData } = useAllKpiMonthly(selectedMonth, selectedYear);
+  const monthlyKpi = monthlyKpiData || [];
+  const hasPendingKpi = monthlyKpi.some((record) => record.publish_status === 'pending_approval');
+  const hasPublishedKpi = monthlyKpi.some((record) => record.publish_status === 'published');
+  const hasEditableKpi = monthlyKpi.some((record) => record.publish_status === 'draft' || record.publish_status === 'rejected');
 
   const { data: allOtRecordsData } = useAllOtRecords();
   const allOtRecords: OtRecordRow[] = allOtRecordsData || [];
@@ -100,6 +114,9 @@ export const AdminKpiOtView: React.FC = () => {
   const updateKpiJobItem = useUpdateKpiJobItem();
   const deleteKpiJobItem = useDeleteKpiJobItem();
   const upsertKpiMonthly = useUpsertKpiMonthly();
+  const submitKpiMonth = useSubmitKpiMonth();
+  const approveKpiMonth = useApproveKpiMonth();
+  const rejectKpiMonth = useRejectKpiMonth();
   const createOtRecord = useCreateOtRecord();
   const updateOtRecord = useUpdateOtRecord();
 
@@ -129,6 +146,8 @@ export const AdminKpiOtView: React.FC = () => {
   const [otPresetType, setOtPresetType] = useState<'AUTO' | 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'CUSTOM'>('AUTO');
   const [customOtPercentage, setCustomOtPercentage] = useState<number>(150);
   const [otStatus, setOtStatus] = useState<'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming'>('Đã hoàn thành');
+  const [kpiDecision, setKpiDecision] = useState<'approve' | 'reject' | null>(null);
+  const [kpiRejectionReason, setKpiRejectionReason] = useState('');
 
   const formatVND = (num: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
@@ -349,6 +368,10 @@ export const AdminKpiOtView: React.FC = () => {
       showToast('Đang tải cấu hình công ty, vui lòng thử lại sau ít giây.');
       return;
     }
+    if (hasPendingKpi || hasPublishedKpi) {
+      showToast('KPI tháng đang chờ duyệt hoặc đã phát hành nên không thể đồng bộ lại.');
+      return;
+    }
 
     await Promise.all(employeeList.map(async (emp) => {
       // Real employee_id FK match — no more fuzzy assigneeName string matching.
@@ -362,8 +385,16 @@ export const AdminKpiOtView: React.FC = () => {
       const target = getEmployeeKpiTarget(emp);
       const completionPct = target ? Math.round((totalKpiPoints / target) * 100) : 0;
 
-      // Design allowance bonus, driven by company_settings (not a hard-coded rate/point or floor).
-      const bonusAmount = Math.max(companySettings.kpi_bonus_min, Math.round(totalKpiPoints * companySettings.kpi_bonus_per_point));
+      // Commission is configured per employee. Legacy company settings remain
+      // a fallback until the employee's current contract/addendum has a rate.
+      const commissionRate = emp.performance_commission_rate || companySettings.kpi_bonus_per_point;
+      const performanceCommissionAmount = Math.round(totalKpiPoints * commissionRate);
+      // Guaranteed income is treated as a monthly floor for base salary plus
+      // performance commission. The delta is stored separately for auditability.
+      const guaranteedIncomeTopup = Math.max(
+        0,
+        Math.round((emp.guaranteed_income_amount || 0) - (emp.current_salary || 0) - performanceCommissionAmount),
+      );
 
       // Real OT hours actually logged by this employee in the period — not a flat placeholder.
       const otHoursForEmp = allOtRecords
@@ -377,21 +408,54 @@ export const AdminKpiOtView: React.FC = () => {
         company_id: profile.companyId,
         month: selectedMonth,
         year: selectedYear,
-        rendered_views_actual: totalViews || target,
-        kpi_converted_views: totalKpiPoints || target,
+        rendered_views_actual: totalViews,
+        kpi_converted_views: totalKpiPoints,
         kpi_target: target,
         completion_percentage: completionPct,
         ot_hours: otHoursForEmp,
         ot_hourly_rate: otHourlyRate,
-        bonus_amount: bonusAmount,
+        commission_rate_snapshot: commissionRate,
+        performance_commission_amount: performanceCommissionAmount,
+        qc_views: 0,
+        qc_rate_snapshot: emp.qc_commission_rate,
+        qc_commission_amount: 0,
+        guaranteed_income_topup: guaranteedIncomeTopup,
+        bonus_amount: performanceCommissionAmount + guaranteedIncomeTopup,
+        publish_status: 'draft',
         // No real "benefit" data source in this phase — left at 0 for admin to fill in
         // manually, rather than fabricating a plausible-looking number.
         benefit_amount: 0,
-        notes: `Tính toán từ ${empJobs.length} bài/dự án (Chỉ tiêu tháng ${monthWorkInfo.standardWorkDays} ngày công x ${emp.kpi_target_per_day || 0} view/ngày = ${target} view).`,
+        notes: `Tính từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${monthWorkInfo.standardWorkDays} công = ${target} view; commission ${commissionRate.toLocaleString('vi-VN')} VNĐ/view; bù đảm bảo thu nhập ${guaranteedIncomeTopup.toLocaleString('vi-VN')} VNĐ. QC commission được HR nhập khi có số liệu QC thực tế.`,
       });
     }));
 
-    showToast(`Đã đồng bộ thành công chỉ tiêu KPI riêng của từng nhân viên (theo ${monthWorkInfo.standardWorkDays} ngày công tháng ${selectedMonth}/${selectedYear}) vào Payroll!`);
+    showToast(`Đã tạo bản nháp KPI tháng ${selectedMonth}/${selectedYear}. Kiểm tra số liệu trước khi gửi Admin duyệt.`);
+  };
+
+  const handleSubmitKpiApproval = async () => {
+    try {
+      await submitKpiMonth.mutateAsync({ month: selectedMonth, year: selectedYear });
+      showToast(`Đã gửi KPI tháng ${selectedMonth}/${selectedYear} cho Admin duyệt.`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể gửi duyệt KPI.');
+    }
+  };
+
+  const handleKpiDecision = async () => {
+    if (!kpiDecision) return;
+    try {
+      if (kpiDecision === 'approve') {
+        await approveKpiMonth.mutateAsync({ month: selectedMonth, year: selectedYear });
+        showToast(`Đã duyệt và phát hành KPI tháng ${selectedMonth}/${selectedYear}.`);
+      } else {
+        await rejectKpiMonth.mutateAsync({ month: selectedMonth, year: selectedYear, reason: kpiRejectionReason });
+        showToast(`Đã trả lại KPI tháng ${selectedMonth}/${selectedYear}.`);
+      }
+      setKpiDecision(null);
+      setKpiRejectionReason('');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xử lý KPI tháng.');
+    }
   };
 
   // Calculate OT percentage & rate based on date or preset/custom input — driven by company_settings.
@@ -622,14 +686,32 @@ export const AdminKpiOtView: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleSyncKpiToProfiles}
-            disabled={upsertKpiMonthly.isPending}
-            className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-60 shadow-md shadow-success-600/20"
-          >
-            <Calculator className="w-4 h-4" />
-            <span>Đồng bộ sang Bảng lương</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleSyncKpiToProfiles}
+              disabled={upsertKpiMonthly.isPending || hasPendingKpi || hasPublishedKpi}
+              className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-60 shadow-md shadow-success-600/20"
+            >
+              <Calculator className="w-4 h-4" />
+              <span>Tạo bản nháp KPI tháng</span>
+            </button>
+            {hasEditableKpi && (
+              <button onClick={() => void handleSubmitKpiApproval()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5">
+                <Send className="w-4 h-4" /> Gửi Admin duyệt
+              </button>
+            )}
+            {isAdmin && hasPendingKpi && (
+              <>
+                <button onClick={() => setKpiDecision('reject')} className="px-4 py-2 border border-rose-300 bg-white text-rose-700 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                  <RotateCcw className="w-4 h-4" /> Trả lại
+                </button>
+                <button onClick={() => setKpiDecision('approve')} className="px-4 py-2 bg-success-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" /> Duyệt & phát hành
+                </button>
+              </>
+            )}
+            {hasPublishedKpi && <span className="rounded-full bg-primary-50 px-3 py-1.5 text-xs font-bold text-primary-800">Đã phát hành</span>}
+          </div>
         </div>
 
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
@@ -1134,16 +1216,18 @@ export const AdminKpiOtView: React.FC = () => {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center space-x-1">
-                        <select
-                          value={ot.status}
-                          onChange={e => handleOtStatusChange(ot.id, e.target.value)}
-                          className="p-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
-                        >
-                          <option value="Đã hoàn thành">Đã hoàn thành</option>
-                          <option value="Đang thực hiện">Đang thực hiện</option>
-                          <option value="Upcoming">Upcoming</option>
-                          <option value="Từ chối">Từ chối</option>
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={ot.status}
+                            onChange={e => handleOtStatusChange(ot.id, e.target.value)}
+                            className="p-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
+                          >
+                            <option value="Đã hoàn thành">Đã hoàn thành</option>
+                            <option value="Đang thực hiện">Đang thực hiện</option>
+                            <option value="Upcoming">Upcoming</option>
+                            <option value="Từ chối">Từ chối</option>
+                          </select>
+                        ) : <span className="text-[11px] font-semibold text-slate-500">Admin duyệt trạng thái</span>}
                       </div>
                     </td>
                   </tr>
@@ -1472,6 +1556,36 @@ export const AdminKpiOtView: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={kpiDecision !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setKpiDecision(null);
+            setKpiRejectionReason('');
+          }
+        }}
+        title={kpiDecision === 'approve' ? 'Duyệt và phát hành KPI tháng?' : 'Trả lại KPI tháng cho HR/Kế toán?'}
+        description={kpiDecision === 'approve'
+          ? `KPI tháng ${selectedMonth}/${selectedYear} sẽ hiển thị cho từng nhân viên.`
+          : `KPI tháng ${selectedMonth}/${selectedYear} sẽ quay về trạng thái có thể chỉnh sửa.`}
+        confirmLabel={kpiDecision === 'approve' ? 'Duyệt & phát hành' : 'Trả lại'}
+        onConfirm={() => void handleKpiDecision()}
+        isPending={approveKpiMonth.isPending || rejectKpiMonth.isPending}
+        isConfirmDisabled={kpiDecision === 'reject' && kpiRejectionReason.trim().length < 3}
+        variant={kpiDecision === 'reject' ? 'danger' : 'primary'}
+      >
+        {kpiDecision === 'reject' && (
+          <label className="block text-sm font-semibold text-slate-700">Lý do trả lại
+            <textarea
+              rows={3}
+              value={kpiRejectionReason}
+              onChange={(event) => setKpiRejectionReason(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-slate-300 p-3 text-sm font-normal"
+            />
+          </label>
+        )}
+      </ConfirmationDialog>
     </div>
   );
 };

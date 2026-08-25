@@ -62,6 +62,46 @@ export function useUpdateContract() {
   });
 }
 
+export function useSubmitContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (contractId: string) => {
+      const { data, error } = await supabase.rpc('submit_contract', { p_contract_id: contractId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+  });
+}
+
+export function useApproveContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (contractId: string) => {
+      const { data, error } = await supabase.rpc('approve_contract', { p_contract_id: contractId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['salary_history'] });
+    },
+  });
+}
+
+export function useRejectContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ contractId, reason }: { contractId: string; reason: string }) => {
+      const { data, error } = await supabase.rpc('reject_contract', { p_contract_id: contractId, p_reason: reason });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+  });
+}
+
 export function useSalaryHistory(employeeId: string | undefined) {
   return useQuery({
     queryKey: ['salary_history', employeeId],

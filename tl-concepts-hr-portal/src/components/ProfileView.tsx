@@ -118,7 +118,7 @@ export const ProfileView: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-all shadow-md shadow-success-900/10 cursor-pointer"
         >
           <Edit3 className="w-4 h-4" />
-          <span>Chỉnh sửa hồ sơ</span>
+          <span>Yêu cầu thay đổi</span>
         </button>
       </div>
 
@@ -329,7 +329,7 @@ export const ProfileView: React.FC = () => {
               <span>Người thân & Liên hệ khẩn cấp</span>
             </h3>
             <button onClick={() => setIsEditProfileModalOpen(true)} className="text-xs font-bold text-success-700 hover:underline cursor-pointer">
-              Thêm / Sửa
+              Yêu cầu thay đổi
             </button>
           </div>
 

@@ -47,21 +47,18 @@ export const LoginPage: React.FC = () => {
               <span className="border-l border-stone-300 pl-3 text-[11px] font-bold uppercase tracking-[0.24em] text-stone-500">HR Portal</span>
             </a>
 
-            <div className="mt-12 max-w-md">
+            <div className="mt-22 max-w-md">
               <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-800">Visualizing your dream</p>
               <h1 className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-stone-900">
                 Chào mừng bạn trở lại.
               </h1>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
-                Đăng nhập để quản lý hồ sơ, hợp đồng, ngày phép và phiếu lương của bạn.
-              </p>
+                <p className="mt-3 text-sm leading-6 text-stone-600">
+                  Đăng nhập để quản lý hồ sơ, hợp đồng, ngày phép và phiếu lương của bạn.
+                </p>
             </div>
 
-            <p className="mt-8 rounded-xl border border-emerald-900/10 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-950">
-              Tài khoản nhân viên được Admin tạo và gửi email kích hoạt. Hãy dùng email và mật khẩu bạn đã thiết lập từ lời mời.
-            </p>
 
-            <form onSubmit={loginForm.handleSubmit(onLogin)} className="mt-6 space-y-4">
+            <form onSubmit={loginForm.handleSubmit(onLogin)} className="mt-16 space-y-4 ">
                 <Field label="Email" error={loginForm.formState.errors.email?.message}>
                   <input type="email" autoComplete="email" placeholder="ban@example.com" {...loginForm.register('email')} className={inputClass} />
                 </Field>
@@ -77,10 +74,6 @@ export const LoginPage: React.FC = () => {
             {authError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{authError}</p>}
           </div>
 
-          <p className="mt-10 flex items-center gap-2 text-[11px] text-stone-500">
-            <ShieldCheck className="h-4 w-4 text-emerald-800" />
-            Hồ sơ cá nhân được bảo vệ bằng Supabase Auth, Storage và Row Level Security.
-          </p>
         </section>
 
         <section className="relative hidden lg:grid grid-cols-2 grid-rows-2 gap-1.5 bg-stone-900 p-1.5">

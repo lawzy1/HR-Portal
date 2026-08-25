@@ -5,11 +5,8 @@ import {
   useEmployee,
   useEmployeeSensitiveInfo,
   useEmployeeRelatives,
-  useSetEmployeeRelatives,
-  useUpdateEmployee,
-  useUpsertEmployeeSensitiveInfo,
 } from '../hooks/useEmployees';
-import { useFileUpload } from '../hooks/useFileUpload';
+import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
 import { supabase } from '../lib/supabaseClient';
 
 export const EmployeeOnboardingPage: React.FC = () => {
@@ -19,9 +16,6 @@ export const EmployeeOnboardingPage: React.FC = () => {
   const { data: employee } = useEmployee(editableEmployeeId);
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(editableEmployeeId);
   const { data: relatives } = useEmployeeRelatives(editableEmployeeId);
-  const updateEmployee = useUpdateEmployee();
-  const upsertSensitiveInfo = useUpsertEmployeeSensitiveInfo();
-  const setRelatives = useSetEmployeeRelatives();
   const { uploadFile } = useFileUpload();
 
   const [phone, setPhone] = useState('');
@@ -117,52 +111,41 @@ export const EmployeeOnboardingPage: React.FC = () => {
         ? await uploadFile(vneidFile, companyId, employeeId, 'vneid')
         : sensitiveInfo?.vneid_residency_url ?? null;
 
-      await Promise.all([
-        updateEmployee.mutateAsync({
-          id: employeeId,
-          updates: {
-            avatar_url: avatarPath,
-            phone,
-            dob: dob || null,
-            gender: gender || null,
-            marital_status: maritalStatus || null,
-            permanent_address: permanentAddress,
-            temporary_address: temporaryAddress,
-          },
-        }),
-        upsertSensitiveInfo.mutateAsync({
-          employeeId,
-          companyId,
-          updates: {
-            id_card_number: idCardNumber,
-            id_card_issue_date: idCardIssueDate || null,
-            id_card_issue_place: idCardIssuePlace,
-            id_card_front_url: frontPath,
-            id_card_back_url: backPath,
-            vneid_residency_url: vneidPath,
-            tax_code: taxCode,
-            social_insurance_code: socialInsuranceCode,
-            bank_name: bankName,
-            bank_account_number: bankAccountNumber,
-            bank_account_holder: bankAccountHolder.toUpperCase(),
-            bank_branch: bankBranch,
-          },
-        }),
-        setRelatives.mutateAsync({
-          employeeId,
-          companyId,
-          relatives: [{
-            fullName: emergencyName,
-            relationship: emergencyRelationship,
-            phone: emergencyPhone,
-            address: emergencyAddress,
-            isEmergencyContact: true,
-          }],
-        }),
-      ]);
-
-      const { error: submitError } = await supabase.rpc('submit_own_onboarding');
+      const { error: submitError } = await supabase.rpc('save_and_submit_own_onboarding', {
+        p_employee: {
+          avatar_url: avatarPath,
+          phone,
+          dob: dob || null,
+          gender: gender || null,
+          marital_status: maritalStatus || null,
+          permanent_address: permanentAddress,
+          temporary_address: temporaryAddress,
+        },
+        p_sensitive: {
+          id_card_number: idCardNumber,
+          id_card_issue_date: idCardIssueDate || null,
+          id_card_issue_place: idCardIssuePlace,
+          id_card_front_url: frontPath,
+          id_card_back_url: backPath,
+          vneid_residency_url: vneidPath,
+          tax_code: taxCode,
+          social_insurance_code: socialInsuranceCode,
+          bank_name: bankName,
+          bank_account_number: bankAccountNumber,
+          bank_account_holder: bankAccountHolder.toUpperCase(),
+          bank_branch: bankBranch,
+        },
+        p_relatives: [{
+          full_name: emergencyName,
+          relationship: emergencyRelationship,
+          phone: emergencyPhone,
+          address: emergencyAddress,
+          is_emergency_contact: true,
+        }],
+      });
       if (submitError) throw submitError;
+      const { error: lifecycleError } = await supabase.rpc('mark_own_invitation_completed');
+      if (lifecycleError) throw lifecycleError;
       await refreshProfile();
 
       setMessage('Đã gửi hồ sơ. HR sẽ kiểm tra và kích hoạt tài khoản của bạn.');
@@ -213,7 +196,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
               <Input label="Địa chỉ thường trú"><textarea value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} className={inputClass} rows={3} /></Input>
               <Input label="Địa chỉ tạm trú"><textarea value={temporaryAddress} onChange={(e) => setTemporaryAddress(e.target.value)} className={inputClass} rows={3} /></Input>
             </div>
-            <FilePicker label="Ảnh đại diện" file={avatarFile} onChange={setAvatarFile} />
+            <FilePicker label="Ảnh đại diện" file={avatarFile} existingPath={employee.avatar_url} onChange={setAvatarFile} />
           </Section>
 
           <Section title="2. CCCD, MST và BHXH">
@@ -225,9 +208,9 @@ export const EmployeeOnboardingPage: React.FC = () => {
               <Input label="Mã số BHXH"><input value={socialInsuranceCode} onChange={(e) => setSocialInsuranceCode(e.target.value)} className={inputClass} /></Input>
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
-              <FilePicker label="CCCD mặt trước *" file={frontFile} existing={!!sensitiveInfo?.id_card_front_url} onChange={setFrontFile} />
-              <FilePicker label="CCCD mặt sau *" file={backFile} existing={!!sensitiveInfo?.id_card_back_url} onChange={setBackFile} />
-              <FilePicker label="Ảnh cư trú VNeID" file={vneidFile} existing={!!sensitiveInfo?.vneid_residency_url} onChange={setVneidFile} />
+              <FilePicker label="CCCD mặt trước *" file={frontFile} existingPath={sensitiveInfo?.id_card_front_url} onChange={setFrontFile} />
+              <FilePicker label="CCCD mặt sau *" file={backFile} existingPath={sensitiveInfo?.id_card_back_url} onChange={setBackFile} />
+              <FilePicker label="Ảnh cư trú VNeID" file={vneidFile} existingPath={sensitiveInfo?.vneid_residency_url} onChange={setVneidFile} />
             </div>
           </Section>
 
@@ -281,14 +264,60 @@ const ReadOnly: React.FC<{ label: string; value: string }> = ({ label, value }) 
   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-1 text-sm font-semibold text-slate-800">{value}</p></div>
 );
 
-const FilePicker: React.FC<{ label: string; file: File | null; existing?: boolean; onChange: (file: File | null) => void }> = ({ label, file, existing, onChange }) => (
-  <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-center hover:border-emerald-600">
-    <FileImage className="h-5 w-5 text-emerald-700" />
-    <span className="mt-1 text-xs font-bold text-slate-700">{label}</span>
-    <span className="mt-1 text-[10px] text-slate-500">{file?.name || (existing ? 'Đã có ảnh — chọn để thay' : 'PNG, JPG hoặc WEBP')}</span>
-    <input type="file" accept="image/*" className="hidden" onChange={(event) => onChange(event.target.files?.[0] ?? null)} />
-  </label>
-);
+const FilePicker: React.FC<{
+  label: string;
+  file: File | null;
+  existingPath?: string | null;
+  onChange: (file: File | null) => void;
+}> = ({ label, file, existingPath, onChange }) => {
+  const { data: existingPreviewUrl, isLoading: isLoadingExistingPreview } = useSignedImageUrl(existingPath);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setLocalPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setLocalPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  const previewUrl = localPreviewUrl ?? existingPreviewUrl;
+  const status = file
+    ? 'Đã chọn · sẽ tải lên khi gửi'
+    : existingPath
+      ? isLoadingExistingPreview
+        ? 'Đang tải ảnh đã lưu...'
+        : 'Đã tải lên · chọn để thay'
+      : 'PNG, JPG hoặc WEBP';
+
+  return (
+    <label className="group flex min-h-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-2 text-center transition-colors hover:border-emerald-600 focus-within:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-700/15">
+      {previewUrl ? (
+        <span className="relative block h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <img src={previewUrl} alt={`Xem trước ${label}`} className="h-full w-full object-contain" />
+          <span className="absolute right-2 top-2 rounded-full bg-emerald-700 px-2 py-1 text-[9px] font-bold text-white shadow-sm">
+            {file ? 'Ảnh mới' : 'Đã lưu'}
+          </span>
+        </span>
+      ) : (
+        <FileImage className="h-5 w-5 text-emerald-700" />
+      )}
+      <span className="mt-2 text-xs font-bold text-slate-700">{label}</span>
+      <span className={`mt-1 text-[10px] ${file || existingPath ? 'font-semibold text-emerald-700' : 'text-slate-500'}`}>{status}</span>
+      {file ? <span className="mt-0.5 block max-w-full truncate text-[10px] text-slate-500">{file.name}</span> : null}
+      <input
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        aria-label={`Chọn ${label}`}
+        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
+      />
+    </label>
+  );
+};
 
 const OnboardingStatus: React.FC<{ title: string; description: string; onSignOut: () => Promise<void> }> = ({ title, description, onSignOut }) => (
   <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4"><section className="max-w-md rounded-2xl bg-white p-7 text-center shadow-xl"><CheckCircle2 className="mx-auto h-12 w-12 text-emerald-700" /><h1 className="mt-4 text-xl font-black text-slate-900">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-600">{description}</p><button type="button" onClick={() => void onSignOut()} className="mt-6 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700">Đăng xuất</button></section></main>

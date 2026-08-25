@@ -14,7 +14,8 @@ export const AdminRemindersView: React.FC = () => {
     reminders, 
     resolveReminder, 
     setAdminTab, 
-    setSelectedEmployeeIdForAdmin 
+    setSelectedEmployeeIdForAdmin,
+    pendingOnboardingCount,
   } = useHR();
 
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
@@ -35,14 +36,13 @@ export const AdminRemindersView: React.FC = () => {
             Trung tâm Cảnh báo & Nhắc nhở HR Tự động
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Hệ thống tự động phát hiện hợp đồng sắp hết hạn (30d/60d), đến kỳ xét lương, thiếu giấy tờ và đơn phép tồn đọng.
+            Xử lý hồ sơ nhân viên chờ duyệt cùng các nhắc nhở hợp đồng, lương, giấy tờ và đơn từ tồn đọng.
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs">
-            {reminders.length} Cảnh báo đang hoạt động
-          </span>
+          {pendingOnboardingCount > 0 && <span className="px-3 py-1.5 bg-primary-100 text-primary-800 rounded-xl font-bold text-xs">{pendingOnboardingCount} hồ sơ chờ duyệt</span>}
+          <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs">{reminders.length} Cảnh báo đang hoạt động</span>
         </div>
       </div>
 
@@ -57,6 +57,7 @@ export const AdminRemindersView: React.FC = () => {
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none"
             >
               <option value="ALL">Tất cả Cảnh báo</option>
+              <option value="onboarding_review">Hồ sơ nhân viên chờ duyệt</option>
               <option value="contract">Hợp đồng lao động</option>
               <option value="salary_review">Kỳ xét lương</option>
               <option value="missing_doc">Thiếu hồ sơ CCCD/MST</option>

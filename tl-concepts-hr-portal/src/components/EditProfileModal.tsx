@@ -11,6 +11,7 @@ import {
   type RelativeInput,
 } from '../hooks/useEmployees';
 import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
+import { useRequestOwnProfileChange } from '../hooks/useProfileChangeRequest';
 import {
   X,
   User,
@@ -31,6 +32,7 @@ import {
   Lock,
   Loader2,
   Award,
+  Send,
 } from 'lucide-react';
 import { VneidGuideModal } from './VneidGuideModal';
 import { VNEID_SAMPLE_IMAGE } from '../constants/vneidSample';
@@ -110,7 +112,9 @@ const ImageUploadSlot: React.FC<{
 export const EditProfileModal: React.FC = () => {
   const { selectedEmployeeIdForAdmin, isEditProfileModalOpen, setIsEditProfileModalOpen, showToast } = useHR();
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'admin';
+  // Back-office screens are shared by Admin and HR/Kế toán. RLS still keeps
+  // account management and final approvals Admin-only.
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'hr';
 
   // Which employee this modal is editing: an admin edits whoever they
   // selected in the employee list; a non-admin only ever edits themselves.
@@ -124,10 +128,12 @@ export const EditProfileModal: React.FC = () => {
   const upsertSensitiveInfo = useUpsertEmployeeSensitiveInfo();
   const setRelatives = useSetEmployeeRelatives();
   const { uploadFile } = useFileUpload();
+  const requestProfileChange = useRequestOwnProfileChange();
 
   const [activeTab, setActiveTab] = useState<'general' | 'employment' | 'contact' | 'documents' | 'bank' | 'relatives'>('general');
   const [isSaving, setIsSaving] = useState(false);
   const [isVneidGuideOpen, setIsVneidGuideOpen] = useState(false);
+  const [changeRequestMessage, setChangeRequestMessage] = useState('');
 
   // Tab 1: General (avatar/dob/gender/marital self-editable; the rest is
   // admin-only — see the enforce_employee_self_edit_columns trigger)
@@ -143,6 +149,9 @@ export const EditProfileModal: React.FC = () => {
   const [maritalStatus, setMaritalStatus] = useState<'Độc thân' | 'Đã kết hôn'>('Độc thân');
   const [kpiLevel, setKpiLevel] = useState('');
   const [kpiTargetPerDay, setKpiTargetPerDay] = useState<number | ''>('');
+  const [performanceCommissionRate, setPerformanceCommissionRate] = useState<number>(0);
+  const [qcCommissionRate, setQcCommissionRate] = useState<number>(0);
+  const [guaranteedIncomeAmount, setGuaranteedIncomeAmount] = useState<number>(0);
 
   // Tab 2: Employment snapshot (admin-only). Contract history itself lives
   // in the Contracts module (M3), not here.
@@ -194,6 +203,9 @@ export const EditProfileModal: React.FC = () => {
     setMaritalStatus((employee.marital_status as 'Độc thân' | 'Đã kết hôn') || 'Độc thân');
     setKpiLevel(employee.kpi_level || '');
     setKpiTargetPerDay(employee.kpi_target_per_day ?? '');
+    setPerformanceCommissionRate(employee.performance_commission_rate || 0);
+    setQcCommissionRate(employee.qc_commission_rate || 0);
+    setGuaranteedIncomeAmount(employee.guaranteed_income_amount || 0);
 
     setStartDate(employee.start_date || '');
     setContractType(employee.contract_type || 'HĐ xác định thời hạn (1 năm)');
@@ -265,6 +277,47 @@ export const EditProfileModal: React.FC = () => {
     );
   }
 
+  if (!isAdmin) {
+    const submitChangeRequest = async (event: React.FormEvent) => {
+      event.preventDefault();
+      try {
+        const result = await requestProfileChange.mutateAsync(changeRequestMessage);
+        showToast(result?.notificationDelivered
+          ? 'Đã gửi yêu cầu thay đổi tới Admin/HR qua email.'
+          : 'Đã lưu yêu cầu, nhưng email thông báo chưa được cấu hình.');
+        setChangeRequestMessage('');
+        setIsEditProfileModalOpen(false);
+      } catch (error) {
+        showToast(error instanceof Error ? `Không thể gửi yêu cầu: ${error.message}` : 'Không thể gửi yêu cầu thay đổi.');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+        <form onSubmit={submitChangeRequest} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Yêu cầu thay đổi thông tin</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Hồ sơ đã hoàn tất onboarding nên chỉ Admin/HR mới có thể cập nhật. Hãy nêu thông tin cần đổi để gửi yêu cầu kèm email thông báo.</p>
+            </div>
+            <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng"><X className="h-5 w-5" /></button>
+          </div>
+          <label className="mt-5 block text-xs font-bold text-slate-700">
+            Nội dung cần thay đổi
+            <textarea value={changeRequestMessage} onChange={(event) => setChangeRequestMessage(event.target.value)} minLength={5} maxLength={2000} required rows={6} placeholder="Ví dụ: Tôi cần đổi số tài khoản ngân hàng từ … sang … vì …" className="mt-1.5 w-full resize-y rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15" />
+          </label>
+          <div className="mt-5 flex justify-end gap-3">
+            <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
+            <button type="submit" disabled={requestProfileChange.isPending} className="inline-flex items-center gap-2 rounded-xl bg-success-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-success-800 disabled:opacity-60">
+              {requestProfileChange.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Gửi yêu cầu
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   const handleAddRelative = () => {
     setRelativesState([
       ...relatives,
@@ -316,6 +369,9 @@ export const EditProfileModal: React.FC = () => {
           last_salary_review_date: lastSalaryReviewDate || null,
           kpi_level: kpiLevel || null,
           kpi_target_per_day: kpiTargetPerDay === '' ? null : kpiTargetPerDay,
+          performance_commission_rate: performanceCommissionRate,
+          qc_commission_rate: qcCommissionRate,
+          guaranteed_income_amount: guaranteedIncomeAmount,
         });
       }
 
@@ -514,6 +570,24 @@ export const EditProfileModal: React.FC = () => {
                         />
                         <span className="text-[11px] text-slate-500 whitespace-nowrap">view / ngày</span>
                       </div>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Performance commission:</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min="0" value={performanceCommissionRate} onChange={(e) => setPerformanceCommissionRate(Number(e.target.value))} className={inputClass} />
+                        <span className="text-[11px] text-slate-500 whitespace-nowrap">VNĐ / view</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">QC commission:</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min="0" value={qcCommissionRate} onChange={(e) => setQcCommissionRate(Number(e.target.value))} className={inputClass} />
+                        <span className="text-[11px] text-slate-500 whitespace-nowrap">VNĐ / QC view</span>
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block font-bold text-slate-700 mb-1">Mức đảm bảo thu nhập (nếu áp dụng):</label>
+                      <input type="number" min="0" value={guaranteedIncomeAmount} onChange={(e) => setGuaranteedIncomeAmount(Number(e.target.value))} className={inputClass} />
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-500">

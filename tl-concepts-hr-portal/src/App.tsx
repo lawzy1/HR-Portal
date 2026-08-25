@@ -43,17 +43,18 @@ function MainContent() {
   const { profile } = useAuth();
   const { activeTab, adminTab } = useHR();
   const isAdmin = profile?.role === 'admin';
+  const isBackoffice = isAdmin || profile?.role === 'hr';
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 grid grid-cols-1 md:grid-cols-[16rem_1fr] md:grid-rows-[auto_1fr] font-sans antialiased selection:bg-primary-500 selection:text-white">
       <Header />
 
       {/* Render Sidebar based on the authenticated user's role (Supabase profile, not client-toggleable). Spans the full height alongside the header on desktop. */}
-      {isAdmin ? <AdminSidebar /> : <Sidebar />}
+      {isBackoffice ? <AdminSidebar /> : <Sidebar />}
 
       {/* Main Workspace Area */}
       <main className="md:col-start-2 md:row-start-2 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
-        {isAdmin ? (
+        {isBackoffice ? (
           <>
             {adminTab === 'admin-dashboard' && <AdminDashboardView />}
             {adminTab === 'admin-employees' && <AdminEmployeeListView />}
@@ -62,8 +63,8 @@ function MainContent() {
             {adminTab === 'admin-kpi' && <AdminKpiOtView />}
             {adminTab === 'admin-payroll' && <AdminPayrollView />}
             {adminTab === 'admin-reminders' && <AdminRemindersView />}
-            {adminTab === 'admin-reports' && <AdminReportsAuditView />}
-            {adminTab === 'admin-settings' && <AdminSettingsView />}
+            {isAdmin && adminTab === 'admin-reports' && <AdminReportsAuditView />}
+            {isAdmin && adminTab === 'admin-settings' && <AdminSettingsView />}
           </>
         ) : (
           <>

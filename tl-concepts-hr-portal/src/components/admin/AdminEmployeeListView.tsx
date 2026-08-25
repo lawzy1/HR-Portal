@@ -9,19 +9,29 @@ import {
   MapPin,
   Edit,
   UserMinus,
+  Trash2,
   User,
   ExternalLink,
   HelpCircle,
   Eye,
+  Send,
+  Ban,
+  Clock3,
+  Copy,
+  AlertTriangle,
+  CheckCircle2,
+  MessageSquareWarning,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
-import { useEmployees, useEmployee, useOffboardEmployee, type DbEmployee } from '../../hooks/useEmployees';
+import { useEmployees, useEmployee, useEmployeeInvitations, useManageEmployeeInvitation, useOffboardEmployee, useDeleteOffboardedEmployee, type DbEmployee, type DbEmployeeInvitation } from '../../hooks/useEmployees';
 import { useEmployeeSensitiveInfo, useEmployeeRelatives, useUpsertEmployeeSensitiveInfo } from '../../hooks/useEmployees';
 import { useAuth } from '../../context/AuthContext';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 import { VneidGuideModal } from '../VneidGuideModal';
+import { ConfirmationDialog } from '../ConfirmationDialog';
 import { VNEID_SAMPLE_IMAGE } from '../../constants/vneidSample';
 import { useRecordAuditEvent } from '../../hooks/useAuditLogs';
+import { useAllProfiles, useReviewEmployeeOnboarding } from '../../hooks/useProfiles';
 
 const Avatar: React.FC<{ path: string | null; alt: string; className: string }> = ({ path, alt, className }) => {
   const { data: url } = useSignedImageUrl(path);
@@ -58,6 +68,20 @@ const DocPreview: React.FC<{ path: string | null | undefined; label: string; emp
   );
 };
 
+function invitationState(invitation: DbEmployeeInvitation) {
+  if (invitation.revoked_at) return { label: 'Đã thu hồi', className: 'bg-slate-200 text-slate-700' };
+  if (invitation.completed_at) return { label: 'Đã gửi hồ sơ', className: 'bg-success-100 text-success-800' };
+  if (new Date(invitation.expires_at).getTime() <= Date.now()) return { label: 'Link đã hết hạn', className: 'bg-rose-100 text-rose-700' };
+  if (invitation.accepted_at) return { label: 'Đã mở link · đang kích hoạt', className: 'bg-amber-100 text-amber-800' };
+  return { label: 'Đã gửi link · chờ kích hoạt', className: 'bg-primary-100 text-primary-800' };
+}
+
+function formatInvitationTime(value: string | null) {
+  return value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—';
+}
+
+type PendingConfirmation = 'revoke_invitation' | 'approve_onboarding' | 'needs_changes' | null;
+
 export const AdminEmployeeListView: React.FC = () => {
   const {
     selectedEmployeeIdForAdmin,
@@ -67,9 +91,15 @@ export const AdminEmployeeListView: React.FC = () => {
     showToast,
   } = useHR();
   const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
 
   const { data: employees } = useEmployees();
+  const { data: invitations } = useEmployeeInvitations();
+  const { data: profiles } = useAllProfiles();
   const offboardEmployee = useOffboardEmployee();
+  const deleteOffboardedEmployee = useDeleteOffboardedEmployee();
+  const manageInvitation = useManageEmployeeInvitation();
+  const reviewOnboarding = useReviewEmployeeOnboarding();
   const updateSensitiveInfo = useUpsertEmployeeSensitiveInfo();
   const { mutate: recordAuditEvent } = useRecordAuditEvent();
 
@@ -77,7 +107,14 @@ export const AdminEmployeeListView: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [employeeToOffboard, setEmployeeToOffboard] = useState<DbEmployee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<DbEmployee | null>(null);
+  const [deleteConfirmationCode, setDeleteConfirmationCode] = useState('');
   const [isVneidGuideOpen, setIsVneidGuideOpen] = useState(false);
+  const [manualActivationLink, setManualActivationLink] = useState<string | null>(null);
+  const [invitationActionError, setInvitationActionError] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewNoteError, setReviewNoteError] = useState('');
 
   const allEmployees = employees || [];
   const departments = Array.from(new Set(allEmployees.map((e) => e.department).filter(Boolean)));
@@ -98,6 +135,12 @@ export const AdminEmployeeListView: React.FC = () => {
   const { data: selectedEmp } = useEmployee(selectedId);
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(selectedId);
   const { data: relatives } = useEmployeeRelatives(selectedId);
+  const invitationsByEmployee = new Map((invitations || []).map((invitation) => [invitation.employee_id, invitation]));
+  const selectedInvitation = selectedEmp ? invitationsByEmployee.get(selectedEmp.id) : undefined;
+  const canManageSelectedInvitation = isAdmin && !!selectedInvitation && selectedEmp?.status === 'Chờ kích hoạt';
+  const selectedOnboardingProfile = isAdmin && selectedEmp
+    ? (profiles || []).find((candidate) => candidate.employee_id === selectedEmp.id && candidate.onboarding_status === 'submitted')
+    : undefined;
 
   useEffect(() => {
     if (!sensitiveInfo?.employee_id) return;
@@ -124,6 +167,59 @@ export const AdminEmployeeListView: React.FC = () => {
     setIsEditProfileModalOpen(true);
   };
 
+  const handleInvitationAction = async (action: 'resend' | 'revoke') => {
+    if (!selectedEmp) return;
+
+    setInvitationActionError(null);
+    setManualActivationLink(null);
+    try {
+      const result = await manageInvitation.mutateAsync({ action, employeeId: selectedEmp.id });
+      if (action === 'revoke') {
+        showToast('Đã thu hồi lời mời kích hoạt.');
+        setPendingConfirmation(null);
+        return;
+      }
+      if (result.actionLink) setManualActivationLink(result.actionLink);
+      showToast(result.emailDelivered ? `Đã gửi link kích hoạt mới tới ${selectedEmp.email}.` : 'Đã tạo link mới nhưng email chưa gửi được.');
+    } catch (caught) {
+      setInvitationActionError(caught instanceof Error ? caught.message : 'Không thể cập nhật lời mời kích hoạt.');
+    }
+  };
+
+  const copyManualActivationLink = async () => {
+    if (!manualActivationLink) return;
+    try {
+      await navigator.clipboard.writeText(manualActivationLink);
+      showToast('Đã sao chép link kích hoạt mới.');
+    } catch {
+      setInvitationActionError('Không thể sao chép tự động. Vui lòng thử lại trên trình duyệt có quyền clipboard.');
+    }
+  };
+
+  const requestOnboardingReview = (decision: 'approved' | 'needs_changes') => {
+    if (!selectedOnboardingProfile || !selectedEmp) return;
+    setReviewNote('');
+    setReviewNoteError('');
+    setPendingConfirmation(decision === 'approved' ? 'approve_onboarding' : 'needs_changes');
+  };
+
+  const reviewSelectedOnboarding = () => {
+    if (!selectedOnboardingProfile || !selectedEmp || !pendingConfirmation) return;
+    const decision = pendingConfirmation === 'approve_onboarding' ? 'approved' : 'needs_changes';
+    const note = decision === 'needs_changes' ? reviewNote.trim() : undefined;
+    if (decision === 'needs_changes' && !note) {
+      setReviewNoteError('Vui lòng nêu rõ nội dung nhân viên cần bổ sung.');
+      return;
+    }
+
+    reviewOnboarding.mutate({ profileId: selectedOnboardingProfile.id, decision, note }, {
+      onSuccess: () => {
+        setPendingConfirmation(null);
+        showToast(decision === 'approved' ? 'Đã duyệt hồ sơ và mở quyền truy cập HR Portal.' : 'Đã yêu cầu nhân viên bổ sung hồ sơ.');
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -137,13 +233,15 @@ export const AdminEmployeeListView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewEmployeeModalOpen(true)}
-          className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer shrink-0"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Thêm nhân viên</span>
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setIsNewEmployeeModalOpen(true)}
+            className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer shrink-0"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Thêm nhân viên</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -184,6 +282,8 @@ export const AdminEmployeeListView: React.FC = () => {
                 <option value="Chính thức">Chính thức</option>
                 <option value="Thử việc">Thử việc</option>
                 <option value="Mới tiếp nhận">Mới tiếp nhận</option>
+                <option value="Chờ kích hoạt">Chờ kích hoạt</option>
+                <option value="Chờ duyệt hồ sơ">Chờ duyệt hồ sơ</option>
                 <option value="Chờ duyệt">Chờ duyệt đăng ký</option>
                 <option value="Đã nghỉ việc">Đã nghỉ việc</option>
               </select>
@@ -236,7 +336,7 @@ export const AdminEmployeeListView: React.FC = () => {
                               ? 'bg-slate-200 text-slate-600'
                               : 'bg-primary-100 text-primary-800'
                       }`}>
-                        {emp.status}
+                        {emp.status === 'Chờ kích hoạt' && invitationsByEmployee.get(emp.id) ? invitationState(invitationsByEmployee.get(emp.id)!).label : emp.status}
                       </span>
                     </div>
                   </div>
@@ -265,7 +365,7 @@ export const AdminEmployeeListView: React.FC = () => {
                       <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
                         selectedEmp.status === 'Chính thức' ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {selectedEmp.status}
+                        {selectedEmp.status === 'Chờ kích hoạt' && selectedInvitation ? invitationState(selectedInvitation).label : selectedEmp.status}
                       </span>
                     </div>
                     <p className="text-sm text-slate-600 font-medium mt-0.5">{selectedEmp.job_title} • {selectedEmp.department}</p>
@@ -282,7 +382,7 @@ export const AdminEmployeeListView: React.FC = () => {
                     <span>Chỉnh sửa hồ sơ</span>
                   </button>
 
-                  {selectedEmp.status !== 'Đã nghỉ việc' && (
+                  {isAdmin && selectedEmp.status !== 'Đã nghỉ việc' && (
                     <button
                       onClick={() => setEmployeeToOffboard(selectedEmp)}
                       className="px-3.5 py-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer border border-rose-200"
@@ -292,8 +392,69 @@ export const AdminEmployeeListView: React.FC = () => {
                       <span>Nghỉ việc</span>
                     </button>
                   )}
+                  {isAdmin && selectedEmp.status === 'Đã nghỉ việc' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteConfirmationCode('');
+                        setEmployeeToDelete(selectedEmp);
+                      }}
+                      className="px-3.5 py-2 text-white bg-rose-600 hover:bg-rose-700 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm shadow-rose-600/20"
+                      title="Xóa vĩnh viễn hồ sơ và tài khoản"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Xóa vĩnh viễn</span>
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {isAdmin && selectedInvitation && (
+                <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-lg bg-white p-2 text-primary-700 shadow-sm"><Clock3 className="h-4 w-4" /></div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Lời mời kích hoạt</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${invitationState(selectedInvitation).className}`}>{invitationState(selectedInvitation).label}</span>
+                        <p className="mt-2 text-xs leading-5 text-slate-600">
+                          Gửi lần gần nhất: <b>{formatInvitationTime(selectedInvitation.last_sent_at)}</b> · Hết hạn: <b>{formatInvitationTime(selectedInvitation.expires_at)}</b>
+                          {selectedInvitation.last_opened_at ? <> · Mở gần nhất: <b>{formatInvitationTime(selectedInvitation.last_opened_at)}</b></> : null}
+                        </p>
+                      </div>
+                    </div>
+                    {canManageSelectedInvitation && (
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => void handleInvitationAction('resend')} disabled={manageInvitation.isPending} className="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-60">
+                          <Send className="h-3.5 w-3.5" /> {selectedInvitation.revoked_at ? 'Gửi lời mời mới' : 'Gửi lại link'}
+                        </button>
+                        {!selectedInvitation.revoked_at && <button type="button" onClick={() => setPendingConfirmation('revoke_invitation')} disabled={manageInvitation.isPending} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"><Ban className="h-3.5 w-3.5" /> Thu hồi</button>}
+                      </div>
+                    )}
+                  </div>
+                  {invitationActionError && <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{invitationActionError}</p>}
+                  {manualActivationLink && <div className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 sm:flex-row sm:items-center sm:justify-between"><span className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />Email chưa gửi được. Sao chép link mới để gửi thủ công qua kênh an toàn.</span><button type="button" onClick={() => void copyManualActivationLink()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 font-bold text-amber-900 shadow-sm"><Copy className="h-3.5 w-3.5" /> Sao chép link</button></div>}
+                </section>
+              )}
+
+              {selectedOnboardingProfile && (
+                <section className="rounded-xl border border-primary-200 bg-primary-50/60 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-lg bg-white p-2 text-primary-700 shadow-sm"><CheckCircle2 className="h-4 w-4" /></div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-primary-800">Hồ sơ đang chờ duyệt</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">Nhân viên đã gửi đủ hồ sơ onboarding.</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">Kiểm tra CCCD, ngân hàng và người liên hệ bên dưới trước khi duyệt. Khi duyệt, nhân viên có thể vào HR Portal ngay.</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => requestOnboardingReview('approved')} disabled={reviewOnboarding.isPending} className="inline-flex items-center gap-1.5 rounded-xl bg-success-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-success-700 disabled:opacity-60"><CheckCircle2 className="h-3.5 w-3.5" /> Duyệt hồ sơ</button>
+                      <button type="button" onClick={() => requestOnboardingReview('needs_changes')} disabled={reviewOnboarding.isPending} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-800 transition hover:bg-amber-50 disabled:opacity-60"><MessageSquareWarning className="h-3.5 w-3.5" /> Yêu cầu bổ sung</button>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* Personal & Contact / Addresses */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -458,42 +619,104 @@ export const AdminEmployeeListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Offboard confirmation (soft delete — status = Đã nghỉ việc, hard delete not permitted by design) */}
-      {employeeToOffboard && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 text-center space-y-4">
-            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-rose-50">
-              <UserMinus className="w-6 h-6" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-base font-bold text-slate-900">Xác nhận đánh dấu nghỉ việc</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Chuyển trạng thái của <strong className="text-slate-900">{employeeToOffboard.full_name}</strong> (<span className="font-mono text-primary-700 font-bold">{employeeToOffboard.employee_code}</span>) thành "Đã nghỉ việc"?
-              </p>
-              <p className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                Hồ sơ vẫn được lưu trữ đầy đủ (không xóa dữ liệu) — phục vụ tra cứu bảo hiểm/lịch sử sau này.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button type="button" onClick={() => setEmployeeToOffboard(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer">
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  offboardEmployee.mutate(employeeToOffboard.id);
-                  showToast(`Đã đánh dấu ${employeeToOffboard.full_name} nghỉ việc.`);
-                  setEmployeeToOffboard(null);
-                }}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 cursor-pointer flex items-center gap-1.5"
-              >
-                <UserMinus className="w-4 h-4" />
-                <span>Xác nhận</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmationDialog
+        open={pendingConfirmation === 'revoke_invitation'}
+        onOpenChange={(open) => !open && setPendingConfirmation(null)}
+        title="Thu hồi lời mời kích hoạt?"
+        description={`Sau khi thu hồi, ${selectedEmp?.full_name || 'nhân viên này'} sẽ không thể tiếp tục onboarding cho tới khi Admin gửi lại link mới.`}
+        confirmLabel="Thu hồi lời mời"
+        variant="danger"
+        isPending={manageInvitation.isPending}
+        onConfirm={() => void handleInvitationAction('revoke')}
+      />
+
+      <ConfirmationDialog
+        open={pendingConfirmation === 'approve_onboarding'}
+        onOpenChange={(open) => !open && setPendingConfirmation(null)}
+        title="Duyệt hồ sơ nhân viên?"
+        description={`Duyệt hồ sơ của ${selectedEmp?.full_name || 'nhân viên này'} sẽ mở quyền truy cập HR Portal ngay.`}
+        confirmLabel="Duyệt hồ sơ"
+        isPending={reviewOnboarding.isPending}
+        onConfirm={reviewSelectedOnboarding}
+      />
+
+      <ConfirmationDialog
+        open={pendingConfirmation === 'needs_changes'}
+        onOpenChange={(open) => !open && setPendingConfirmation(null)}
+        title="Yêu cầu bổ sung hồ sơ"
+        description={`Nội dung này sẽ hiển thị cho ${selectedEmp?.full_name || 'nhân viên'} khi họ quay lại onboarding.`}
+        confirmLabel="Gửi yêu cầu"
+        isPending={reviewOnboarding.isPending}
+        onConfirm={reviewSelectedOnboarding}
+      >
+        <label htmlFor="onboarding-review-note" className="mb-2 block text-sm font-semibold text-slate-700">Nội dung cần bổ sung</label>
+        <textarea
+          id="onboarding-review-note"
+          value={reviewNote}
+          onChange={(event) => {
+            setReviewNote(event.target.value);
+            if (reviewNoteError) setReviewNoteError('');
+          }}
+          rows={4}
+          placeholder="Ví dụ: Vui lòng tải lại ảnh mặt trước CCCD rõ nét hơn."
+          className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+          aria-invalid={Boolean(reviewNoteError)}
+          aria-describedby={reviewNoteError ? 'onboarding-review-note-error' : undefined}
+        />
+        {reviewNoteError && <p id="onboarding-review-note-error" className="mt-1.5 text-xs font-medium text-rose-600">{reviewNoteError}</p>}
+      </ConfirmationDialog>
+
+      <ConfirmationDialog
+        open={Boolean(employeeToOffboard)}
+        onOpenChange={(open) => !open && setEmployeeToOffboard(null)}
+        title="Xác nhận đánh dấu nghỉ việc"
+        description={`Chuyển trạng thái của ${employeeToOffboard?.full_name || 'nhân viên'} thành “Đã nghỉ việc”. Hồ sơ vẫn được lưu trữ để tra cứu bảo hiểm và lịch sử sau này.`}
+        confirmLabel="Xác nhận nghỉ việc"
+        variant="danger"
+        isPending={offboardEmployee.isPending}
+        onConfirm={async () => {
+          if (!employeeToOffboard) return;
+          await offboardEmployee.mutateAsync(employeeToOffboard.id);
+          showToast(`Đã đánh dấu ${employeeToOffboard.full_name} nghỉ việc.`);
+          setEmployeeToOffboard(null);
+        }}
+      />
+
+      <ConfirmationDialog
+        open={Boolean(employeeToDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEmployeeToDelete(null);
+            setDeleteConfirmationCode('');
+          }
+        }}
+        title="Xóa vĩnh viễn nhân viên?"
+        description={`Hành động này xóa tài khoản đăng nhập, hồ sơ và các tài liệu của ${employeeToDelete?.full_name || 'nhân viên'} khỏi hệ thống. Không thể khôi phục.`}
+        confirmLabel="Xóa vĩnh viễn"
+        variant="danger"
+        isPending={deleteOffboardedEmployee.isPending}
+        isConfirmDisabled={deleteConfirmationCode.trim() !== employeeToDelete?.employee_code}
+        onConfirm={async () => {
+          if (!employeeToDelete) return;
+          await deleteOffboardedEmployee.mutateAsync(employeeToDelete.id);
+          showToast(`Đã xóa vĩnh viễn ${employeeToDelete.full_name} khỏi hệ thống.`);
+          setSelectedEmployeeIdForAdmin('');
+          setEmployeeToDelete(null);
+          setDeleteConfirmationCode('');
+        }}
+      >
+        <label htmlFor="permanent-delete-code" className="mb-2 block text-sm font-semibold text-slate-700">Nhập mã nhân viên để xác nhận</label>
+        <input
+          id="permanent-delete-code"
+          type="text"
+          value={deleteConfirmationCode}
+          onChange={(event) => setDeleteConfirmationCode(event.target.value)}
+          placeholder={employeeToDelete?.employee_code || 'Mã nhân viên'}
+          autoComplete="off"
+          className="w-full rounded-xl border border-rose-300 px-3 py-2.5 font-mono text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+        />
+        <p className="mt-2 text-xs leading-5 text-rose-700">Mã cần nhập: <strong className="font-mono">{employeeToDelete?.employee_code}</strong>. Audit log chỉ giữ lại dấu vết thao tác xóa.</p>
+      </ConfirmationDialog>
 
       <VneidGuideModal isOpen={isVneidGuideOpen} onClose={() => setIsVneidGuideOpen(false)} />
     </div>

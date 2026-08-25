@@ -16,7 +16,11 @@ Cập nhật lần cuối: **2026-08-25**. File này tóm tắt trạng thái re
 
 **Đã deploy Supabase, chờ deploy frontend lên Vercel:**
 - Luồng **Admin mời → nhân viên đặt mật khẩu → onboarding → Admin duyệt** đã apply migration, deploy Edge Function `create-employee` và regenerate type từ DB thật. Đăng ký công khai đã bị tắt ở UI và Supabase Auth.
+- Khi nhân viên gửi onboarding, hồ sơ chuyển `Chờ duyệt hồ sơ` và xuất hiện trực tiếp tại `Thông báo & Cảnh báo` của Admin. Admin mở mục này để vào đúng Hồ sơ Nhân viên, kiểm tra CCCD/ngân hàng/người thân, rồi `Duyệt hồ sơ` hoặc `Yêu cầu bổ sung`. Không gửi email nội bộ cho Admin hoặc email thông báo kết quả cho nhân viên.
 - `vercel.json` rewrite mọi route SPA về `index.html`; sau lần deploy Vercel kế tiếp, mở trực tiếp `/login` và `/auth/activate` sẽ không còn 404. `APP_URL` dùng production URL, CORS cho phép cả production và `http://127.0.0.1:3000`.
+
+**Sẵn sàng deploy Supabase:**
+- Quản lý vòng đời lời mời kích hoạt: admin thấy link đã gửi/đã mở/hết hạn/thu hồi, có thể gửi lại hoặc thu hồi ngay từ Hồ sơ Nhân viên. Migration và Edge Function mới cần deploy cùng nhau trước khi UI này hoạt động.
 
 **Cắt góc có chủ đích (xem lý do trong AGENTS.md §Lessons):**
 - `kpi_level` là text tự do + gợi ý, không phải bảng danh mục level.
@@ -36,6 +40,37 @@ Cập nhật lần cuối: **2026-08-25**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-25 — Xóa vĩnh viễn nhân viên đã nghỉ việc
+
+- `AdminEmployeeListView` chỉ hiển thị nút **Xóa vĩnh viễn** khi trạng thái là `Đã nghỉ việc`; Admin phải nhập đúng mã nhân viên trước khi nút xóa được mở.
+- Edge Function `delete-offboarded-employee` xác thực Admin đang hoạt động cùng company, chặn xóa nhân viên chưa nghỉ việc hoặc nhân viên gắn tài khoản Admin, dọn tệp trong Storage, xóa Auth user và record nhân viên (các bảng nghiệp vụ liên quan cascade theo FK). Audit log chỉ giữ lại dấu vết thao tác xóa.
+- Function đã deploy tới Supabase project `xtyjeduckvopbdeokhfn`.
+
+**Verify local:** `npm run typecheck` sạch; function deploy thành công.
+
+### 2026-08-25 — Duyệt hồ sơ onboarding ngay trong portal Admin
+
+- `HRContext` tạo cảnh báo động theo các `profiles.onboarding_status = 'submitted'`; sidebar hiển thị badge số **hồ sơ chờ duyệt** và `Thông báo & Cảnh báo` có filter chuyên biệt.
+- `AdminEmployeeListView` hiển thị khối **Hồ sơ đang chờ duyệt** cho nhân viên tương ứng, với nút `Duyệt hồ sơ`/`Yêu cầu bổ sung`; Admin kiểm tra trực tiếp các phần CCCD, ngân hàng và người thân bên dưới trước khi quyết định.
+- Bỏ nút duyệt khỏi `AdminSettingsView` để tránh hai điểm xử lý; trạng thái profile sau khi duyệt sẽ tự làm cảnh báo biến mất. Mutation đồng thời làm mới danh sách nhân viên.
+- Luồng này chỉ dùng portal/RPC sẵn có, **không gửi email** cho Admin hay nhân viên ở cả bước submit và duyệt.
+- Các bước duyệt, yêu cầu bổ sung, thu hồi lời mời và đánh dấu nghỉ việc dùng `ConfirmationDialog` tái sử dụng (Radix Dialog), thay cho popup browser native; phản hồi sau thao tác vẫn dùng toast hệ thống.
+
+**Verify local:** `npm run typecheck`, `npm run build`, `npm run lint` sạch error (còn 7 warning cũ không liên quan).
+
+### 2026-08-25 — Quản lý vòng đời lời mời kích hoạt
+
+**Migration local:** `20260825114132_invitation_lifecycle_management.sql`.
+- `employee_invitations`: thêm hạn link, lần mở gần nhất, số lần gửi lại, trạng thái thu hồi, trạng thái hoàn tất và lỗi gửi mail cuối cùng; có index cho các lời mời đang chờ.
+- Link chưa dùng chỉ có hiệu lực trong 1 giờ. Sau khi nhân viên đã đi vào luồng hợp lệ/đặt mật khẩu, họ có thể đăng nhập để tiếp tục onboarding dang dở dù link email cũ hết hạn. Thu hồi thì cắt ngay RLS onboarding và hiển thị màn báo rõ ràng cho nhân viên.
+
+**Code:**
+- `manage-employee-invitation` Edge Function xác thực Admin + company, tạo link recovery mới qua Supabase Auth, gửi email qua Resend, lưu audit log; nếu gửi email thất bại, UI cho Admin sao chép link để gửi qua kênh an toàn.
+- `AdminEmployeeListView`: badge trạng thái lời mời, thông tin đã gửi/mở/hết hạn và nút Gửi lại/Thu hồi.
+- `ActivateAccountPage`: xác thực lời mời ngay trước khi cho đặt mật khẩu; lời mời bị hết hạn/thu hồi có thông báo hướng dẫn liên hệ HR.
+
+**Verify local:** `npm run typecheck`, `npm run build`, `npm run lint` sạch error (còn các warning cũ không liên quan).
 
 ### 2026-08-25 — Vercel SPA deep-link + production Auth URL
 

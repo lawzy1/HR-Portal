@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { FileCheck, TrendingUp, Receipt, AlertTriangle, Plus, Pencil } from 'lucide-react';
+import { FileCheck, TrendingUp, Receipt, AlertTriangle, Plus, Pencil, Send, ShieldCheck, RotateCcw } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useAuth } from '../../context/AuthContext';
 import { useEmployees, useEmployee } from '../../hooks/useEmployees';
-import { useContracts, useSalaryHistory, useContractLegalWarnings, type DbContract } from '../../hooks/useContracts';
+import { useApproveContract, useContracts, useRejectContract, useSalaryHistory, useSubmitContract, useContractLegalWarnings, type DbContract } from '../../hooks/useContracts';
 import { useEmployeePayrollHistory } from '../../hooks/usePayroll';
 import { formatVND, formatDate } from '../../utils/formatters';
 import { ContractDocumentLink } from '../ContractDocumentLink';
 import { ContractEditorModal } from './ContractEditorModal';
+import { ConfirmationDialog } from '../ConfirmationDialog';
 
 export const AdminContractSalaryView: React.FC = () => {
-  const { selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin, setSelectedPayslipId } = useHR();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
+  const { selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin, setSelectedPayslipId, showToast } = useHR();
 
   const { data: employees } = useEmployees();
   const allEmployees = employees || [];
@@ -22,6 +26,37 @@ export const AdminContractSalaryView: React.FC = () => {
   const { data: payslipsData } = useEmployeePayrollHistory(selectedId);
   const payslips = payslipsData || [];
   const [editingContract, setEditingContract] = useState<DbContract | null | undefined>(undefined);
+  const [decision, setDecision] = useState<{ action: 'approve' | 'reject'; contract: DbContract } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const submitContract = useSubmitContract();
+  const approveContract = useApproveContract();
+  const rejectContract = useRejectContract();
+
+  const handleSubmitApproval = async (contract: DbContract) => {
+    try {
+      await submitContract.mutateAsync(contract.id);
+      showToast(`Đã gửi ${contract.contract_code} cho Admin duyệt.`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể gửi duyệt hợp đồng.');
+    }
+  };
+
+  const handleDecision = async () => {
+    if (!decision) return;
+    try {
+      if (decision.action === 'approve') {
+        await approveContract.mutateAsync(decision.contract.id);
+        showToast(`Đã duyệt và áp dụng ${decision.contract.contract_code}.`);
+      } else {
+        await rejectContract.mutateAsync({ contractId: decision.contract.id, reason: rejectionReason });
+        showToast(`Đã trả lại ${decision.contract.contract_code}.`);
+      }
+      setDecision(null);
+      setRejectionReason('');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể xử lý hợp đồng.');
+    }
+  };
 
   if (!selectedEmp) {
     return <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-sm text-slate-500">Chưa có nhân viên nào.</div>;
@@ -127,10 +162,25 @@ export const AdminContractSalaryView: React.FC = () => {
                 const addenda = contracts.filter((c) => c.parent_contract_id === contract.id);
                 return (
                   <div key={contract.id} className="space-y-2">
-                    <ContractCard contract={contract} onEdit={() => setEditingContract(contract)} />
+                    <ContractCard
+                      contract={contract}
+                      isAdmin={isAdmin}
+                      onEdit={() => setEditingContract(contract)}
+                      onSubmit={() => void handleSubmitApproval(contract)}
+                      onApprove={() => setDecision({ action: 'approve', contract })}
+                      onReject={() => setDecision({ action: 'reject', contract })}
+                    />
                     {addenda.map((addendum) => (
                       <div key={addendum.id} className="ml-4 border-l-2 border-primary-200 pl-3">
-                        <ContractCard contract={addendum} onEdit={() => setEditingContract(addendum)} isAddendum />
+                        <ContractCard
+                          contract={addendum}
+                          isAdmin={isAdmin}
+                          onEdit={() => setEditingContract(addendum)}
+                          onSubmit={() => void handleSubmitApproval(addendum)}
+                          onApprove={() => setDecision({ action: 'approve', contract: addendum })}
+                          onReject={() => setDecision({ action: 'reject', contract: addendum })}
+                          isAddendum
+                        />
                       </div>
                     ))}
                   </div>
@@ -250,11 +300,56 @@ export const AdminContractSalaryView: React.FC = () => {
           onClose={() => setEditingContract(undefined)}
         />
       )}
+
+      <ConfirmationDialog
+        open={decision !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDecision(null);
+            setRejectionReason('');
+          }
+        }}
+        title={decision?.action === 'approve' ? 'Duyệt và áp dụng hợp đồng?' : 'Trả lại hợp đồng cho HR/Kế toán?'}
+        description={decision?.action === 'approve'
+          ? 'Thông tin lương, level và commission thuộc phạm vi hợp đồng sẽ được cập nhật vào hồ sơ nhân viên.'
+          : 'Hợp đồng quay về trạng thái có thể chỉnh sửa và phải được gửi duyệt lại.'}
+        confirmLabel={decision?.action === 'approve' ? 'Duyệt & áp dụng' : 'Trả lại'}
+        onConfirm={() => void handleDecision()}
+        isPending={approveContract.isPending || rejectContract.isPending}
+        isConfirmDisabled={decision?.action === 'reject' && rejectionReason.trim().length < 3}
+        variant={decision?.action === 'reject' ? 'danger' : 'primary'}
+      >
+        {decision?.action === 'reject' && (
+          <label className="block text-sm font-semibold text-slate-700">Lý do trả lại
+            <textarea
+              rows={3}
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-slate-300 p-3 text-sm font-normal"
+            />
+          </label>
+        )}
+      </ConfirmationDialog>
     </div>
   );
 };
 
-const ContractCard: React.FC<{ contract: DbContract; onEdit: () => void; isAddendum?: boolean }> = ({ contract, onEdit, isAddendum }) => (
+const CONTRACT_APPROVAL_LABELS: Record<string, string> = {
+  draft: 'Nháp',
+  pending_approval: 'Chờ Admin duyệt',
+  published: 'Đã phát hành',
+  rejected: 'Bị trả lại',
+};
+
+const ContractCard: React.FC<{
+  contract: DbContract;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onSubmit: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  isAddendum?: boolean;
+}> = ({ contract, isAdmin, onEdit, onSubmit, onApprove, onReject, isAddendum }) => (
   <div className={`p-4 rounded-xl border space-y-2 ${isAddendum ? 'bg-primary-50/50 border-primary-200/80' : 'bg-slate-50 border-slate-200/80'}`}>
     <div className="flex items-center justify-between gap-2">
       <span className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
@@ -262,15 +357,39 @@ const ContractCard: React.FC<{ contract: DbContract; onEdit: () => void; isAdden
         {contract.contract_code}
       </span>
       <div className="flex items-center gap-2">
+        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+          contract.publish_status === 'published' ? 'bg-primary-100 text-primary-800' :
+          contract.publish_status === 'pending_approval' ? 'bg-amber-100 text-amber-800' :
+          contract.publish_status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'
+        }`}>
+          {CONTRACT_APPROVAL_LABELS[contract.publish_status] || contract.publish_status}
+        </span>
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
           contract.status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' :
           contract.status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
         }`}>
           {contract.status}
         </span>
-        <button onClick={onEdit} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
+        {(contract.publish_status === 'draft' || contract.publish_status === 'rejected') && (
+          <>
+            <button onClick={onEdit} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onSubmit} className="p-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 cursor-pointer" title="Gửi Admin duyệt">
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+        {isAdmin && contract.publish_status === 'pending_approval' && (
+          <>
+            <button onClick={onReject} className="p-1.5 rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50" title="Trả lại">
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onApprove} className="p-1.5 rounded-lg bg-success-600 text-white hover:bg-success-700" title="Duyệt & áp dụng">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
       </div>
     </div>
     <div className="text-xs text-slate-600 space-y-1">
@@ -281,8 +400,28 @@ const ContractCard: React.FC<{ contract: DbContract; onEdit: () => void; isAdden
         {contract.allowance_amount > 0 && <> • Phụ cấp: <b className="text-success-700">{formatVND(contract.allowance_amount)}</b></>}
         {contract.kpi_target_month != null && <> • KPI/tháng: <b className="text-primary-700">{contract.kpi_target_month}</b></>}
       </p>
+      {(contract.level_title || contract.commission_rate_per_view > 0 || contract.qc_commission_rate_per_view > 0) && (
+        <p>
+          {contract.level_title && <>Level: <b>{contract.level_title}</b></>}
+          {contract.commission_rate_per_view > 0 && <> • Commission: <b className="text-primary-700">{formatVND(contract.commission_rate_per_view)}/view</b></>}
+          {contract.qc_commission_rate_per_view > 0 && <> • QC: <b className="text-primary-700">{formatVND(contract.qc_commission_rate_per_view)}/view</b></>}
+        </p>
+      )}
+      {(contract.phone_allowance > 0 || contract.lunch_allowance > 0 || contract.guaranteed_income > 0) && (
+        <p>
+          Điện thoại: <b>{formatVND(contract.phone_allowance)}</b> • Ăn trưa: <b>{formatVND(contract.lunch_allowance)}</b>
+          {contract.guaranteed_income > 0 && <> • Đảm bảo thu nhập: <b>{formatVND(contract.guaranteed_income)}</b></>}
+        </p>
+      )}
+      {(contract.work_location || contract.working_schedule) && (
+        <p>{contract.work_location || '—'}{contract.working_schedule ? ` • ${contract.working_schedule}` : ''}</p>
+      )}
+      {isAddendum && contract.adjustment_categories.length > 0 && (
+        <p>Phạm vi điều chỉnh: <b>{contract.adjustment_categories.join(', ')}</b></p>
+      )}
       <ContractDocumentLink path={contract.document_path} name={contract.document_name} />
       {contract.note && <p className="text-slate-500 italic mt-1">Ghi chú: {contract.note}</p>}
+      {contract.rejection_reason && <p className="font-semibold text-rose-700">Lý do trả lại: {contract.rejection_reason}</p>}
     </div>
   </div>
 );

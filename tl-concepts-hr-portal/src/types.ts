@@ -164,7 +164,7 @@ export interface KpiMonthlyData {
 
 export interface HrReminder {
   id: string;
-  category: 'contract' | 'salary_review' | 'missing_doc' | 'payroll' | 'leave_request' | 'ot_request' | 'work_event';
+  category: 'contract' | 'salary_review' | 'missing_doc' | 'payroll' | 'leave_request' | 'ot_request' | 'work_event' | 'onboarding_review';
   title: string;
   message: string;
   employeeId?: string;

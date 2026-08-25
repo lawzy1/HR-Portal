@@ -179,6 +179,11 @@ export type Database = {
       }
       contracts: {
         Row: {
+          adjustment_categories: string[]
+          approval_requested_at: string | null
+          approval_requested_by: string | null
+          approved_at: string | null
+          approved_by: string | null
           allowance_amount: number
           company_id: string
           contract_code: string
@@ -189,16 +194,31 @@ export type Database = {
           end_date: string | null
           id: string
           kpi_target_month: number | null
+          commission_rate_per_view: number
+          guaranteed_income: number
+          level_title: string | null
+          lunch_allowance: number
           note: string | null
           parent_contract_id: string | null
           position: string | null
+          publish_status: string
+          phone_allowance: number
+          qc_commission_rate_per_view: number
+          rejection_reason: string | null
           salary: number | null
           signed_date: string | null
           start_date: string
           status: string
           type: string
+          work_location: string | null
+          working_schedule: string | null
         }
         Insert: {
+          adjustment_categories?: string[]
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           allowance_amount?: number
           company_id: string
           contract_code: string
@@ -209,16 +229,31 @@ export type Database = {
           end_date?: string | null
           id?: string
           kpi_target_month?: number | null
+          commission_rate_per_view?: number
+          guaranteed_income?: number
+          level_title?: string | null
+          lunch_allowance?: number
           note?: string | null
           parent_contract_id?: string | null
           position?: string | null
+          publish_status?: string
+          phone_allowance?: number
+          qc_commission_rate_per_view?: number
+          rejection_reason?: string | null
           salary?: number | null
           signed_date?: string | null
           start_date: string
           status?: string
           type: string
+          work_location?: string | null
+          working_schedule?: string | null
         }
         Update: {
+          adjustment_categories?: string[]
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           allowance_amount?: number
           company_id?: string
           contract_code?: string
@@ -229,16 +264,40 @@ export type Database = {
           end_date?: string | null
           id?: string
           kpi_target_month?: number | null
+          commission_rate_per_view?: number
+          guaranteed_income?: number
+          level_title?: string | null
+          lunch_allowance?: number
           note?: string | null
           parent_contract_id?: string | null
           position?: string | null
+          publish_status?: string
+          phone_allowance?: number
+          qc_commission_rate_per_view?: number
+          rejection_reason?: string | null
           salary?: number | null
           signed_date?: string | null
           start_date?: string
           status?: string
           type?: string
+          work_location?: string | null
+          working_schedule?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contracts_approval_requested_by_fkey"
+            columns: ["approval_requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contracts_company_id_fkey"
             columns: ["company_id"]
@@ -267,34 +326,55 @@ export type Database = {
           accepted_at: string | null
           auth_user_id: string
           company_id: string
+          completed_at: string | null
           email: string
           employee_id: string
+          expires_at: string
           id: string
           invited_at: string
           invited_by: string
+          last_email_error: string | null
+          last_opened_at: string | null
           last_sent_at: string
+          resend_count: number
+          revoked_at: string | null
+          revoked_by: string | null
         }
         Insert: {
           accepted_at?: string | null
           auth_user_id: string
           company_id: string
+          completed_at?: string | null
           email: string
           employee_id: string
+          expires_at?: string
           id?: string
           invited_at?: string
           invited_by: string
+          last_email_error?: string | null
+          last_opened_at?: string | null
           last_sent_at?: string
+          resend_count?: number
+          revoked_at?: string | null
+          revoked_by?: string | null
         }
         Update: {
           accepted_at?: string | null
           auth_user_id?: string
           company_id?: string
+          completed_at?: string | null
           email?: string
           employee_id?: string
+          expires_at?: string
           id?: string
           invited_at?: string
           invited_by?: string
+          last_email_error?: string | null
+          last_opened_at?: string | null
           last_sent_at?: string
+          resend_count?: number
+          revoked_at?: string | null
+          revoked_by?: string | null
         }
         Relationships: [
           {
@@ -469,6 +549,7 @@ export type Database = {
           employee_code: string
           full_name: string
           gender: string | null
+          guaranteed_income_amount: number
           id: string
           job_title: string | null
           kpi_level: string | null
@@ -476,7 +557,9 @@ export type Database = {
           last_salary_review_date: string | null
           marital_status: string | null
           permanent_address: string | null
+          performance_commission_rate: number
           phone: string | null
+          qc_commission_rate: number
           start_date: string | null
           status: string
           temporary_address: string | null
@@ -494,6 +577,7 @@ export type Database = {
           employee_code: string
           full_name: string
           gender?: string | null
+          guaranteed_income_amount?: number
           id?: string
           job_title?: string | null
           kpi_level?: string | null
@@ -501,7 +585,9 @@ export type Database = {
           last_salary_review_date?: string | null
           marital_status?: string | null
           permanent_address?: string | null
+          performance_commission_rate?: number
           phone?: string | null
+          qc_commission_rate?: number
           start_date?: string | null
           status?: string
           temporary_address?: string | null
@@ -519,6 +605,7 @@ export type Database = {
           employee_code?: string
           full_name?: string
           gender?: string | null
+          guaranteed_income_amount?: number
           id?: string
           job_title?: string | null
           kpi_level?: string | null
@@ -526,7 +613,9 @@ export type Database = {
           last_salary_review_date?: string | null
           marital_status?: string | null
           permanent_address?: string | null
+          performance_commission_rate?: number
           phone?: string | null
+          qc_commission_rate?: number
           start_date?: string | null
           status?: string
           temporary_address?: string | null
@@ -661,9 +750,14 @@ export type Database = {
       }
       kpi_monthly: {
         Row: {
+          approval_requested_at: string | null
+          approval_requested_by: string | null
+          approved_at: string | null
+          approved_by: string | null
           benefit_amount: number | null
           bonus_amount: number | null
           company_id: string
+          commission_rate_snapshot: number
           completion_percentage: number | null
           created_at: string
           employee_id: string
@@ -674,13 +768,25 @@ export type Database = {
           notes: string | null
           ot_hourly_rate: number | null
           ot_hours: number | null
+          performance_commission_amount: number
+          publish_status: string
+          qc_commission_amount: number
+          qc_rate_snapshot: number
+          qc_views: number
           rendered_views_actual: number | null
+          rejection_reason: string | null
+          guaranteed_income_topup: number
           year: number
         }
         Insert: {
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           benefit_amount?: number | null
           bonus_amount?: number | null
           company_id: string
+          commission_rate_snapshot?: number
           completion_percentage?: number | null
           created_at?: string
           employee_id: string
@@ -691,13 +797,25 @@ export type Database = {
           notes?: string | null
           ot_hourly_rate?: number | null
           ot_hours?: number | null
+          performance_commission_amount?: number
+          publish_status?: string
+          qc_commission_amount?: number
+          qc_rate_snapshot?: number
+          qc_views?: number
           rendered_views_actual?: number | null
+          rejection_reason?: string | null
+          guaranteed_income_topup?: number
           year: number
         }
         Update: {
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           benefit_amount?: number | null
           bonus_amount?: number | null
           company_id?: string
+          commission_rate_snapshot?: number
           completion_percentage?: number | null
           created_at?: string
           employee_id?: string
@@ -708,10 +826,31 @@ export type Database = {
           notes?: string | null
           ot_hourly_rate?: number | null
           ot_hours?: number | null
+          performance_commission_amount?: number
+          publish_status?: string
+          qc_commission_amount?: number
+          qc_rate_snapshot?: number
+          qc_views?: number
           rendered_views_actual?: number | null
+          rejection_reason?: string | null
+          guaranteed_income_topup?: number
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "kpi_monthly_approval_requested_by_fkey"
+            columns: ["approval_requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_monthly_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "kpi_monthly_company_id_fkey"
             columns: ["company_id"]
@@ -980,116 +1119,250 @@ export type Database = {
           },
         ]
       }
+      notification_outbox: {
+        Row: {
+          attempts: number
+          available_at: string
+          company_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          provider_message_id: string | null
+          recipient_email: string | null
+          recipient_employee_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          available_at?: string
+          company_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string | null
+          recipient_employee_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          available_at?: string
+          company_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string | null
+          recipient_employee_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_outbox_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_outbox_recipient_employee_id_fkey"
+            columns: ["recipient_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_records: {
         Row: {
           actual_work_days: number
           advance_payment: number
+          annual_leave_remaining_days: number
+          annual_leave_used_days: number
+          approval_requested_at: string | null
+          approval_requested_by: string | null
+          approved_at: string | null
+          approved_by: string | null
           base_salary: number
           bhtn_deduction: number
           bhxh_deduction: number
           bhyt_deduction: number
+          business_trip_refund: number
           company_id: string
           created_at: string
           employee_id: string
+          dependents_count: number
           family_deduction: number
           gross_income: number
           id: string
           import_source_name: string | null
           kpi_bonus: number
           lunch_allowance: number
+          holiday_bonus_amount: number
           month: number
           net_salary: number
           note: string | null
+          notification_sent_at: string | null
+          notification_status: string
           ot_hours: number
           ot_pay: number
           other_deductions: number
           payment_date: string | null
           payment_status: string
+          payslip_pdf_path: string | null
           personal_income_tax: number
+          personal_income_tax_refund: number
           phone_allowance: number
           prior_month_adjustment: number
           project_bonus_amount: number
           publish_status: string
           published_at: string | null
           published_by: string | null
+          rejection_reason: string | null
           standard_work_days: number
           tax_exempt_income: number
           taxable_income: number
+          welfare_refund: number
+          workday_salary: number
           year: number
         }
         Insert: {
           actual_work_days?: number
           advance_payment?: number
+          annual_leave_remaining_days?: number
+          annual_leave_used_days?: number
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           base_salary?: number
           bhtn_deduction?: number
           bhxh_deduction?: number
           bhyt_deduction?: number
+          business_trip_refund?: number
           company_id: string
           created_at?: string
           employee_id: string
+          dependents_count?: number
           family_deduction?: number
           gross_income?: number
           id?: string
           import_source_name?: string | null
           kpi_bonus?: number
           lunch_allowance?: number
+          holiday_bonus_amount?: number
           month: number
           net_salary?: number
           note?: string | null
+          notification_sent_at?: string | null
+          notification_status?: string
           ot_hours?: number
           ot_pay?: number
           other_deductions?: number
           payment_date?: string | null
           payment_status?: string
+          payslip_pdf_path?: string | null
           personal_income_tax?: number
+          personal_income_tax_refund?: number
           phone_allowance?: number
           prior_month_adjustment?: number
           project_bonus_amount?: number
           publish_status?: string
           published_at?: string | null
           published_by?: string | null
+          rejection_reason?: string | null
           standard_work_days?: number
           tax_exempt_income?: number
           taxable_income?: number
+          welfare_refund?: number
+          workday_salary?: number
           year: number
         }
         Update: {
           actual_work_days?: number
           advance_payment?: number
+          annual_leave_remaining_days?: number
+          annual_leave_used_days?: number
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           base_salary?: number
           bhtn_deduction?: number
           bhxh_deduction?: number
           bhyt_deduction?: number
+          business_trip_refund?: number
           company_id?: string
           created_at?: string
           employee_id?: string
+          dependents_count?: number
           family_deduction?: number
           gross_income?: number
           id?: string
           import_source_name?: string | null
           kpi_bonus?: number
           lunch_allowance?: number
+          holiday_bonus_amount?: number
           month?: number
           net_salary?: number
           note?: string | null
+          notification_sent_at?: string | null
+          notification_status?: string
           ot_hours?: number
           ot_pay?: number
           other_deductions?: number
           payment_date?: string | null
           payment_status?: string
+          payslip_pdf_path?: string | null
           personal_income_tax?: number
+          personal_income_tax_refund?: number
           phone_allowance?: number
           prior_month_adjustment?: number
           project_bonus_amount?: number
           publish_status?: string
           published_at?: string | null
           published_by?: string | null
+          rejection_reason?: string | null
           standard_work_days?: number
           tax_exempt_income?: number
           taxable_income?: number
+          welfare_refund?: number
+          workday_salary?: number
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "payroll_records_approval_requested_by_fkey"
+            columns: ["approval_requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_records_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payroll_records_company_id_fkey"
             columns: ["company_id"]
@@ -1300,6 +1573,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_contract: { Args: { p_contract_id: string }; Returns: string }
+      approve_kpi_month: {
+        Args: { p_month: number; p_year: number }
+        Returns: number
+      }
       contract_legal_warnings: {
         Args: { p_employee_id: string }
         Returns: {
@@ -1330,6 +1608,7 @@ export type Database = {
           employee_code: string
           full_name: string
           gender: string | null
+          guaranteed_income_amount: number
           id: string
           job_title: string | null
           kpi_level: string | null
@@ -1337,7 +1616,9 @@ export type Database = {
           last_salary_review_date: string | null
           marital_status: string | null
           permanent_address: string | null
+          performance_commission_rate: number
           phone: string | null
+          qc_commission_rate: number
           start_date: string | null
           status: string
           temporary_address: string | null
@@ -1353,7 +1634,15 @@ export type Database = {
       current_company_id: { Args: never; Returns: string }
       current_employee_id: { Args: never; Returns: string }
       current_onboarding_employee_id: { Args: never; Returns: string }
+      approve_payroll_month: {
+        Args: { p_month: number; p_year: number }
+        Returns: number
+      }
+      is_backoffice: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_hr_accounting: { Args: never; Returns: boolean }
+      mark_own_invitation_completed: { Args: never; Returns: undefined }
+      mark_own_invitation_opened: { Args: never; Returns: undefined }
       record_audit_event: {
         Args: {
           p_action: string
@@ -1371,11 +1660,40 @@ export type Database = {
         Args: { p_decision: string; p_note?: string; p_profile_id: string }
         Returns: undefined
       }
+      reject_contract: {
+        Args: { p_contract_id: string; p_reason: string }
+        Returns: string
+      }
+      reject_kpi_month: {
+        Args: { p_month: number; p_reason: string; p_year: number }
+        Returns: number
+      }
+      reject_payroll_month: {
+        Args: { p_month: number; p_reason: string; p_year: number }
+        Returns: number
+      }
+      retry_payslip_notification: {
+        Args: { p_payroll_id: string }
+        Returns: string
+      }
+      save_and_submit_own_onboarding: {
+        Args: { p_employee: Json; p_relatives: Json; p_sensitive: Json }
+        Returns: undefined
+      }
       start_own_onboarding: { Args: never; Returns: undefined }
+      submit_contract: { Args: { p_contract_id: string }; Returns: string }
+      submit_kpi_month: {
+        Args: { p_month: number; p_year: number }
+        Returns: number
+      }
+      submit_payroll_month: {
+        Args: { p_month: number; p_year: number }
+        Returns: number
+      }
       submit_own_onboarding: { Args: never; Returns: undefined }
     }
     Enums: {
-      user_role: "admin" | "employee"
+      user_role: "admin" | "hr" | "employee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1503,7 +1821,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      user_role: ["admin", "employee"],
+      user_role: ["admin", "hr", "employee"],
     },
   },
 } as const

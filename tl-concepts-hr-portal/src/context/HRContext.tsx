@@ -11,6 +11,7 @@ import { useAllContracts } from '../hooks/useContracts';
 import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
+import { useAllProfiles } from '../hooks/useProfiles';
 import { useHrDataRefresh } from '../hooks/useHrDataRefresh';
 
 const DAY_MS = 86_400_000;
@@ -40,6 +41,7 @@ interface HRContextType {
 
   // Reminders & Alerts
   reminders: HrReminder[];
+  pendingOnboardingCount: number;
   markReminderAsRead: (id: string) => void;
   resolveReminder: (id: string) => void;
 
@@ -134,9 +136,30 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const allWorkEvents = useMemo(() => allWorkEventsData || [], [allWorkEventsData]);
   const { data: allPayrollData } = useAllPayrollHistory();
   const allPayroll = useMemo(() => allPayrollData || [], [allPayrollData]);
+  const { data: allProfilesData } = useAllProfiles();
+  const pendingOnboardingProfiles = useMemo(
+    () => (allProfilesData || []).filter((profile) => profile.onboarding_status === 'submitted'),
+    [allProfilesData],
+  );
 
   const reminders = useMemo<HrReminder[]>(() => {
     const generated: HrReminder[] = [];
+
+    pendingOnboardingProfiles.forEach((profile) => {
+      const employee = profile.employees;
+      if (!profile.employee_id || !employee) return;
+      generated.push({
+        id: `rem-onboarding-${profile.id}`,
+        category: 'onboarding_review',
+        title: 'Hồ sơ nhân viên chờ duyệt',
+        message: `${employee.full_name} đã hoàn tất onboarding. Kiểm tra CCCD, thông tin ngân hàng và người liên hệ trước khi mở quyền truy cập.`,
+        employeeId: profile.employee_id,
+        employeeName: employee.full_name,
+        isRead: readReminderIds.includes(`rem-onboarding-${profile.id}`),
+        createdAt: profile.onboarding_submitted_at || profile.created_at,
+        severity: 'high',
+      });
+    });
 
     // 1. Contract expiry — most recently started contract per employee, if
     // it has a finite end date (an indefinite contract has end_date null).
@@ -278,7 +301,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     return generated;
-  }, [realEmployees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, readReminderIds]);
+  }, [pendingOnboardingProfiles, realEmployees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, readReminderIds]);
 
   const markReminderAsRead = (id: string) => {
     setReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
@@ -303,6 +326,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         selectedEmployeeIdForAdmin,
         setSelectedEmployeeIdForAdmin,
         reminders,
+        pendingOnboardingCount: pendingOnboardingProfiles.length,
         markReminderAsRead,
         resolveReminder,
         isNewLeaveModalOpen,

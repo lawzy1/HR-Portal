@@ -52,7 +52,7 @@ export function usePayrollRecord(id: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('payroll_records')
-        .select('*, employees(full_name, employee_code, job_title, department)')
+        .select('*, employees(full_name, employee_code, job_title, department, email)')
         .eq('id', id!)
         .single();
       if (error) throw error;
@@ -149,20 +149,69 @@ export function useImportPayrollRecords() {
   });
 }
 
-export function usePublishPayrollMonth() {
+export function useSubmitPayrollMonth() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ month, year, profileId }: { month: number; year: number; profileId: string }) => {
-      const { data, error } = await supabase
-        .from('payroll_records')
-        .update({
-          publish_status: 'published',
-          published_at: new Date().toISOString(),
-          published_by: profileId,
-        })
-        .eq('month', month)
-        .eq('year', year)
-        .select();
+    mutationFn: async ({ month, year }: { month: number; year: number }) => {
+      const { data, error } = await supabase.rpc('submit_payroll_month', { p_month: month, p_year: year });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+  });
+}
+
+export function useApprovePayrollMonth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ month, year }: { month: number; year: number }) => {
+      const { data, error } = await supabase.rpc('approve_payroll_month', { p_month: month, p_year: year });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+  });
+}
+
+export type PayslipNotificationResult = {
+  processed: number;
+  results: Array<{ id: string; status: string; error?: string }>;
+};
+
+// Admin-only worker invocation. Approval and queue creation happen atomically
+// in Postgres; delivery is separate so a provider outage never rolls back an
+// already approved payroll month.
+export function useProcessPayslipNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { payrollId?: string; limit?: number } = {}) => {
+      const { data, error } = await supabase.functions.invoke<PayslipNotificationResult>('process-payslip-outbox', {
+        body: input,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+  });
+}
+
+export function useRetryPayslipNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payrollId: string) => {
+      const { data, error } = await supabase.rpc('retry_payslip_notification', { p_payroll_id: payrollId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+  });
+}
+
+export function useRejectPayrollMonth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ month, year, reason }: { month: number; year: number; reason: string }) => {
+      const { data, error } = await supabase.rpc('reject_payroll_month', { p_month: month, p_year: year, p_reason: reason });
       if (error) throw error;
       return data;
     },

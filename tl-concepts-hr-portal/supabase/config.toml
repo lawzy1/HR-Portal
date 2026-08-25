@@ -412,3 +412,17 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.process-payslip-outbox]
+enabled = true
+# This endpoint is only called by a signed-in Admin. Keep the platform JWT
+# gate enabled; @supabase/server performs the user-mode verification again
+# and exposes the verified identity to the handler.
+verify_jwt = true
+import_map = "./functions/process-payslip-outbox/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/process-payslip-outbox/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/process-payslip-outbox/*.html" ]

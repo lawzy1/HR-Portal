@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useCompanySettings, useUpdateCompanySettings } from '../../hooks/useCompanySettings';
-import { useAllProfiles, useReviewEmployeeOnboarding, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
+import { useAllProfiles, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
@@ -20,19 +20,14 @@ const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
   );
 };
 
-// The real system only implements two roles end-to-end (see `user_role` in
-// supabase/migrations/20260822105256_foundation.sql and every `is_admin()`
-// RLS check across the app) — not the four-tier Admin/HR/Manager/Employee
-// RBAC the original prototype drew. The matrix below and the role dropdown
-// are both trimmed to match what RLS actually enforces.
 const permissionsMatrix = [
-  { feature: 'Xem thông tin cá nhân & Phiếu lương cá nhân', admin: true, employee: true },
-  { feature: 'Gửi yêu cầu Nghỉ phép & Đăng ký OT', admin: true, employee: true },
-  { feature: 'Xem danh sách & Hồ sơ nhân sự toàn công ty', admin: true, employee: false },
-  { feature: 'Phê duyệt Đơn nghỉ phép & Giờ làm OT', admin: true, employee: false },
-  { feature: 'Quản lý Hợp đồng, Tăng lương & Cài đặt Bảo hiểm', admin: true, employee: false },
-  { feature: 'Tính toán & Phê duyệt Payroll toàn Công ty', admin: true, employee: false },
-  { feature: 'Cài đặt Phân quyền & Xóa dữ liệu NV', admin: true, employee: false },
+  { feature: 'Xem thông tin cá nhân & Phiếu lương cá nhân', admin: true, hr: true, employee: true },
+  { feature: 'Xem và cập nhật hồ sơ nhân sự toàn công ty', admin: true, hr: true, employee: false },
+  { feature: 'Nhập HĐLĐ, KPI, OT và dữ liệu payroll', admin: true, hr: true, employee: false },
+  { feature: 'Gửi kỳ payroll sang chờ Admin duyệt', admin: true, hr: true, employee: false },
+  { feature: 'Phê duyệt cuối cùng và phát hành phiếu lương', admin: true, hr: false, employee: false },
+  { feature: 'Phê duyệt nghỉ phép, OT và onboarding', admin: true, hr: false, employee: false },
+  { feature: 'Quản lý tài khoản, phân quyền và audit', admin: true, hr: false, employee: false },
 ];
 
 export const AdminSettingsView: React.FC = () => {
@@ -45,7 +40,6 @@ export const AdminSettingsView: React.FC = () => {
   const profiles = profilesData || [];
   const updateProfileRole = useUpdateProfileRole();
   const updateProfileAccess = useUpdateProfileAccess();
-  const reviewOnboarding = useReviewEmployeeOnboarding();
 
   // Company parameter form state — seeded from the real row once it loads.
   const [bhxhEmployeeRate, setBhxhEmployeeRate] = useState(8);
@@ -62,7 +56,7 @@ export const AdminSettingsView: React.FC = () => {
     }
   }, [companySettings]);
 
-  const handleRoleChange = (profileId: string, newRole: 'admin' | 'employee') => {
+  const handleRoleChange = (profileId: string, newRole: 'admin' | 'hr' | 'employee') => {
     updateProfileRole.mutate(
       { profileId, role: newRole },
       {
@@ -76,14 +70,6 @@ export const AdminSettingsView: React.FC = () => {
       { profileId, isActive },
       { onSuccess: () => showToast(isActive ? 'Đã duyệt và kích hoạt tài khoản.' : 'Đã khóa quyền truy cập tài khoản.') }
     );
-  };
-
-  const review = (profileId: string, decision: 'approved' | 'needs_changes') => {
-    const note = decision === 'needs_changes' ? window.prompt('Nêu rõ nội dung nhân viên cần bổ sung:')?.trim() : undefined;
-    if (decision === 'needs_changes' && !note) return;
-    reviewOnboarding.mutate({ profileId, decision, note }, {
-      onSuccess: () => showToast(decision === 'approved' ? 'Đã duyệt hồ sơ và mở HR Portal.' : 'Đã gửi yêu cầu bổ sung hồ sơ.'),
-    });
   };
 
   const handleSaveParams = (e: React.FormEvent) => {
@@ -114,7 +100,7 @@ export const AdminSettingsView: React.FC = () => {
             Cài đặt Phân quyền & Cấu hình Doanh nghiệp
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Phân quyền tài khoản (Admin, Employee) và cấu hình tỷ lệ BHXH, ngày công chuẩn.
+            Phân quyền tài khoản (Admin, HR/Kế toán, User) và cấu hình doanh nghiệp.
           </p>
         </div>
       </div>
@@ -137,6 +123,7 @@ export const AdminSettingsView: React.FC = () => {
                 <tr>
                   <th className="py-3 px-3">Quyền hạn / Chức năng</th>
                   <th className="py-3 px-2 text-center text-primary-700 font-bold">Admin</th>
+                  <th className="py-3 px-2 text-center text-success-700 font-bold">HR/Kế toán</th>
                   <th className="py-3 px-2 text-center text-slate-600">Employee</th>
                 </tr>
               </thead>
@@ -144,6 +131,9 @@ export const AdminSettingsView: React.FC = () => {
                 {permissionsMatrix.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50">
                     <td className="py-3 px-3 font-medium text-slate-800">{item.feature}</td>
+                    <td className="py-3 px-2 text-center">
+                      {item.hr ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
+                    </td>
                     <td className="py-3 px-2 text-center">
                       <Check className="w-4 h-4 text-success-600 mx-auto font-bold" />
                     </td>
@@ -230,7 +220,7 @@ export const AdminSettingsView: React.FC = () => {
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h2 className="font-bold text-slate-900 text-base flex items-center space-x-2">
             <Users className="w-5 h-5 text-success-600" />
-            <span>3. Duyệt Tài khoản & Phân quyền Nhân viên</span>
+            <span>3. Tài khoản & Phân quyền Nhân viên</span>
           </h2>
         </div>
 
@@ -243,7 +233,6 @@ export const AdminSettingsView: React.FC = () => {
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Vai trò Phân quyền hiện tại</th>
                 <th className="py-3 px-4">Trạng thái onboarding</th>
-                <th className="py-3 px-4">Duyệt hồ sơ</th>
                 <th className="py-3 px-4 text-center">Thay đổi Vai trò</th>
               </tr>
             </thead>
@@ -265,7 +254,9 @@ export const AdminSettingsView: React.FC = () => {
                       <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase ${
                         profile.role === 'admin'
                           ? 'bg-purple-100 text-purple-800'
-                          : 'bg-slate-100 text-slate-700'
+                          : profile.role === 'hr'
+                            ? 'bg-success-100 text-success-800'
+                            : 'bg-slate-100 text-slate-700'
                       }`}>
                         {profile.role}
                       </span>
@@ -281,22 +272,18 @@ export const AdminSettingsView: React.FC = () => {
                             : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
                         }`}
                       >
-                        {profile.is_active ? 'Đang hoạt động · Khóa' : profile.onboarding_status === 'submitted' ? 'Đang chờ duyệt' : profile.onboarding_status === 'needs_changes' ? 'Cần bổ sung' : profile.onboarding_status === 'in_progress' ? 'Đang điền hồ sơ' : 'Đã gửi lời mời'}
+                        {profile.is_active ? 'Đang hoạt động · Khóa' : profile.onboarding_status === 'submitted' ? 'Đang chờ duyệt' : profile.onboarding_status === 'needs_changes' ? 'Cần bổ sung' : profile.onboarding_status === 'in_progress' ? 'Đang điền hồ sơ' : profile.onboarding_status === 'revoked' ? 'Lời mời đã thu hồi' : 'Đã gửi lời mời'}
                       </button>
-                    </td>
-                    <td className="py-3 px-4">
-                      {profile.onboarding_status === 'submitted' ? (
-                        <div className="flex gap-2"><button type="button" onClick={() => review(profile.id, 'approved')} disabled={reviewOnboarding.isPending} className="rounded-lg bg-success-100 px-2.5 py-1.5 text-[10px] font-bold text-success-800 disabled:opacity-60">Duyệt</button><button type="button" onClick={() => review(profile.id, 'needs_changes')} disabled={reviewOnboarding.isPending} className="rounded-lg bg-amber-100 px-2.5 py-1.5 text-[10px] font-bold text-amber-800 disabled:opacity-60">Yêu cầu bổ sung</button></div>
-                      ) : <span className="text-[10px] text-slate-400">—</span>}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <select
                         value={profile.role}
-                        onChange={e => handleRoleChange(profile.id, e.target.value as 'admin' | 'employee')}
+                        onChange={e => handleRoleChange(profile.id, e.target.value as 'admin' | 'hr' | 'employee')}
                         disabled={updateProfileRole.isPending}
                         className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 disabled:opacity-60"
                       >
                         <option value="admin">Admin / Ban Giám Đốc</option>
+                        <option value="hr">HR / Kế toán</option>
                         <option value="employee">Employee / Nhân viên</option>
                       </select>
                     </td>

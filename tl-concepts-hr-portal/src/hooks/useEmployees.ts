@@ -38,18 +38,12 @@ export function useEmployee(id: string | undefined) {
 }
 
 interface CreateEmployeeInput {
+  employeeCode: string;
   fullName: string;
   email: string;
-  jobTitle?: string;
-  department?: string;
-  phone?: string;
-  dob?: string;
-  gender?: string;
-  maritalStatus?: string;
-  startDate?: string;
-  contractType?: string;
-  currentSalary?: number;
-  status?: string;
+  jobTitle: string;
+  department: string;
+  startDate: string;
 }
 
 // Goes through the create-employee Edge Function (service role) — it also

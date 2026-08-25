@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useCompanySettings, useUpdateCompanySettings } from '../../hooks/useCompanySettings';
-import { useAllProfiles, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
+import { useAllProfiles, useReviewEmployeeOnboarding, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
@@ -45,6 +45,7 @@ export const AdminSettingsView: React.FC = () => {
   const profiles = profilesData || [];
   const updateProfileRole = useUpdateProfileRole();
   const updateProfileAccess = useUpdateProfileAccess();
+  const reviewOnboarding = useReviewEmployeeOnboarding();
 
   // Company parameter form state — seeded from the real row once it loads.
   const [bhxhEmployeeRate, setBhxhEmployeeRate] = useState(8);
@@ -75,6 +76,14 @@ export const AdminSettingsView: React.FC = () => {
       { profileId, isActive },
       { onSuccess: () => showToast(isActive ? 'Đã duyệt và kích hoạt tài khoản.' : 'Đã khóa quyền truy cập tài khoản.') }
     );
+  };
+
+  const review = (profileId: string, decision: 'approved' | 'needs_changes') => {
+    const note = decision === 'needs_changes' ? window.prompt('Nêu rõ nội dung nhân viên cần bổ sung:')?.trim() : undefined;
+    if (decision === 'needs_changes' && !note) return;
+    reviewOnboarding.mutate({ profileId, decision, note }, {
+      onSuccess: () => showToast(decision === 'approved' ? 'Đã duyệt hồ sơ và mở HR Portal.' : 'Đã gửi yêu cầu bổ sung hồ sơ.'),
+    });
   };
 
   const handleSaveParams = (e: React.FormEvent) => {
@@ -233,7 +242,8 @@ export const AdminSettingsView: React.FC = () => {
                 <th className="py-3 px-4">Chức danh & Phòng ban</th>
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Vai trò Phân quyền hiện tại</th>
-                <th className="py-3 px-4">Trạng thái tài khoản</th>
+                <th className="py-3 px-4">Trạng thái onboarding</th>
+                <th className="py-3 px-4">Duyệt hồ sơ</th>
                 <th className="py-3 px-4 text-center">Thay đổi Vai trò</th>
               </tr>
             </thead>
@@ -263,16 +273,21 @@ export const AdminSettingsView: React.FC = () => {
                     <td className="py-3 px-4">
                       <button
                         type="button"
-                        onClick={() => handleAccessChange(profile.id, !profile.is_active)}
-                        disabled={updateProfileAccess.isPending}
+                        onClick={() => profile.is_active && handleAccessChange(profile.id, false)}
+                        disabled={updateProfileAccess.isPending || !profile.is_active}
                         className={`rounded-lg px-3 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-60 ${
                           profile.is_active
                             ? 'bg-success-100 text-success-800 hover:bg-success-200'
                             : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
                         }`}
                       >
-                        {profile.is_active ? 'Đang hoạt động · Khóa' : 'Chờ duyệt · Kích hoạt'}
+                        {profile.is_active ? 'Đang hoạt động · Khóa' : profile.onboarding_status === 'submitted' ? 'Đang chờ duyệt' : profile.onboarding_status === 'needs_changes' ? 'Cần bổ sung' : profile.onboarding_status === 'in_progress' ? 'Đang điền hồ sơ' : 'Đã gửi lời mời'}
                       </button>
+                    </td>
+                    <td className="py-3 px-4">
+                      {profile.onboarding_status === 'submitted' ? (
+                        <div className="flex gap-2"><button type="button" onClick={() => review(profile.id, 'approved')} disabled={reviewOnboarding.isPending} className="rounded-lg bg-success-100 px-2.5 py-1.5 text-[10px] font-bold text-success-800 disabled:opacity-60">Duyệt</button><button type="button" onClick={() => review(profile.id, 'needs_changes')} disabled={reviewOnboarding.isPending} className="rounded-lg bg-amber-100 px-2.5 py-1.5 text-[10px] font-bold text-amber-800 disabled:opacity-60">Yêu cầu bổ sung</button></div>
+                      ) : <span className="text-[10px] text-slate-400">—</span>}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <select

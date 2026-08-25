@@ -19,7 +19,12 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   }
 
   if (profile && !profile.isActive && profile.employeeId) {
-    return <EmployeeOnboardingPage />;
+    if (profile.onboardingStatus === 'invited') {
+      return <Navigate to="/auth/activate" replace />;
+    }
+    if (profile.onboardingStatus === 'in_progress' || profile.onboardingStatus === 'needs_changes' || profile.onboardingStatus === 'submitted') {
+      return <EmployeeOnboardingPage />;
+    }
   }
 
   if (!profile || !profile.isActive) {

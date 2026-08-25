@@ -13,22 +13,6 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-const registerSchema = z.object({
-  fullName: z.string().trim().min(2, 'Vui lòng nhập họ và tên'),
-  phone: z.string().trim().min(8, 'Số điện thoại chưa hợp lệ'),
-  email: z.string().email('Email không hợp lệ').refine(
-    (email) => email.toLowerCase().endsWith('@tlconceptsltd.com'),
-    'Vui lòng dùng email @tlconceptsltd.com'
-  ),
-  password: z.string().min(8, 'Mật khẩu cần ít nhất 8 ký tự'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Mật khẩu xác nhận chưa khớp',
-  path: ['confirmPassword'],
-});
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
 const showcaseImages = [
   'https://tlconceptsltd.com/assets/images/our-works/1.jpg',
   'https://tlconceptsltd.com/assets/images/our-works/8.jpg',
@@ -36,44 +20,18 @@ const showcaseImages = [
 ];
 
 export const LoginPage: React.FC = () => {
-  const { session, signIn, signUp } = useAuth();
+  const { session, signIn } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const loginForm = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
-  const registerForm = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) });
 
   if (session) return <Navigate to="/" replace />;
-
-  const switchMode = (nextMode: 'login' | 'register') => {
-    setMode(nextMode);
-    setAuthError(null);
-    setSuccessMessage(null);
-  };
 
   const onLogin = async (values: LoginFormValues) => {
     setAuthError(null);
     const { error } = await signIn(values.email, values.password);
     if (error) return setAuthError('Email hoặc mật khẩu không đúng.');
-    navigate('/', { replace: true });
-  };
-
-  const onRegister = async (values: RegisterFormValues) => {
-    setAuthError(null);
-    setSuccessMessage(null);
-    const { error, needsEmailConfirmation } = await signUp({
-      email: values.email,
-      password: values.password,
-      fullName: values.fullName,
-      phone: values.phone,
-    });
-    if (error) return setAuthError(error);
-    if (needsEmailConfirmation) {
-      setSuccessMessage('Đã tạo tài khoản. Hãy xác nhận email rồi đăng nhập để hoàn thiện và tải hồ sơ lên.');
-      return;
-    }
     navigate('/', { replace: true });
   };
 
@@ -92,24 +50,20 @@ export const LoginPage: React.FC = () => {
             <div className="mt-12 max-w-md">
               <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-800">Visualizing your dream</p>
               <h1 className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-stone-900">
-                {mode === 'login' ? 'Chào mừng bạn trở lại.' : 'Bắt đầu hồ sơ nhân viên.'}
+                Chào mừng bạn trở lại.
               </h1>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                {mode === 'login'
-                  ? 'Đăng nhập để quản lý hồ sơ, hợp đồng, ngày phép và phiếu lương của bạn.'
-                  : 'Tự tạo tài khoản bằng email công ty. Sau khi xác nhận email, bạn sẽ điền và tải hồ sơ để HR duyệt.'}
+                Đăng nhập để quản lý hồ sơ, hợp đồng, ngày phép và phiếu lương của bạn.
               </p>
             </div>
 
-            <div className="mt-8 flex rounded-xl bg-stone-200/70 p-1">
-              <button type="button" onClick={() => switchMode('login')} className={`flex-1 rounded-lg px-4 py-2.5 text-xs font-bold transition cursor-pointer ${mode === 'login' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'}`}>Đăng nhập</button>
-              <button type="button" onClick={() => switchMode('register')} className={`flex-1 rounded-lg px-4 py-2.5 text-xs font-bold transition cursor-pointer ${mode === 'register' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500'}`}>Đăng ký nhân viên</button>
-            </div>
+            <p className="mt-8 rounded-xl border border-emerald-900/10 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-950">
+              Tài khoản nhân viên được Admin tạo và gửi email kích hoạt. Hãy dùng email và mật khẩu bạn đã thiết lập từ lời mời.
+            </p>
 
-            {mode === 'login' ? (
-              <form onSubmit={loginForm.handleSubmit(onLogin)} className="mt-6 space-y-4">
+            <form onSubmit={loginForm.handleSubmit(onLogin)} className="mt-6 space-y-4">
                 <Field label="Email" error={loginForm.formState.errors.email?.message}>
-                  <input type="email" autoComplete="email" placeholder="tenban@tlconceptsltd.com" {...loginForm.register('email')} className={inputClass} />
+                  <input type="email" autoComplete="email" placeholder="ban@example.com" {...loginForm.register('email')} className={inputClass} />
                 </Field>
                 <Field label="Mật khẩu" error={loginForm.formState.errors.password?.message}>
                   <span className="relative block">
@@ -118,37 +72,9 @@ export const LoginPage: React.FC = () => {
                   </span>
                 </Field>
                 <SubmitButton loading={loginForm.formState.isSubmitting}>Đăng nhập</SubmitButton>
-              </form>
-            ) : (
-              <form onSubmit={registerForm.handleSubmit(onRegister)} className="mt-6 space-y-4">
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Field label="Họ và tên" error={registerForm.formState.errors.fullName?.message}>
-                    <input type="text" autoComplete="name" {...registerForm.register('fullName')} className={inputClass} />
-                  </Field>
-                  <Field label="Số điện thoại" error={registerForm.formState.errors.phone?.message}>
-                    <input type="tel" autoComplete="tel" {...registerForm.register('phone')} className={inputClass} />
-                  </Field>
-                </div>
-                <Field label="Email công ty" error={registerForm.formState.errors.email?.message}>
-                  <input type="email" autoComplete="email" placeholder="tenban@tlconceptsltd.com" {...registerForm.register('email')} className={inputClass} />
-                </Field>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Field label="Mật khẩu" error={registerForm.formState.errors.password?.message}>
-                    <span className="relative block">
-                      <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...registerForm.register('password')} className={`${inputClass} pr-11`} />
-                      <PasswordToggle show={showPassword} toggle={() => setShowPassword((value) => !value)} />
-                    </span>
-                  </Field>
-                  <Field label="Xác nhận mật khẩu" error={registerForm.formState.errors.confirmPassword?.message}>
-                    <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...registerForm.register('confirmPassword')} className={inputClass} />
-                  </Field>
-                </div>
-                <SubmitButton loading={registerForm.formState.isSubmitting}>Tạo tài khoản</SubmitButton>
-              </form>
-            )}
+            </form>
 
             {authError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{authError}</p>}
-            {successMessage && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">{successMessage}</p>}
           </div>
 
           <p className="mt-10 flex items-center gap-2 text-[11px] text-stone-500">

@@ -4,18 +4,24 @@ import { useAuth } from '../context/AuthContext';
 import {
   useEmployee,
   useEmployeeSensitiveInfo,
+  useEmployeeRelatives,
+  useSetEmployeeRelatives,
   useUpdateEmployee,
   useUpsertEmployeeSensitiveInfo,
 } from '../hooks/useEmployees';
 import { useFileUpload } from '../hooks/useFileUpload';
+import { supabase } from '../lib/supabaseClient';
 
 export const EmployeeOnboardingPage: React.FC = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, refreshProfile } = useAuth();
   const employeeId = profile?.employeeId ?? undefined;
-  const { data: employee } = useEmployee(employeeId);
-  const { data: sensitiveInfo } = useEmployeeSensitiveInfo(employeeId);
+  const editableEmployeeId = profile && ['in_progress', 'needs_changes'].includes(profile.onboardingStatus) ? employeeId : undefined;
+  const { data: employee } = useEmployee(editableEmployeeId);
+  const { data: sensitiveInfo } = useEmployeeSensitiveInfo(editableEmployeeId);
+  const { data: relatives } = useEmployeeRelatives(editableEmployeeId);
   const updateEmployee = useUpdateEmployee();
   const upsertSensitiveInfo = useUpsertEmployeeSensitiveInfo();
+  const setRelatives = useSetEmployeeRelatives();
   const { uploadFile } = useFileUpload();
 
   const [phone, setPhone] = useState('');
@@ -33,6 +39,10 @@ export const EmployeeOnboardingPage: React.FC = () => {
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [bankAccountHolder, setBankAccountHolder] = useState('');
   const [bankBranch, setBankBranch] = useState('');
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyRelationship, setEmergencyRelationship] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [emergencyAddress, setEmergencyAddress] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
@@ -64,6 +74,19 @@ export const EmployeeOnboardingPage: React.FC = () => {
     setBankBranch(sensitiveInfo.bank_branch || '');
   }, [sensitiveInfo]);
 
+  useEffect(() => {
+    const emergency = relatives?.find((relative) => relative.is_emergency_contact) ?? relatives?.[0];
+    if (!emergency) return;
+    setEmergencyName(emergency.full_name);
+    setEmergencyRelationship(emergency.relationship || '');
+    setEmergencyPhone(emergency.phone || '');
+    setEmergencyAddress(emergency.address || '');
+  }, [relatives]);
+
+  if (profile?.onboardingStatus === 'submitted') {
+    return <OnboardingStatus title="Hồ sơ đã gửi" description="HR đang kiểm tra thông tin và minh chứng của bạn. Toàn bộ HR Portal sẽ mở ngay sau khi hồ sơ được duyệt." onSignOut={signOut} />;
+  }
+
   if (!employee || !employeeId || !profile) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Đang tải hồ sơ đăng ký...</div>;
   }
@@ -73,8 +96,8 @@ export const EmployeeOnboardingPage: React.FC = () => {
     setError(null);
     setMessage(null);
 
-    if (!idCardNumber || (!frontFile && !sensitiveInfo?.id_card_front_url) || (!backFile && !sensitiveInfo?.id_card_back_url)) {
-      setError('Vui lòng nhập số CCCD và tải đủ ảnh hai mặt trước khi gửi HR duyệt.');
+    if (!idCardNumber || (!frontFile && !sensitiveInfo?.id_card_front_url) || (!backFile && !sensitiveInfo?.id_card_back_url) || !emergencyName || !emergencyPhone) {
+      setError('Vui lòng hoàn thành CCCD, đủ hai ảnh và một người liên hệ khẩn cấp trước khi gửi HR duyệt.');
       return;
     }
 
@@ -125,9 +148,24 @@ export const EmployeeOnboardingPage: React.FC = () => {
             bank_branch: bankBranch,
           },
         }),
+        setRelatives.mutateAsync({
+          employeeId,
+          companyId,
+          relatives: [{
+            fullName: emergencyName,
+            relationship: emergencyRelationship,
+            phone: emergencyPhone,
+            address: emergencyAddress,
+            isEmergencyContact: true,
+          }],
+        }),
       ]);
 
-      setMessage('Đã lưu hồ sơ. HR sẽ kiểm tra và kích hoạt tài khoản của bạn.');
+      const { error: submitError } = await supabase.rpc('submit_own_onboarding');
+      if (submitError) throw submitError;
+      await refreshProfile();
+
+      setMessage('Đã gửi hồ sơ. HR sẽ kiểm tra và kích hoạt tài khoản của bạn.');
       setAvatarFile(null);
       setFrontFile(null);
       setBackFile(null);
@@ -202,6 +240,19 @@ export const EmployeeOnboardingPage: React.FC = () => {
             </div>
           </Section>
 
+          <Section title="4. Người thân / liên hệ khẩn cấp">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Input label="Họ và tên *"><input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} className={inputClass} required /></Input>
+              <Input label="Mối quan hệ"><input value={emergencyRelationship} onChange={(e) => setEmergencyRelationship(e.target.value)} placeholder="Ví dụ: Mẹ" className={inputClass} /></Input>
+              <Input label="Số điện thoại *"><input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className={inputClass} required /></Input>
+              <Input label="Địa chỉ"><input value={emergencyAddress} onChange={(e) => setEmergencyAddress(e.target.value)} className={inputClass} /></Input>
+            </div>
+          </Section>
+
+          {profile.onboardingStatus === 'needs_changes' && profile.onboardingNote && (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><strong>HR yêu cầu bổ sung:</strong> {profile.onboardingNote}</p>
+          )}
+
           {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</p>}
           {message && <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800"><CheckCircle2 className="h-4 w-4" />{message}</p>}
 
@@ -237,4 +288,8 @@ const FilePicker: React.FC<{ label: string; file: File | null; existing?: boolea
     <span className="mt-1 text-[10px] text-slate-500">{file?.name || (existing ? 'Đã có ảnh — chọn để thay' : 'PNG, JPG hoặc WEBP')}</span>
     <input type="file" accept="image/*" className="hidden" onChange={(event) => onChange(event.target.files?.[0] ?? null)} />
   </label>
+);
+
+const OnboardingStatus: React.FC<{ title: string; description: string; onSignOut: () => Promise<void> }> = ({ title, description, onSignOut }) => (
+  <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4"><section className="max-w-md rounded-2xl bg-white p-7 text-center shadow-xl"><CheckCircle2 className="mx-auto h-12 w-12 text-emerald-700" /><h1 className="mt-4 text-xl font-black text-slate-900">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-600">{description}</p><button type="button" onClick={() => void onSignOut()} className="mt-6 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700">Đăng xuất</button></section></main>
 );

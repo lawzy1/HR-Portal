@@ -14,9 +14,9 @@ Cập nhật lần cuối: **2026-08-25**. File này tóm tắt trạng thái re
 - KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công chuẩn (đã trừ lễ/Tết)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT.
 - Payroll: import/paste phiếu lương, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
 
-**Đang xây dở, CHƯA hoàn thiện (không phải do session này — đã tồn tại từ trước):**
-- **Employee self-registration** (nhân viên tự đăng ký tài khoản qua email `@tlconceptsltd.com`, admin duyệt sau) — code frontend đã sửa (`AuthContext.signUp`, `LoginPage`, `useProfiles.useUpdateProfileAccess`, nút duyệt trong `AdminEmployeeListView`) nhưng **migration `20260825050000_employee_self_registration.sql` CHƯA được apply lên Supabase** (chỉ là file local). Nếu bật tính năng đăng ký ngay bây giờ sẽ lỗi vì trigger `handle_employee_self_registration` chưa tồn tại trong DB. → Việc cần làm tiếp theo: review kỹ nội dung migration này rồi `apply_migration`, sau đó test full flow đăng ký → duyệt.
-- Chưa commit git bất kỳ thay đổi nào trong đợt này (tất cả đang ở working tree, `git status` có nhiều `M` và file mới).
+**Đã deploy Supabase, chờ deploy frontend lên Vercel:**
+- Luồng **Admin mời → nhân viên đặt mật khẩu → onboarding → Admin duyệt** đã apply migration, deploy Edge Function `create-employee` và regenerate type từ DB thật. Đăng ký công khai đã bị tắt ở UI và Supabase Auth.
+- `vercel.json` rewrite mọi route SPA về `index.html`; sau lần deploy Vercel kế tiếp, mở trực tiếp `/login` và `/auth/activate` sẽ không còn 404. `APP_URL` dùng production URL, CORS cho phép cả production và `http://127.0.0.1:3000`.
 
 **Cắt góc có chủ đích (xem lý do trong AGENTS.md §Lessons):**
 - `kpi_level` là text tự do + gợi ý, không phải bảng danh mục level.
@@ -36,6 +36,40 @@ Cập nhật lần cuối: **2026-08-25**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-25 — Vercel SPA deep-link + production Auth URL
+
+- Thêm `vercel.json` rewrite `/(.*) → /index.html` cho Vite dùng BrowserRouter.
+- Cấu hình Supabase Auth dùng Site URL `https://hr-portal-tl.vercel.app`; allow redirect kích hoạt cho cả production và local.
+- Edge Function `create-employee` dùng `APP_URL` production để tạo link invite; thêm `ALLOWED_ORIGINS` để CORS chấp nhận cả Vercel và local dev.
+
+### 2026-08-25 — Invitation-first employee onboarding (chờ deploy Supabase)
+
+**Migration local:** `20260825100000_invitation_first_employee_onboarding.sql`.
+- Thêm state machine `invited → in_progress → submitted → needs_changes → approved` vào `profiles`; `is_active` chỉ thành `true` sau bước Admin duyệt.
+- Thêm `employee_invitations`, unique email theo công ty, RPC bắt đầu/gửi/duyệt onboarding.
+- `current_company_id()` và `current_employee_id()` chỉ trả dữ liệu cho tài khoản active; exception RLS giới hạn tài khoản onboarding vào đúng hồ sơ, CCCD/ngân hàng/người thân và thư mục Storage của chính họ.
+- Gỡ trigger self-registration của `auth.users`; không còn điểm vào public `auth.signUp`.
+
+**Code:**
+- `create-employee` Edge Function xác thực Admin, gọi `inviteUserByEmail` với redirect `/auth/activate`, rồi gọi RPC tạo nhân viên/profiles/invitation. Cần secret `APP_URL` (ví dụ `http://127.0.0.1:3000` khi dev), đồng thời URL `/auth/activate` phải nằm trong Supabase Auth Redirect URLs.
+- `NewEmployeeModal` chỉ còn 6 field công việc: mã NV, họ tên, email, phòng ban, chức danh, ngày vào làm.
+- `ActivateAccountPage` cho nhân viên đặt mật khẩu lần đầu; `EmployeeOnboardingPage` yêu cầu thông tin cá nhân, CCCD hai mặt, ngân hàng, liên hệ khẩn cấp và gửi hồ sơ; `AdminSettingsView` duyệt hoặc yêu cầu bổ sung hồ sơ đã submit.
+
+**Verify local:** TypeScript typecheck sạch. Chưa thể E2E email/RLS do remote Supabase chưa được link trong checkout này.
+
+### 2026-08-25 — Cho phép self-registration bằng mọi email trong dev
+
+**Migration local:** `20260825075157_allow_any_email_self_registration.sql` (chưa apply remote do checkout chưa link Supabase project).
+- Bỏ giới hạn domain `@tlconceptsltd.com` trong trigger `handle_employee_self_registration`.
+- Giữ tài khoản mới ở trạng thái chờ Admin duyệt (`employees.status = 'Chờ duyệt'`, `profiles.is_active = false`).
+- Harden trigger function bằng `search_path = ''` và thu hồi quyền gọi trực tiếp từ `public`, `anon`, `authenticated`.
+
+**Code:**
+- [LoginPage.tsx](src/pages/LoginPage.tsx) — form đăng ký nhận mọi email hợp lệ; cập nhật label, placeholder và mô tả đúng luồng onboarding/Admin duyệt.
+- [AuthContext.tsx](src/context/AuthContext.tsx) — chuẩn hóa email bằng `trim().toLowerCase()` khi đăng ký và đăng nhập.
+
+**Verify:** typecheck và production build sạch; ESLint không có error (còn 6 warning cũ); test UI local xác nhận `dev.user@gmail.com` không còn bị lỗi domain. Chưa tạo tài khoản test và chưa apply migration lên remote dev.
 
 ### 2026-08-25 — Chỉ tiêu KPI theo nhân viên + Phụ lục hợp đồng + Phân loại KPI job (phase7)
 

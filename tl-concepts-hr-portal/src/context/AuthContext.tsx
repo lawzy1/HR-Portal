@@ -10,6 +10,8 @@ export interface AuthProfile {
   employeeId: string | null;
   role: AppRole;
   isActive: boolean;
+  onboardingStatus: 'invited' | 'in_progress' | 'submitted' | 'needs_changes' | 'approved';
+  onboardingNote: string | null;
 }
 
 interface AuthContextType {
@@ -17,10 +19,7 @@ interface AuthContextType {
   profile: AuthProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (input: { email: string; password: string; fullName: string; phone: string }) => Promise<{
-    error: string | null;
-    needsEmailConfirmation: boolean;
-  }>;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,7 +31,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 async function fetchProfile(userId: string): Promise<AuthProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, company_id, employee_id, role, is_active')
+    .select('id, company_id, employee_id, role, is_active, onboarding_status, onboarding_note')
     .eq('id', userId)
     .maybeSingle();
 
@@ -44,6 +43,8 @@ async function fetchProfile(userId: string): Promise<AuthProfile | null> {
     employeeId: data.employee_id,
     role: data.role,
     isActive: data.is_active,
+    onboardingStatus: data.onboarding_status as AuthProfile['onboardingStatus'],
+    onboardingNote: data.onboarding_note,
   };
 }
 
@@ -106,24 +107,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [session, sessionTimeoutMinutes]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     return { error: error?.message ?? null };
   };
 
-  const signUp = async ({ email, password, fullName, phone }: { email: string; password: string; fullName: string; phone: string }) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: fullName,
-          phone,
-          registration_source: 'employee_self',
-        },
-      },
-    });
-    return { error: error?.message ?? null, needsEmailConfirmation: !data.session };
+  const refreshProfile = async () => {
+    const { data } = await supabase.auth.getSession();
+    const nextProfile = data.session?.user ? await fetchProfile(data.session.user.id) : null;
+    setSession(data.session);
+    setProfile(nextProfile);
+    if (nextProfile) setSessionTimeoutMinutes(await fetchSessionTimeout(nextProfile.companyId));
   };
 
   const signOut = async () => {
@@ -131,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ session, profile, loading, signIn, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -54,3 +54,18 @@ export function useUpdateProfileAccess() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
   });
 }
+
+export function useReviewEmployeeOnboarding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ profileId, decision, note }: { profileId: string; decision: 'approved' | 'needs_changes'; note?: string }) => {
+      const { error } = await supabase.rpc('review_employee_onboarding', {
+        p_profile_id: profileId,
+        p_decision: decision,
+        p_note: note,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
+  });
+}

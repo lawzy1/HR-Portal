@@ -1,6 +1,3 @@
-// Generated from the live Supabase schema via `mcp__supabase__generate_typescript_types`.
-// Regenerate after every migration instead of hand-editing.
-
 export type Json =
   | string
   | number
@@ -71,18 +68,21 @@ export type Database = {
           id: string
           locale: string
           name: string
+          registration_slug: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           locale?: string
           name: string
+          registration_slug?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           locale?: string
           name?: string
+          registration_slug?: string | null
         }
         Relationships: []
       }
@@ -258,6 +258,64 @@ export type Database = {
             columns: ["parent_contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_invitations: {
+        Row: {
+          accepted_at: string | null
+          auth_user_id: string
+          company_id: string
+          email: string
+          employee_id: string
+          id: string
+          invited_at: string
+          invited_by: string
+          last_sent_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          auth_user_id: string
+          company_id: string
+          email: string
+          employee_id: string
+          id?: string
+          invited_at?: string
+          invited_by: string
+          last_sent_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          auth_user_id?: string
+          company_id?: string
+          email?: string
+          employee_id?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string
+          last_sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_invitations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1062,6 +1120,11 @@ export type Database = {
           employee_id: string | null
           id: string
           is_active: boolean
+          onboarding_note: string | null
+          onboarding_reviewed_at: string | null
+          onboarding_reviewed_by: string | null
+          onboarding_status: string
+          onboarding_submitted_at: string | null
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
@@ -1070,6 +1133,11 @@ export type Database = {
           employee_id?: string | null
           id: string
           is_active?: boolean
+          onboarding_note?: string | null
+          onboarding_reviewed_at?: string | null
+          onboarding_reviewed_by?: string | null
+          onboarding_status?: string
+          onboarding_submitted_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
@@ -1078,6 +1146,11 @@ export type Database = {
           employee_id?: string | null
           id?: string
           is_active?: boolean
+          onboarding_note?: string | null
+          onboarding_reviewed_at?: string | null
+          onboarding_reviewed_by?: string | null
+          onboarding_status?: string
+          onboarding_submitted_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
         }
         Relationships: [
@@ -1093,6 +1166,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_onboarding_reviewed_by_fkey"
+            columns: ["onboarding_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1227,8 +1307,52 @@ export type Database = {
           severity: string
         }[]
       }
+      create_employee_invitation: {
+        Args: {
+          p_actor_id: string
+          p_auth_user_id: string
+          p_department: string
+          p_email: string
+          p_employee_code: string
+          p_full_name: string
+          p_job_title: string
+          p_start_date: string
+        }
+        Returns: {
+          avatar_url: string | null
+          company_id: string
+          contract_type: string | null
+          created_at: string
+          current_salary: number | null
+          department: string | null
+          dob: string | null
+          email: string | null
+          employee_code: string
+          full_name: string
+          gender: string | null
+          id: string
+          job_title: string | null
+          kpi_level: string | null
+          kpi_target_per_day: number | null
+          last_salary_review_date: string | null
+          marital_status: string | null
+          permanent_address: string | null
+          phone: string | null
+          start_date: string | null
+          status: string
+          temporary_address: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employees"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       current_company_id: { Args: never; Returns: string }
       current_employee_id: { Args: never; Returns: string }
+      current_onboarding_employee_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       record_audit_event: {
         Args: {
@@ -1243,6 +1367,12 @@ export type Database = {
         Args: { p_employee_id: string; p_year: number }
         Returns: undefined
       }
+      review_employee_onboarding: {
+        Args: { p_decision: string; p_note?: string; p_profile_id: string }
+        Returns: undefined
+      }
+      start_own_onboarding: { Args: never; Returns: undefined }
+      submit_own_onboarding: { Args: never; Returns: undefined }
     }
     Enums: {
       user_role: "admin" | "employee"

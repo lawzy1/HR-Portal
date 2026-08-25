@@ -264,16 +264,10 @@ export const PayslipDetailModal: React.FC = () => {
               </div>
               <div className="p-4 space-y-2.5 text-xs">
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">BHXH bắt buộc:</span>
-                  <span className="font-medium font-mono text-rose-700">-{formatVND(payslip.bhxh_deduction)}</span>
-                </div>
-                <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">BHYT:</span>
-                  <span className="font-medium font-mono text-rose-700">-{formatVND(payslip.bhyt_deduction)}</span>
-                </div>
-                <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">BHTN:</span>
-                  <span className="font-medium font-mono text-rose-700">-{formatVND(payslip.bhtn_deduction)}</span>
+                  <span className="text-slate-600">BHXH / BHYT / BHTN bắt buộc (theo Excel):</span>
+                  <span className="font-medium font-mono text-rose-700">-{formatVND(
+                    payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction
+                  )}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">Thuế Thu nhập cá nhân (TNCN):</span>

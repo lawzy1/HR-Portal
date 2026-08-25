@@ -391,19 +391,21 @@ export const AdminLeaveManagementView: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">{bal.employees?.department}</td>
                   <td className="py-3 px-4">
-                    <select
-                      value={bal.annual_entitlement}
-                      onChange={(e) => updateLeaveEntitlement.mutate({
-                        employeeId: bal.employee_id,
-                        year,
-                        entitlement: Number(e.target.value),
-                      })}
-                      className="p-1.5 bg-white border border-slate-300 rounded-lg font-bold"
-                    >
-                      <option value={12}>12 ngày</option>
-                      <option value={13}>13 ngày</option>
-                      <option value={14}>14 ngày</option>
-                    </select>
+                    <input
+                      key={`${bal.id}-${bal.annual_entitlement}`}
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      defaultValue={bal.annual_entitlement}
+                      onBlur={(e) => {
+                        const entitlement = Number(e.target.value);
+                        if (Number.isFinite(entitlement) && entitlement >= 0 && entitlement !== bal.annual_entitlement) {
+                          updateLeaveEntitlement.mutate({ employeeId: bal.employee_id, year, entitlement });
+                        }
+                      }}
+                      className="w-20 p-1.5 bg-white border border-slate-300 rounded-lg font-bold"
+                      aria-label={`Hạn mức phép năm của ${bal.employees?.full_name || 'nhân viên'}`}
+                    />
                   </td>
                   <td className="py-3 px-4 font-semibold">{bal.total_accumulated} ngày</td>
                   <td className="py-3 px-4 text-success-600 font-bold">{bal.used_days} ngày</td>

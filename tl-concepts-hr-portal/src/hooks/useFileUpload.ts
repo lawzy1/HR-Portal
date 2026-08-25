@@ -5,6 +5,11 @@ import { supabase } from '../lib/supabaseClient';
 const BUCKET = 'employee-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
 
+export async function calculateFileSha256(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 // Replaces the prototype's FileReader->base64->store-on-the-row pattern
 // (duplicated in EditProfileModal and AdminEmployeeListView) with a real
 // Supabase Storage upload. Path convention enforced by storage RLS — see

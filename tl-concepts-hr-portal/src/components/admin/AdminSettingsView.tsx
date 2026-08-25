@@ -7,7 +7,12 @@ import {
   Sliders,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
-import { useCompanySettings, useUpdateCompanySettings } from '../../hooks/useCompanySettings';
+import {
+  useCompany,
+  useCompanySettings,
+  useUpdateCompany,
+  useUpdateCompanySettings,
+} from '../../hooks/useCompanySettings';
 import { useAllProfiles, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 
@@ -34,7 +39,9 @@ export const AdminSettingsView: React.FC = () => {
   const { showToast } = useHR();
 
   const { data: companySettings } = useCompanySettings();
+  const { data: company } = useCompany();
   const updateCompanySettings = useUpdateCompanySettings();
+  const updateCompany = useUpdateCompany();
 
   const { data: profilesData } = useAllProfiles();
   const profiles = profilesData || [];
@@ -46,6 +53,9 @@ export const AdminSettingsView: React.FC = () => {
   const [bhytEmployeeRate, setBhytEmployeeRate] = useState(1.5);
   const [bhtnEmployeeRate, setBhtnEmployeeRate] = useState(1.0);
   const [standardDays, setStandardDays] = useState(22);
+  const [annualLeaveEntitlement, setAnnualLeaveEntitlement] = useState(13);
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyTaxCode, setCompanyTaxCode] = useState('');
 
   useEffect(() => {
     if (companySettings) {
@@ -53,8 +63,15 @@ export const AdminSettingsView: React.FC = () => {
       setBhytEmployeeRate(companySettings.bhyt_employee_rate);
       setBhtnEmployeeRate(companySettings.bhtn_employee_rate);
       setStandardDays(companySettings.standard_work_days);
+      setAnnualLeaveEntitlement(companySettings.annual_leave_entitlement);
     }
   }, [companySettings]);
+
+  useEffect(() => {
+    if (!company) return;
+    setCompanyAddress(company.address || '');
+    setCompanyTaxCode(company.tax_code || '');
+  }, [company]);
 
   const handleRoleChange = (profileId: string, newRole: 'admin' | 'hr' | 'employee') => {
     updateProfileRole.mutate(
@@ -72,23 +89,33 @@ export const AdminSettingsView: React.FC = () => {
     );
   };
 
-  const handleSaveParams = (e: React.FormEvent) => {
+  const handleSaveParams = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companySettings) return;
-    updateCompanySettings.mutate(
-      {
+    if (!companySettings || !company) return;
+    try {
+      await Promise.all([
+        updateCompanySettings.mutateAsync({
         id: companySettings.id,
         updates: {
           bhxh_employee_rate: bhxhEmployeeRate,
           bhyt_employee_rate: bhytEmployeeRate,
           bhtn_employee_rate: bhtnEmployeeRate,
           standard_work_days: standardDays,
+          annual_leave_entitlement: annualLeaveEntitlement,
         },
-      },
-      {
-        onSuccess: () => showToast('Đã lưu cài đặt thông số BHXH & Công chuẩn thành công!'),
-      }
-    );
+        }),
+        updateCompany.mutateAsync({
+          id: company.id,
+          updates: {
+            address: companyAddress.trim() || null,
+            tax_code: companyTaxCode.trim() || null,
+          },
+        }),
+      ]);
+      showToast('Đã lưu thông số doanh nghiệp, bảo hiểm, ngày công và ngày phép.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể lưu cấu hình doanh nghiệp.');
+    }
   };
 
   return (
@@ -132,10 +159,10 @@ export const AdminSettingsView: React.FC = () => {
                   <tr key={idx} className="hover:bg-slate-50">
                     <td className="py-3 px-3 font-medium text-slate-800">{item.feature}</td>
                     <td className="py-3 px-2 text-center">
-                      {item.hr ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
+                      {item.admin ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <Check className="w-4 h-4 text-success-600 mx-auto font-bold" />
+                      {item.hr ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
                     </td>
                     <td className="py-3 px-2 text-center">
                       {item.employee ? <Check className="w-4 h-4 text-success-600 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />}
@@ -152,11 +179,30 @@ export const AdminSettingsView: React.FC = () => {
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h2 className="font-bold text-slate-900 text-base flex items-center space-x-2">
               <Sliders className="w-5 h-5 text-primary-600" />
-              <span>2. Thông số Bảo hiểm & Công chuẩn</span>
+              <span>2. Thông số doanh nghiệp & Payroll</span>
             </h2>
           </div>
 
           <form onSubmit={handleSaveParams} className="space-y-4 text-xs">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Địa chỉ hiển thị trên phiếu lương:</label>
+              <textarea
+                rows={2}
+                value={companyAddress}
+                onChange={e => setCompanyAddress(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Mã số thuế:</label>
+              <input
+                value={companyTaxCode}
+                onChange={e => setCompanyTaxCode(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900"
+              />
+            </div>
+
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Tỷ lệ trích BHXH Người lao động (%):</label>
               <input
@@ -204,12 +250,25 @@ export const AdminSettingsView: React.FC = () => {
               <span className="text-[10px] text-slate-400 mt-0.5 block">Nghỉ 2 ngày cuối tuần/tuần = 22 ngày công</span>
             </div>
 
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Hạn mức phép năm mặc định:</label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={annualLeaveEntitlement}
+                onChange={e => setAnnualLeaveEntitlement(Number(e.target.value))}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+              />
+              <span className="text-[10px] text-slate-400 mt-0.5 block">TL Concepts mặc định 13 ngày; Admin có thể đổi và vẫn có thể thưởng riêng từng nhân viên.</span>
+            </div>
+
             <button
               type="submit"
-              disabled={!companySettings || updateCompanySettings.isPending}
+              disabled={!companySettings || !company || updateCompanySettings.isPending || updateCompany.isPending}
               className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs shadow-md shadow-primary-600/20 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {updateCompanySettings.isPending ? 'Đang lưu...' : 'Lưu cấu hình thông số'}
+              {updateCompanySettings.isPending || updateCompany.isPending ? 'Đang lưu...' : 'Lưu cấu hình thông số'}
             </button>
           </form>
         </div>

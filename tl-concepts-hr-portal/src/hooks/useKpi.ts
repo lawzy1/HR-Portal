@@ -135,6 +135,18 @@ export function useUpsertKpiMonthly() {
   });
 }
 
+export function useUpdateKpiMonthly() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: TablesUpdate<'kpi_monthly'> }) => {
+      const { data, error } = await supabase.from('kpi_monthly').update(updates).eq('id', id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+  });
+}
+
 export function useSubmitKpiMonth() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -64,25 +64,31 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
           created_at: string
           id: string
           locale: string
           name: string
           registration_slug: string | null
+          tax_code: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           id?: string
           locale?: string
           name: string
           registration_slug?: string | null
+          tax_code?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           id?: string
           locale?: string
           name?: string
           registration_slug?: string | null
+          tax_code?: string | null
         }
         Relationships: []
       }
@@ -117,6 +123,7 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          annual_leave_entitlement: number
           bhtn_employee_rate: number
           bhxh_employee_rate: number
           bhyt_employee_rate: number
@@ -134,6 +141,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          annual_leave_entitlement?: number
           bhtn_employee_rate?: number
           bhxh_employee_rate?: number
           bhyt_employee_rate?: number
@@ -151,6 +159,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          annual_leave_entitlement?: number
           bhtn_employee_rate?: number
           bhxh_employee_rate?: number
           bhyt_employee_rate?: number
@@ -190,6 +199,7 @@ export type Database = {
           created_at: string
           document_name: string | null
           document_path: string | null
+          document_sha256: string | null
           employee_id: string
           end_date: string | null
           id: string
@@ -225,6 +235,7 @@ export type Database = {
           created_at?: string
           document_name?: string | null
           document_path?: string | null
+          document_sha256?: string | null
           employee_id: string
           end_date?: string | null
           id?: string
@@ -260,6 +271,7 @@ export type Database = {
           created_at?: string
           document_name?: string | null
           document_path?: string | null
+          document_sha256?: string | null
           employee_id?: string
           end_date?: string | null
           id?: string
@@ -1228,6 +1240,7 @@ export type Database = {
           payment_date: string | null
           payment_status: string
           payslip_pdf_path: string | null
+          payslip_pdf_sha256: string | null
           personal_income_tax: number
           personal_income_tax_refund: number
           phone_allowance: number
@@ -1280,6 +1293,7 @@ export type Database = {
           payment_date?: string | null
           payment_status?: string
           payslip_pdf_path?: string | null
+          payslip_pdf_sha256?: string | null
           personal_income_tax?: number
           personal_income_tax_refund?: number
           phone_allowance?: number
@@ -1332,6 +1346,7 @@ export type Database = {
           payment_date?: string | null
           payment_status?: string
           payslip_pdf_path?: string | null
+          payslip_pdf_sha256?: string | null
           personal_income_tax?: number
           personal_income_tax_refund?: number
           phone_allowance?: number

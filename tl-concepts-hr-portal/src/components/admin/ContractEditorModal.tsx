@@ -3,7 +3,7 @@ import { FileUp, X } from 'lucide-react';
 import type { DbContract } from '../../hooks/useContracts';
 import { useCreateContract, useUpdateContract } from '../../hooks/useContracts';
 import type { DbEmployee } from '../../hooks/useEmployees';
-import { useFileUpload } from '../../hooks/useFileUpload';
+import { calculateFileSha256, useFileUpload } from '../../hooks/useFileUpload';
 import { useHR } from '../../context/HRContext';
 
 const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn', 'Phụ lục hợp đồng'];
@@ -107,7 +107,9 @@ export const ContractEditorModal: React.FC<{
     try {
       let documentPath = contract?.document_path || null;
       let documentName = contract?.document_name || null;
+      let documentSha256 = contract?.document_sha256 || null;
       if (file) {
+        documentSha256 = await calculateFileSha256(file);
         documentPath = await uploadFile(file, employee.company_id, employee.id, `contract-${form.contract_code.replace(/[^a-zA-Z0-9_-]/g, '-')}`);
         documentName = file.name;
       }
@@ -136,6 +138,7 @@ export const ContractEditorModal: React.FC<{
         parent_contract_id: form.parent_contract_id || null,
         document_path: documentPath,
         document_name: documentName,
+        document_sha256: documentSha256,
         // A rejected contract becomes a fresh draft when edited. Pending and
         // published contracts are read-only in the parent view.
         publish_status: 'draft',

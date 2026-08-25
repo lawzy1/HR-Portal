@@ -144,16 +144,25 @@ function parsePayrollPaste(text: string) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
   const separator = lines[0].includes('\t') ? '\t' : ',';
-  const headers = lines[0].split(separator).map((header) => HEADER_MAP[normalizeHeader(header)]);
+  const normalizedHeaders = lines[0].split(separator).map(normalizeHeader);
+  const headers = normalizedHeaders.map((header) => HEADER_MAP[header]);
   return lines.slice(1).map((line, index) => {
     const values = line.split(separator);
     const row: Record<string, string | number> = {};
     headers.forEach((field, column) => {
       if (!field) return;
       const raw = values[column]?.trim() || '';
-      row[field] = ['payment_status', 'note', 'employee_id'].includes(field)
+      const parsed = ['payment_status', 'note', 'employee_id'].includes(field)
         ? raw
         : numberValue(raw, field === 'standard_work_days' || field === 'actual_work_days');
+      row[field] = parsed;
+      // The supplied TL Concepts workbook has one "Ngày công/tháng" column.
+      // Until Accounting supplies separate actual/standard columns, use that
+      // single confirmed value for both so a payslip never shows 24 / 0 days.
+      if (normalizedHeaders[column] === 'ngay_cong_thang') {
+        row.standard_work_days = parsed;
+        row.actual_work_days = parsed;
+      }
     });
     return { rowNumber: index + 2, row };
   });
@@ -167,6 +176,11 @@ if (import.meta.env.DEV) {
   console.assert(
     parsePayrollPaste('MSNV\tGross\tThực lĩnh\nNV01\t22000000\t21476886.45')[0]?.row.net_salary === 21476886.45,
     'Payroll decimal formula parser self-check failed',
+  );
+  const singleWorkdayValue = parsePayrollPaste('MSNV\tNgày công/tháng\tThực lĩnh\nNV01\t24\t18000000')[0]?.row;
+  console.assert(
+    singleWorkdayValue?.actual_work_days === 24 && singleWorkdayValue?.standard_work_days === 24,
+    'Payroll single workday column parser self-check failed',
   );
 }
 
@@ -211,6 +225,7 @@ export const AdminPayrollView: React.FC = () => {
         record.bhyt_deduction +
         record.bhtn_deduction +
         record.personal_income_tax +
+        record.advance_payment +
         record.other_deductions,
       net: sum.net + record.net_salary,
     }),
@@ -494,7 +509,14 @@ export const AdminPayrollView: React.FC = () => {
                   <td className="p-3 font-mono">{record.employees?.employee_code}</td>
                   <td className="p-3 font-bold">{record.employees?.full_name}</td>
                   <td className="p-3">{formatVND(record.gross_income)}</td>
-                  <td className="p-3">{formatVND(record.gross_income - record.net_salary)}</td>
+                  <td className="p-3">{formatVND(
+                    record.bhxh_deduction
+                    + record.bhyt_deduction
+                    + record.bhtn_deduction
+                    + record.personal_income_tax
+                    + record.advance_payment
+                    + record.other_deductions
+                  )}</td>
                   <td className="p-3 font-bold text-success-700">{formatVND(record.net_salary)}</td>
                   <td className="p-3">
                     <span className="font-semibold">{PAYROLL_STATUS_LABELS[record.publish_status] || record.publish_status}</span>

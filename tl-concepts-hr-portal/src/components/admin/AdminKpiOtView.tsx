@@ -24,6 +24,7 @@ import {
   useUpdateKpiJobItem,
   useDeleteKpiJobItem,
   useUpsertKpiMonthly,
+  useUpdateKpiMonthly,
   useAllKpiMonthly,
   useSubmitKpiMonth,
   useApproveKpiMonth,
@@ -50,6 +51,7 @@ const categoryBadge = (category: string) =>
 type KpiJobRow = NonNullable<ReturnType<typeof useAllKpiJobItems>['data']>[number];
 type OtRecordRow = NonNullable<ReturnType<typeof useAllOtRecords>['data']>[number];
 type DbEmployeeRow = NonNullable<ReturnType<typeof useEmployees>['data']>[number];
+type KpiMonthlyRow = NonNullable<ReturnType<typeof useAllKpiMonthly>['data']>[number];
 
 interface JobGroup {
   orderJob: string;
@@ -114,6 +116,7 @@ export const AdminKpiOtView: React.FC = () => {
   const updateKpiJobItem = useUpdateKpiJobItem();
   const deleteKpiJobItem = useDeleteKpiJobItem();
   const upsertKpiMonthly = useUpsertKpiMonthly();
+  const updateKpiMonthly = useUpdateKpiMonthly();
   const submitKpiMonth = useSubmitKpiMonth();
   const approveKpiMonth = useApproveKpiMonth();
   const rejectKpiMonth = useRejectKpiMonth();
@@ -391,9 +394,13 @@ export const AdminKpiOtView: React.FC = () => {
       const performanceCommissionAmount = Math.round(totalKpiPoints * commissionRate);
       // Guaranteed income is treated as a monthly floor for base salary plus
       // performance commission. The delta is stored separately for auditability.
+      const existingMonthly = monthlyKpi.find(record => record.employee_id === emp.id);
+      const qcViews = Number(existingMonthly?.qc_views || 0);
+      const qcRate = Number(existingMonthly?.qc_rate_snapshot || emp.qc_commission_rate || 0);
+      const qcCommissionAmount = Math.round(qcViews * qcRate);
       const guaranteedIncomeTopup = Math.max(
         0,
-        Math.round((emp.guaranteed_income_amount || 0) - (emp.current_salary || 0) - performanceCommissionAmount),
+        Math.round((emp.guaranteed_income_amount || 0) - (emp.current_salary || 0) - performanceCommissionAmount - qcCommissionAmount),
       );
 
       // Real OT hours actually logged by this employee in the period — not a flat placeholder.
@@ -416,11 +423,11 @@ export const AdminKpiOtView: React.FC = () => {
         ot_hourly_rate: otHourlyRate,
         commission_rate_snapshot: commissionRate,
         performance_commission_amount: performanceCommissionAmount,
-        qc_views: 0,
-        qc_rate_snapshot: emp.qc_commission_rate,
-        qc_commission_amount: 0,
+        qc_views: qcViews,
+        qc_rate_snapshot: qcRate,
+        qc_commission_amount: qcCommissionAmount,
         guaranteed_income_topup: guaranteedIncomeTopup,
-        bonus_amount: performanceCommissionAmount + guaranteedIncomeTopup,
+        bonus_amount: performanceCommissionAmount + qcCommissionAmount + guaranteedIncomeTopup,
         publish_status: 'draft',
         // No real "benefit" data source in this phase — left at 0 for admin to fill in
         // manually, rather than fabricating a plausible-looking number.
@@ -430,6 +437,37 @@ export const AdminKpiOtView: React.FC = () => {
     }));
 
     showToast(`Đã tạo bản nháp KPI tháng ${selectedMonth}/${selectedYear}. Kiểm tra số liệu trước khi gửi Admin duyệt.`);
+  };
+
+  const handleQcViewsUpdate = async (record: KpiMonthlyRow, rawViews: number) => {
+    if (!['draft', 'rejected'].includes(record.publish_status)) return;
+    const qcViews = Number.isFinite(rawViews) ? Math.max(0, rawViews) : 0;
+    const qcCommissionAmount = Math.round(qcViews * Number(record.qc_rate_snapshot || 0));
+    const employee = employeeList.find(item => item.id === record.employee_id);
+    const guaranteedIncomeTopup = Math.max(
+      0,
+      Math.round(
+        Number(employee?.guaranteed_income_amount || 0)
+        - Number(employee?.current_salary || 0)
+        - Number(record.performance_commission_amount || 0)
+        - qcCommissionAmount,
+      ),
+    );
+
+    try {
+      await updateKpiMonthly.mutateAsync({
+        id: record.id,
+        updates: {
+          qc_views: qcViews,
+          qc_commission_amount: qcCommissionAmount,
+          guaranteed_income_topup: guaranteedIncomeTopup,
+          bonus_amount: Number(record.performance_commission_amount || 0) + qcCommissionAmount + guaranteedIncomeTopup,
+        },
+      });
+      showToast(`Đã cập nhật QC commission cho ${record.employees?.full_name || 'nhân viên'}.`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể cập nhật QC commission.');
+    }
   };
 
   const handleSubmitKpiApproval = async () => {
@@ -758,6 +796,67 @@ export const AdminKpiOtView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {monthlyKpi.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="font-bold text-slate-900 text-base">Commission KPI & QC tháng {selectedMonth}/{selectedYear}</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              QC commission là tùy chọn. Chỉ nhập QC views cho Team Leader có mức QC/view trong hồ sơ hoặc hợp đồng; để trống tương đương 0.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-100 text-[11px] uppercase text-slate-700">
+                <tr>
+                  <th className="p-3">Nhân viên</th>
+                  <th className="p-3 text-right">Commission hiệu suất</th>
+                  <th className="p-3 text-center">QC views (tùy chọn)</th>
+                  <th className="p-3 text-right">Đơn giá QC/view</th>
+                  <th className="p-3 text-right">QC commission</th>
+                  <th className="p-3 text-right">Bù đảm bảo</th>
+                  <th className="p-3 text-right">Tổng thưởng</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {monthlyKpi.map(record => {
+                  const canEditQc = ['draft', 'rejected'].includes(record.publish_status) && record.qc_rate_snapshot > 0;
+                  return (
+                    <tr key={record.id}>
+                      <td className="p-3 font-bold text-slate-900">
+                        {record.employees?.full_name}
+                        <span className="block font-mono text-[10px] font-normal text-slate-400">{record.employees?.employee_code}</span>
+                      </td>
+                      <td className="p-3 text-right font-mono">{formatVND(record.performance_commission_amount)}</td>
+                      <td className="p-3 text-center">
+                        {record.qc_rate_snapshot > 0 ? (
+                          <input
+                            key={`${record.id}-${record.qc_views}`}
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            defaultValue={record.qc_views}
+                            disabled={!canEditQc || updateKpiMonthly.isPending}
+                            onBlur={event => {
+                              const value = Number(event.target.value || 0);
+                              if (value !== record.qc_views) void handleQcViewsUpdate(record, value);
+                            }}
+                            className="w-24 rounded-lg border border-slate-300 p-1.5 text-right font-mono disabled:bg-slate-100"
+                          />
+                        ) : <span className="text-slate-400">Không áp dụng</span>}
+                      </td>
+                      <td className="p-3 text-right font-mono">{record.qc_rate_snapshot > 0 ? formatVND(record.qc_rate_snapshot) : '—'}</td>
+                      <td className="p-3 text-right font-mono text-primary-700">{formatVND(record.qc_commission_amount)}</td>
+                      <td className="p-3 text-right font-mono">{formatVND(record.guaranteed_income_topup)}</td>
+                      <td className="p-3 text-right font-mono font-bold text-success-700">{formatVND(record.bonus_amount || 0)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* 1. DIRECT KPI INPUT & CALCULATION TOOL TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">

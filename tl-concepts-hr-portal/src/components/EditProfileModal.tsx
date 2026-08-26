@@ -348,7 +348,10 @@ export const EditProfileModal: React.FC = () => {
 
       const employeeUpdates: Record<string, unknown> = {
         avatar_url: resolvedAvatarPath,
-        dob,
+        // PostgreSQL date columns accept NULL for an optional value, not an
+        // empty string. Sending "" causes REST to reject the whole profile
+        // update with SQLSTATE 22007.
+        dob: dob || null,
         gender,
         marital_status: maritalStatus,
         phone,

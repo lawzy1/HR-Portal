@@ -64,9 +64,9 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 
 ### Auth / phân quyền
 - `profiles.role` là `admin`/`hr`/`employee`, kèm `profiles.employee_id` và `profiles.is_active`.
-- **User (`employee`)** chỉ xem dữ liệu liên quan chính mình và chỉ thấy item đã `published`; không account management hay final approval.
-- **HR/Kế toán (`hr`)** xem/sửa dữ liệu nghiệp vụ toàn công ty, nhập payroll/KPI/OT/hợp đồng và gửi duyệt; không reset password, không mời/thu hồi/quản lý account, không đổi role và không final approve/publish.
-- **Admin (`admin`)** quản lý tài khoản User, role và dữ liệu; là role duy nhất được mời/quản lý account và final approval/publish.
+- **User (`employee`)** xem dữ liệu liên quan chính mình và chỉ thấy item đã `published`; được tạo đúng ba yêu cầu của chính mình: nghỉ phép, OT và work-event (WFH thêm/đi trễ). Các yêu cầu luôn bắt đầu `Chờ duyệt`; User không tự đổi trạng thái hay thông tin chi trả OT.
+- **HR/Kế toán (`hr`)** xem/sửa dữ liệu nghiệp vụ toàn công ty, nhập payroll/KPI/hợp đồng và gửi duyệt; được xem các yêu cầu phép/OT/work-event nhưng không tạo, sửa hay duyệt chúng. HR không reset password, không mời/thu hồi/quản lý account, không đổi role và không final approve/publish.
+- **Admin (`admin`)** quản lý tài khoản User, role và dữ liệu; là role duy nhất được mời/quản lý account, duyệt/từ chối yêu cầu phép-OT-work-event và final approval/publish.
 - RLS/RPC dùng `current_company_id()`, `current_employee_id()`, `is_admin()`, `is_hr_accounting()`, `is_backoffice()`; Edge Function phải kiểm tra role active **trước** mọi service-role side effect như gửi email hoặc tạo Auth user.
 - Public self-registration đã tắt. Luồng chuẩn là Admin mời → nhân viên đặt mật khẩu/onboarding → Admin duyệt.
 

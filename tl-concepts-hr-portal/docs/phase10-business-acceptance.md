@@ -117,13 +117,13 @@ Expected: User không thấy phiếu ở cả trạng thái `draft` và `pending
 
 1. Đăng nhập HR/Kế toán.
 2. Xem và chỉnh sửa hồ sơ nhân viên.
-3. Import payroll, KPI, OT, hợp đồng/phụ lục.
+3. Import payroll, KPI, hợp đồng/phụ lục; xem các yêu cầu phép, OT và work-event.
 4. Gửi payroll/KPI/hợp đồng cho Admin duyệt.
 5. Thử đổi role, khóa tài khoản, reset mật khẩu hoặc bấm final approval.
 
 Expected:
 
-- Bước 2–4 thành công.
+- Bước 2–4 thành công; HR chỉ xem yêu cầu phép, OT và work-event, không tạo/sửa/duyệt các yêu cầu này.
 - Không có màn hình quản lý tài khoản/phân quyền.
 - Không thể final approve bằng UI hoặc gọi trực tiếp RPC.
 - Sau khi gửi duyệt, HR không sửa/ghi đè kỳ payroll hoặc file hợp đồng đang chờ duyệt.

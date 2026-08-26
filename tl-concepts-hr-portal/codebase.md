@@ -13,6 +13,7 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 - Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ.
 - KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công chuẩn (đã trừ lễ/Tết)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT.
 - Payroll: import/paste phiếu lương, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
+- User chỉ tự tạo request nghỉ phép, OT, WFH thêm/đi trễ của chính mình; tất cả bắt đầu `Chờ duyệt` và chỉ Admin được duyệt/từ chối. HR/Kế toán chỉ xem các request này.
 
 **Đã deploy Supabase, chờ deploy frontend lên Vercel:**
 - Luồng **Admin mời → nhân viên đặt mật khẩu → onboarding → Admin duyệt** đã apply migration, deploy Edge Function `create-employee` và regenerate type từ DB thật. Đăng ký công khai đã bị tắt ở UI và Supabase Auth.
@@ -40,6 +41,12 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-26 — User gửi request, Admin duyệt phép/OT/work-event
+
+- Migration production `20260826120000_employee_requests_admin_approval.sql` tách quyền tạo request khỏi back-office: chỉ profile `employee` active được INSERT cho chính mình.
+- RLS và trigger buộc request mới là `Chờ duyệt`, không có approver/comment; User không thể ghi tiền/loại chi trả OT hoặc đổi trạng thái. HR/Kế toán chỉ SELECT, còn UPDATE/approve/reject chỉ dành cho Admin.
+- `NewLeaveModal` có thêm request OT cho User. Back-office không còn nút tạo OT trực tiếp; Admin xử lý request từ danh sách OT.
 
 ### 2026-08-26 — Chặn invitation Edge Function trước service-role side effect
 

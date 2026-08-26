@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
 import { useAuth } from '../context/AuthContext';
 import { useLeaveBalance, useCompanyHolidays, useCreateLeaveRequest, useCreateWorkEvent } from '../hooks/useLeave';
+import { useCreateOtRecord } from '../hooks/useOt';
 import { LeaveType, HalfDayOption } from '../types';
 import { X, Calendar, Clock, AlertCircle, Send, Loader2 } from 'lucide-react';
 
@@ -14,8 +15,9 @@ export const NewLeaveModal: React.FC = () => {
   const { data: holidays } = useCompanyHolidays();
   const createLeaveRequest = useCreateLeaveRequest();
   const createWorkEvent = useCreateWorkEvent();
+  const createOtRecord = useCreateOtRecord();
 
-  const [requestCategory, setRequestCategory] = useState<'leave' | 'extra_wfh' | 'late_arrival'>('leave');
+  const [requestCategory, setRequestCategory] = useState<'leave' | 'ot' | 'extra_wfh' | 'late_arrival'>('leave');
   const [leaveType, setLeaveType] = useState<LeaveType>('Nghỉ phép năm');
   const [startDate, setStartDate] = useState(() => {
     const tomorrow = new Date();
@@ -30,6 +32,7 @@ export const NewLeaveModal: React.FC = () => {
   const [halfDayOption, setHalfDayOption] = useState<HalfDayOption>('Cả ngày');
   const [reason, setReason] = useState('');
   const [lateMinutes, setLateMinutes] = useState(0);
+  const [otHours, setOtHours] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   if (!isNewLeaveModalOpen) return null;
@@ -69,6 +72,10 @@ export const NewLeaveModal: React.FC = () => {
       setError('Vui lòng nhập số phút đi trễ.');
       return;
     }
+    if (requestCategory === 'ot' && otHours <= 0) {
+      setError('Vui lòng nhập số giờ OT.');
+      return;
+    }
     if (!employeeId || !profile?.companyId) return;
 
     try {
@@ -82,6 +89,14 @@ export const NewLeaveModal: React.FC = () => {
           halfDayOption,
           reason,
         });
+      } else if (requestCategory === 'ot') {
+        await createOtRecord.mutateAsync({
+          company_id: profile.companyId,
+          employee_id: employeeId,
+          date: startDate,
+          hours: otHours,
+          reason,
+        });
       } else {
         await createWorkEvent.mutateAsync({
           company_id: profile.companyId,
@@ -92,7 +107,7 @@ export const NewLeaveModal: React.FC = () => {
           reason,
         });
       }
-      showToast('Đã gửi yêu cầu thành công! Đang chờ Admin/HR duyệt.');
+      showToast('Đã gửi yêu cầu thành công! Đang chờ Admin duyệt.');
       setIsNewLeaveModalOpen(false);
       setReason('');
     } catch (err) {
@@ -111,7 +126,7 @@ export const NewLeaveModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold">Tạo yêu cầu nhân sự</h2>
-              <p className="text-xs text-slate-300">Nghỉ phép, WFH thêm hoặc ghi nhận đi trễ</p>
+              <p className="text-xs text-slate-300">Nghỉ phép, OT, WFH thêm hoặc ghi nhận đi trễ</p>
             </div>
           </div>
           <button onClick={() => setIsNewLeaveModalOpen(false)} className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer">
@@ -128,6 +143,7 @@ export const NewLeaveModal: React.FC = () => {
               className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl font-medium"
             >
               <option value="leave">Nghỉ phép</option>
+              <option value="ot">Đăng ký OT</option>
               <option value="extra_wfh">WFH thêm ngoài lịch</option>
               <option value="late_arrival">Đi trễ</option>
             </select>
@@ -167,6 +183,12 @@ export const NewLeaveModal: React.FC = () => {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Số phút đi trễ <span className="text-rose-500">*</span></label>
                 <input type="number" min="1" value={lateMinutes} onChange={(e) => setLateMinutes(Number(e.target.value))} className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl" required />
+              </div>
+            )}
+            {requestCategory === 'ot' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Số giờ OT <span className="text-rose-500">*</span></label>
+                <input type="number" min="0.5" step="0.5" value={otHours || ''} onChange={(e) => setOtHours(Number(e.target.value))} className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl" required />
               </div>
             )}
           </div>
@@ -233,10 +255,10 @@ export const NewLeaveModal: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={createLeaveRequest.isPending || createWorkEvent.isPending}
+              disabled={createLeaveRequest.isPending || createWorkEvent.isPending || createOtRecord.isPending}
               className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 disabled:opacity-60 rounded-xl transition-colors shadow-md shadow-success-900/10 cursor-pointer"
             >
-              {createLeaveRequest.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {createLeaveRequest.isPending || createWorkEvent.isPending || createOtRecord.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               Gửi yêu cầu duyệt
             </button>
           </div>

@@ -1246,16 +1246,6 @@ export const AdminKpiOtView: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setOtEmpId(employeeList[0]?.id || '');
-              setIsNewOtModalOpen(true);
-            }}
-            className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 flex items-center space-x-1.5 cursor-pointer transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tạo mới giờ OT</span>
-          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -1276,7 +1266,7 @@ export const AdminKpiOtView: React.FC = () => {
               {allOtRecords.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400">
-                    Chưa có lịch tăng ca OT nào trong hệ thống. Bấm "Tạo mới giờ OT" để khởi tạo.
+                    Chưa có yêu cầu OT nào trong hệ thống.
                   </td>
                 </tr>
               ) : (
@@ -1321,9 +1311,8 @@ export const AdminKpiOtView: React.FC = () => {
                             onChange={e => handleOtStatusChange(ot.id, e.target.value)}
                             className="p-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
                           >
-                            <option value="Đã hoàn thành">Đã hoàn thành</option>
-                            <option value="Đang thực hiện">Đang thực hiện</option>
-                            <option value="Upcoming">Upcoming</option>
+                            <option value="Chờ duyệt">Chờ duyệt</option>
+                            <option value="Đã duyệt">Đã duyệt</option>
                             <option value="Từ chối">Từ chối</option>
                           </select>
                         ) : <span className="text-[11px] font-semibold text-slate-500">Admin duyệt trạng thái</span>}

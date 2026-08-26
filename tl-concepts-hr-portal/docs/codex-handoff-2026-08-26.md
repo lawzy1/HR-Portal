@@ -14,6 +14,7 @@ Production Supabase hiện đã có Phase 1–10, bao gồm workflow 3 vai trò 
 
 - **Phase 10 migration:** `20260825153557_phase10_business_alignment.sql` — đã apply production ngày 2026-08-26.
 - **Onboarding RLS repair:** `20260826034008_fix_onboarding_employee_read_rls.sql` — đã apply production, khôi phục quyền đọc đúng hồ sơ onboarding của chính User mà không mở dữ liệu nhân viên khác.
+- **Request approval RBAC:** `20260826120000_employee_requests_admin_approval.sql` — đã apply production. Chỉ User active tạo request nghỉ phép/OT/work-event của chính mình; HR chỉ xem; Admin duyệt hoặc từ chối.
 - **Invitation authorization repair:** `create-employee` Edge Function phải kiểm tra `admin` active trước mọi Auth/email side effect. Không bao giờ dựa vào UI để bảo vệ endpoint.
 - **Edge Function:** `process-payslip-outbox` — `ACTIVE`, version 2.
 - **Project ref:** `xtyjeduckvopbdeokhfn`.
@@ -81,9 +82,9 @@ Không có automated test suite. Kiểm tra tiêu chuẩn hiện tại là `type
 
 | Vai trò DB | Phạm vi |
 |---|---|
-| `employee` (User) | Chỉ xem dữ liệu của chính mình; chỉ thấy item `published`; không có quyền quản trị, không approve. |
-| `hr` (HR/Kế toán) | Xem/sửa dữ liệu toàn công ty phục vụ HR/payroll/KPI/hợp đồng; tạo nháp và gửi duyệt; không reset password, không quản lý account/role, không final approve/publish. |
-| `admin` | Toàn quyền account/role/dữ liệu và final approval/publish. |
+| `employee` (User) | Xem dữ liệu của chính mình và chỉ thấy item `published`; chỉ được tạo yêu cầu nghỉ phép, OT, work-event của chính mình. Mọi yêu cầu phải bắt đầu `Chờ duyệt`; không tự approve/chỉnh chi trả OT. |
+| `hr` (HR/Kế toán) | Xem/sửa dữ liệu toàn công ty phục vụ HR/payroll/KPI/hợp đồng; tạo nháp và gửi duyệt các workflow đó. Được xem nhưng không tạo/sửa/duyệt yêu cầu phép, OT, work-event; không reset password, không quản lý account/role, không final approve/publish. |
+| `admin` | Toàn quyền account/role/dữ liệu; duyệt/từ chối yêu cầu phép, OT, work-event và final approval/publish. |
 
 ### Approval state áp dụng cho payroll, contracts, `kpi_monthly`
 

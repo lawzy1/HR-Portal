@@ -28,7 +28,9 @@ const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
 const permissionsMatrix = [
   { feature: 'Xem thông tin cá nhân & Phiếu lương cá nhân', admin: true, hr: true, employee: true },
   { feature: 'Xem và cập nhật hồ sơ nhân sự toàn công ty', admin: true, hr: true, employee: false },
-  { feature: 'Nhập HĐLĐ, KPI, OT và dữ liệu payroll', admin: true, hr: true, employee: false },
+  { feature: 'Nhập HĐLĐ, KPI và dữ liệu payroll', admin: true, hr: true, employee: false },
+  { feature: 'Tạo yêu cầu phép, OT, WFH/đi trễ của chính mình', admin: false, hr: false, employee: true },
+  { feature: 'Duyệt/từ chối yêu cầu phép, OT, WFH/đi trễ', admin: true, hr: false, employee: false },
   { feature: 'Gửi kỳ payroll sang chờ Admin duyệt', admin: true, hr: true, employee: false },
   { feature: 'Phê duyệt cuối cùng và phát hành phiếu lương', admin: true, hr: false, employee: false },
   { feature: 'Phê duyệt nghỉ phép, OT và onboarding', admin: true, hr: false, employee: false },

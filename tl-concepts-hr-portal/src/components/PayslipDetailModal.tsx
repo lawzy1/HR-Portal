@@ -215,8 +215,8 @@ export const PayslipDetailModal: React.FC = () => {
                   <span className="font-medium font-mono text-success-700">+{formatVND(payslip.kpi_bonus)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">Lương tăng ca OT ({payslip.ot_hours} giờ):</span>
-                  <span className="font-medium font-mono text-success-700">+{formatVND(payslip.ot_pay)}</span>
+                  <span className="text-slate-600">OT / thưởng dự án:</span>
+                  <span className="font-medium font-mono text-success-700">+{formatVND(payslip.ot_pay + payslip.project_bonus_amount)}</span>
                 </div>
 
                 <div className="flex justify-between pb-1.5 border-b border-slate-100 pl-2 text-[11px]">
@@ -228,24 +228,10 @@ export const PayslipDetailModal: React.FC = () => {
                   <span className="font-medium font-mono">+{formatVND(payslip.lunch_allowance)}</span>
                 </div>
 
-                {payslip.project_bonus_amount > 0 && (
-                  <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">Thưởng % dự án:</span>
-                    <span className="font-medium font-mono text-success-700">+{formatVND(payslip.project_bonus_amount)}</span>
-                  </div>
-                )}
-
                 {payslip.holiday_bonus_amount > 0 && (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
                     <span className="text-slate-600">Thưởng lễ:</span>
                     <span className="font-medium font-mono text-success-700">+{formatVND(payslip.holiday_bonus_amount)}</span>
-                  </div>
-                )}
-
-                {payslip.prior_month_adjustment !== 0 && (
-                  <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">Điều chỉnh tháng trước:</span>
-                    <span className="font-medium font-mono">{payslip.prior_month_adjustment > 0 ? '+' : ''}{formatVND(payslip.prior_month_adjustment)}</span>
                   </div>
                 )}
 
@@ -322,7 +308,7 @@ export const PayslipDetailModal: React.FC = () => {
                 {formatVND(payslip.net_salary)}
               </h2>
               <p className="text-[11px] text-success-100 mt-1">
-                Kết quả cuối cùng theo file payroll do kế toán cung cấp
+                Tổng thu nhập − Tổng khấu trừ + Điều chỉnh &amp; hoàn trả
               </p>
             </div>
 

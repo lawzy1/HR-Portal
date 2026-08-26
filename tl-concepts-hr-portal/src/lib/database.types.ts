@@ -128,6 +128,7 @@ export type Database = {
           bhxh_employee_rate: number
           bhyt_employee_rate: number
           company_id: string
+          dependent_deduction: number
           family_deduction: number
           id: string
           kpi_bonus_min: number
@@ -146,6 +147,7 @@ export type Database = {
           bhxh_employee_rate?: number
           bhyt_employee_rate?: number
           company_id: string
+          dependent_deduction?: number
           family_deduction?: number
           id?: string
           kpi_bonus_min?: number
@@ -164,6 +166,7 @@ export type Database = {
           bhxh_employee_rate?: number
           bhyt_employee_rate?: number
           company_id?: string
+          dependent_deduction?: number
           family_deduction?: number
           id?: string
           kpi_bonus_min?: number
@@ -1253,6 +1256,8 @@ export type Database = {
           standard_work_days: number
           tax_exempt_income: number
           taxable_income: number
+          total_adjustments: number
+          total_deductions: number
           welfare_refund: number
           workday_salary: number
           year: number

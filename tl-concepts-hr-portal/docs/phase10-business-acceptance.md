@@ -9,9 +9,9 @@ Portal không thay thế bảng tính lương của Kế toán. Luồng chính l
 3. HR/Kế toán gửi kỳ lương cho Admin duyệt.
 4. Admin duyệt và Portal phát hành, tạo PDF cho từng nhân viên.
 
-Vì vậy Portal chỉ nên tự tính các tổng kiểm tra/reconciliation; không tự sửa số tiền từ Excel khi chưa có quy tắc được business xác nhận.
+Portal giữ nguyên các khoản chi tiết từ Excel. Riêng `net_salary` là kết quả F01 được database tính lại để mọi kênh (Portal, PDF và API) dùng cùng một số thực lãnh cuối cùng.
 
-## 2. Các gap công thức cần TL Concepts xác nhận
+## 2. Quy tắc công thức đã được TL Concepts xác nhận
 
 ### F01 — Định nghĩa số thực lĩnh cuối cùng
 
@@ -20,18 +20,14 @@ Vì vậy Portal chỉ nên tự tính các tổng kiểm tra/reconciliation; kh
 - `Phiếu lương mẫu!B43` tính: `18.800.000 - 799.250 + 203.452 = 18.204.202`.
 - Portal hiện import cột P làm `net_salary`, nên hiển thị `18.000.750` trong khi phiếu mẫu hiển thị `18.204.202`.
 
-Đề xuất cần duyệt:
-
 ```text
-net_before_refund = gross_income - total_deductions
-final_net = net_before_refund
-          + welfare_refund
-          + business_trip_refund
-          + personal_income_tax_refund
-          + prior_month_adjustment
+total_deductions = BHXH + BHYT + BHTN + PIT + advance + other deductions
+total_adjustments = welfare refund + business-trip refund + PIT refund + prior adjustment
+final_net = gross_income - total_deductions + total_adjustments
 ```
 
-Khuyến nghị: đổi tên cột P thành `Thực nhận trước hoàn trả`, còn `net_salary` trên Portal là `final_net`.
+Đã áp dụng bằng generated columns và trigger database. Ví dụ chuẩn:
+`18.800.000 - 799.250 + 203.452 = 18.204.202`. Không làm tròn số lẻ VND.
 
 ### F02 — Công thức cột P không đồng nhất giữa nhân viên
 
@@ -39,11 +35,7 @@ Khuyến nghị: đổi tên cột P thành `Thực nhận trước hoàn trả`
 - `P5`: `=SUM(G5:K5)-O5`, không trừ BHXH cột L nên cao hơn `735.000`.
 - Một số dòng khác là số nhập tay, không phải công thức.
 
-Khuyến nghị: Kế toán thống nhất một công thức cho toàn bộ dòng và Portal cảnh báo nếu:
-
-```text
-abs(imported_net_before_refund - calculated_net_before_refund) > 1 VND
-```
+Portal không dùng cột P làm số cuối cùng nữa, nên sai khác công thức cột P không làm sai phiếu lương. Kế toán vẫn nên thống nhất cột này để đối soát nội bộ.
 
 ### F03 — Phiếu lương mẫu cộng trùng cột Thưởng lễ + OT
 
@@ -53,7 +45,7 @@ Trong phiếu mẫu:
 - `B22` (Thưởng lễ) cũng liên kết `K3`.
 - `B23 = SUM(B17:B22)`.
 
-Khi `K3` khác 0, tổng thu nhập trên phiếu mẫu sẽ cộng cùng một khoản hai lần. Cần tách cột nguồn thành `OT/thưởng dự án` và `Thưởng lễ`, hoặc chỉ hiển thị một dòng tổng hợp.
+Đã chốt: dùng một cột tổng hợp `OT/thưởng dự án`; `Thưởng lễ` giữ là một khoản riêng theo Excel. Portal/PDF không cộng trùng.
 
 ### F04 — Thu nhập chịu thuế đang loại trừ phụ cấp
 
@@ -63,18 +55,13 @@ Excel tính:
 taxable_income = workday_salary + KPI + holiday_OT - insurance - family_deduction
 ```
 
-Hai cột phụ cấp ăn trưa và điện thoại không được cộng vào thu nhập chịu thuế. Cần Kế toán xác nhận đây là chủ đích miễn thuế hay chỉ là công thức mẫu.
+Thu nhập chịu thuế được database tính theo công thức đã chốt: `lương ngày công + KPI + OT/thưởng dự án + thưởng lễ − 10,5% lương cơ bản − giảm trừ gia cảnh`. Giảm trừ gia cảnh được cấu hình theo mức hiện hành: bản thân `15.500.000/tháng`, người phụ thuộc `6.200.000/tháng/người`. MVP vẫn chỉ lấy số PIT do Kế toán cung cấp, chưa tự tính thuế trên Portal.
 
 ### F05 — Biểu thuế TNCN trong Excel là quy tắc tùy chỉnh
 
 Excel đang dùng 5 bậc với các ngưỡng `10m / 30m / 60m / 100m`. Portal hiện chỉ import kết quả cột Thuế TNCN và không tự tính lại.
 
-Cần xác nhận:
-
-- Giữ nguyên kết quả do Kế toán cung cấp; hoặc
-- Portal kiểm tra lại theo biểu thuế chính thức tại thời điểm chạy payroll.
-
-Khuyến nghị cho MVP: giữ Kế toán là nguồn sự thật, Portal chỉ cảnh báo chênh lệch khi công ty cung cấp bảng quy tắc thuế đã duyệt.
+Đã chốt MVP: giữ số PIT do Kế toán cung cấp, Portal không tự áp biểu thuế.
 
 ### F06 — Ngày công và ngày phép chưa có đủ nguồn
 
@@ -82,7 +69,7 @@ Khuyến nghị cho MVP: giữ Kế toán là nguồn sự thật, Portal chỉ 
 - Phiếu mẫu lại có `Ngày công chuẩn` và `Ngày công thực tế` riêng.
 - `Phép còn lại` trong phiếu mẫu đang nhập tay, không liên kết bảng lương.
 
-Đã áp dụng cho import: khi chỉ có `Ngày công/tháng`, Portal dùng cùng giá trị cho cả chuẩn và thực tế. Cần xác nhận sau này có muốn lấy `Phép còn lại` trực tiếp từ module Leave tại thời điểm phát hành hay tiếp tục yêu cầu Excel cung cấp.
+Đã áp dụng cho import: khi chỉ có `Ngày công/tháng`, Portal dùng cùng giá trị cho cả chuẩn và thực tế. Lịch hiển thị dùng phép tính động theo đúng số ngày của từng tháng/năm, gồm năm nhuận.
 
 ### F07 — Tháng trên phiếu mẫu không cùng kỳ dữ liệu
 
@@ -90,12 +77,7 @@ Phiếu mẫu ghi Tháng 8/2026 nhưng các ô tiền lại liên kết tab Bả
 
 ### F08 — Làm tròn
 
-Excel có số lẻ VND, ví dụ `21.476.886,45`. Cần chốt một trong hai quy tắc:
-
-- Giữ nguyên số lẻ từ Excel; hoặc
-- Làm tròn đến 1 VND trước khi phát hành.
-
-Khuyến nghị: làm tròn từng khoản đến 1 VND trước khi tính tổng và so khớp.
+Đã chốt: giữ nguyên số lẻ từ Excel. Database dùng kiểu `numeric` và công thức F01 không làm tròn.
 
 ## 3. Kịch bản UAT ba vai trò
 
@@ -157,7 +139,8 @@ Expected:
 - Nhận đúng kỳ 07/2026 và đúng MSNV dù mã có khoảng trắng quanh dấu `-`.
 - `Ngày công/tháng = 24` tạo `24 / 24 ngày`.
 - `BHXH 10.5% = 735.000` hiển thị thành một dòng `BHXH / BHYT / BHTN`.
-- Số Gross và số Net import giữ nguyên giá trị Excel trong khi F01–F08 chưa được duyệt.
+- Các khoản chi tiết giữ nguyên giá trị Excel; Net preview và database tính theo F01.
+- Dữ liệu mẫu cho ra `18.204.202` từ `18.800.000 - 799.250 + 203.452`.
 - Không cho lưu nếu trùng MSNV hoặc không tìm thấy nhân viên.
 
 ### U05 — Admin duyệt và tự tạo PDF
@@ -188,7 +171,7 @@ Expected:
 
 ### U07 — Cấu hình phép năm
 
-1. Admin mở Cài đặt, kiểm tra mặc định là 13.
+1. Admin mở Cài đặt, kiểm tra mặc định là 12.
 2. Đổi thành 14.
 3. Kiểm tra quỹ phép nhân viên chưa tùy chỉnh.
 4. Đặt riêng một nhân viên thành 15, sau đó đổi mặc định công ty sang 13.5.

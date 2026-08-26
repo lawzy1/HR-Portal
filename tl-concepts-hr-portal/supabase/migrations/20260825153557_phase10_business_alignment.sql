@@ -2,11 +2,22 @@
 -- approved TL Concepts business workflow.
 
 alter table public.company_settings
-  add column if not exists annual_leave_entitlement numeric not null default 13
+  add column if not exists annual_leave_entitlement numeric not null default 12
     check (annual_leave_entitlement >= 0);
 
+alter table public.company_settings
+  alter column family_deduction set default 15500000,
+  add column if not exists dependent_deduction numeric not null default 6200000
+    check (dependent_deduction >= 0);
+
+-- Migrate only the old system default; a company that had already configured a
+-- different amount is left intact.
+update public.company_settings
+set family_deduction = 15500000
+where family_deduction = 11000000;
+
 alter table public.leave_balances
-  alter column annual_entitlement set default 13;
+  alter column annual_entitlement set default 12;
 
 alter table public.companies
   add column if not exists address text,
@@ -16,30 +27,6 @@ update public.companies
 set address = coalesce(address, '43 ấp Thới Tây 2, Xã Hóc Môn, TP Hồ Chí Minh, Việt Nam'),
     tax_code = coalesce(tax_code, '0315597365')
 where name ilike '%TL CONCEPTS%';
-
--- Existing current/future balances that still carry the former system default
--- move to TL Concepts' confirmed 13-day default. Historical years and explicit
--- per-employee overrides remain untouched.
-update public.leave_balances lb
-set annual_entitlement = 13
-where lb.year >= extract(year from current_date)::integer
-  and lb.annual_entitlement = 12;
-
-update public.leave_balances lb
-set total_accumulated = round(
-  (13::numeric / 12) *
-  case
-    when lb.year > extract(year from current_date) then 0
-    when e.start_date is not null and extract(year from e.start_date) = lb.year
-      then greatest(0, extract(month from current_date) - extract(month from e.start_date) + 1)
-    else extract(month from current_date)
-  end + lb.manual_adjustment,
-  2
-)
-from public.employees e
-where e.id = lb.employee_id
-  and lb.year >= extract(year from current_date)::integer
-  and lb.annual_entitlement = 13;
 
 create or replace function public.refresh_leave_accrual(p_employee_id uuid, p_year integer)
 returns void
@@ -65,11 +52,11 @@ begin
     raise exception 'Không có quyền cập nhật quỹ phép này.';
   end if;
 
-  select coalesce(cs.annual_leave_entitlement, 13)
+  select coalesce(cs.annual_leave_entitlement, 12)
   into v_default_entitlement
   from public.company_settings cs
   where cs.company_id = v_company_id;
-  v_default_entitlement := coalesce(v_default_entitlement, 13);
+  v_default_entitlement := coalesce(v_default_entitlement, 12);
 
   insert into public.leave_balances (
     company_id, employee_id, year, annual_entitlement, total_accumulated, expiry_date
@@ -113,11 +100,11 @@ declare
   v_months numeric;
   v_entitlement numeric;
 begin
-  select coalesce(cs.annual_leave_entitlement, 13)
+  select coalesce(cs.annual_leave_entitlement, 12)
   into v_entitlement
   from public.company_settings cs
   where cs.company_id = new.company_id;
-  v_entitlement := coalesce(v_entitlement, 13);
+  v_entitlement := coalesce(v_entitlement, 12);
 
   v_months := case
     when new.start_date is not null and extract(year from new.start_date) = v_year
@@ -199,6 +186,80 @@ alter table public.contracts
 alter table public.payroll_records
   add column if not exists payslip_pdf_sha256 text
     check (payslip_pdf_sha256 is null or payslip_pdf_sha256 ~ '^[0-9a-f]{64}$');
+
+-- F01: the database, not the uploaded workbook, is the source of truth for
+-- final net pay. Postgres numeric keeps the exact decimal values imported by
+-- Accounting; no rounding is applied here.
+alter table public.payroll_records
+  add column if not exists total_deductions numeric generated always as (
+    bhxh_deduction + bhyt_deduction + bhtn_deduction
+    + personal_income_tax + advance_payment + other_deductions
+  ) stored,
+  add column if not exists total_adjustments numeric generated always as (
+    welfare_refund + business_trip_refund + personal_income_tax_refund
+    + prior_month_adjustment
+  ) stored;
+
+create or replace function public.calculate_payroll_final_net()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_self_deduction numeric;
+  v_dependent_deduction numeric;
+begin
+  select cs.family_deduction, cs.dependent_deduction
+  into v_self_deduction, v_dependent_deduction
+  from public.company_settings cs
+  where cs.company_id = new.company_id;
+
+  v_self_deduction := coalesce(v_self_deduction, 15500000);
+  v_dependent_deduction := coalesce(v_dependent_deduction, 6200000);
+  new.family_deduction := v_self_deduction
+    + (coalesce(new.dependents_count, 0) * v_dependent_deduction);
+  new.taxable_income := new.workday_salary + new.kpi_bonus
+    + new.ot_pay + new.project_bonus_amount + new.holiday_bonus_amount
+    - (new.base_salary * 0.105) - new.family_deduction;
+
+  new.net_salary := new.gross_income
+    - (
+      new.bhxh_deduction + new.bhyt_deduction + new.bhtn_deduction
+      + new.personal_income_tax + new.advance_payment + new.other_deductions
+    )
+    + (
+      new.welfare_refund + new.business_trip_refund + new.personal_income_tax_refund
+      + new.prior_month_adjustment
+    );
+  return new;
+end;
+$$;
+
+drop trigger if exists calculate_payroll_final_net on public.payroll_records;
+create trigger calculate_payroll_final_net
+  before insert or update of
+    gross_income, bhxh_deduction, bhyt_deduction, bhtn_deduction,
+    personal_income_tax, advance_payment, other_deductions,
+    welfare_refund, business_trip_refund, personal_income_tax_refund,
+    prior_month_adjustment, net_salary, workday_salary, kpi_bonus, ot_pay,
+    project_bonus_amount, holiday_bonus_amount, base_salary, dependents_count,
+    taxable_income, family_deduction
+  on public.payroll_records
+  for each row execute function public.calculate_payroll_final_net();
+
+revoke all on function public.calculate_payroll_final_net() from public, anon, authenticated;
+
+-- Backfill historical rows once. The workflow guard is disabled only inside
+-- this transactional migration so published rows receive the corrected F01
+-- value without opening a runtime path that can mutate approved payroll.
+alter table public.payroll_records disable trigger guard_payroll_workflow;
+update public.payroll_records
+set net_salary = gross_income
+  - total_deductions
+  + total_adjustments
+where net_salary is distinct from gross_income - total_deductions + total_adjustments;
+alter table public.payroll_records enable trigger guard_payroll_workflow;
 
 -- A published payroll remains immutable except for delivery metadata written
 -- by the trusted worker, including the PDF content hash.

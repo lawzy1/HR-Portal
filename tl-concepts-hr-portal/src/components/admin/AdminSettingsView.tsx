@@ -53,7 +53,7 @@ export const AdminSettingsView: React.FC = () => {
   const [bhytEmployeeRate, setBhytEmployeeRate] = useState(1.5);
   const [bhtnEmployeeRate, setBhtnEmployeeRate] = useState(1.0);
   const [standardDays, setStandardDays] = useState(22);
-  const [annualLeaveEntitlement, setAnnualLeaveEntitlement] = useState(13);
+  const [annualLeaveEntitlement, setAnnualLeaveEntitlement] = useState(12);
   const [companyAddress, setCompanyAddress] = useState('');
   const [companyTaxCode, setCompanyTaxCode] = useState('');
 
@@ -260,7 +260,7 @@ export const AdminSettingsView: React.FC = () => {
                 onChange={e => setAnnualLeaveEntitlement(Number(e.target.value))}
                 className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
               />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">TL Concepts mặc định 13 ngày; Admin có thể đổi và vẫn có thể thưởng riêng từng nhân viên.</span>
+              <span className="text-[10px] text-slate-400 mt-0.5 block">TL Concepts mặc định 12 ngày; Admin có thể đổi và vẫn có thể thưởng riêng từng nhân viên.</span>
             </div>
 
             <button

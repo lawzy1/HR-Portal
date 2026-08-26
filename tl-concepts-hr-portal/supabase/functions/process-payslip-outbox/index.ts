@@ -67,6 +67,11 @@ async function createPayslipPdf(record: PayrollRecord) {
   const line = rgb(0.86, 0.88, 0.91);
   const employee = record.employees;
   const sensitive = record.employeeSensitive;
+  const totalDeductions = Number(record.bhxh_deduction) + Number(record.bhyt_deduction)
+    + Number(record.bhtn_deduction) + Number(record.personal_income_tax)
+    + Number(record.advance_payment) + Number(record.other_deductions);
+  const totalAdjustments = Number(record.welfare_refund) + Number(record.business_trip_refund)
+    + Number(record.personal_income_tax_refund) + Number(record.prior_month_adjustment);
   let y = height - 54;
 
   const draw = (text: string, x: number, size = 10, color = ink) => {
@@ -86,12 +91,12 @@ async function createPayslipPdf(record: PayrollRecord) {
     const valueWidth = font.widthOfTextAtSize(value, 9);
     page.drawText(value, { x: width - 52 - valueWidth, y, size: 9, font, color: tone });
     page.drawLine({ start: { x: 52, y: y - 8 }, end: { x: width - 52, y: y - 8 }, thickness: 0.5, color: line });
-    y -= 24;
+    y -= 20;
   };
   const section = (title: string, color = teal) => {
     page.drawRectangle({ x: 42, y: y - 8, width: width - 84, height: 27, color });
     page.drawText(title, { x: 52, y, size: 10, font, color: rgb(1, 1, 1) });
-    y -= 38;
+    y -= 34;
   };
 
   draw((record.companies?.name ?? "CÔNG TY TNHH TL CONCEPTS").toUpperCase(), 42, 13, teal);
@@ -126,20 +131,29 @@ async function createPayslipPdf(record: PayrollRecord) {
   row("Phụ cấp ăn trưa", money(record.lunch_allowance));
   row("Phụ cấp điện thoại", money(record.phone_allowance));
   row("KPI / commission", money(record.kpi_bonus), teal);
-  row("OT / thưởng dự án / thưởng lễ", money(Number(record.ot_pay) + Number(record.project_bonus_amount) + Number(record.holiday_bonus_amount)), teal);
+  row("OT / thưởng dự án", money(Number(record.ot_pay) + Number(record.project_bonus_amount)), teal);
+  row("Thưởng lễ", money(record.holiday_bonus_amount), teal);
   row("TỔNG THU NHẬP", money(record.gross_income), teal);
 
   section("II. CÁC KHOẢN KHẤU TRỪ", coral);
   row("BHXH / BHYT / BHTN", money(Number(record.bhxh_deduction) + Number(record.bhyt_deduction) + Number(record.bhtn_deduction)), coral);
   row("Thuế thu nhập cá nhân", money(record.personal_income_tax), coral);
   row("Tạm ứng / khấu trừ khác", money(Number(record.advance_payment) + Number(record.other_deductions)), coral);
+  row("TỔNG KHẤU TRỪ", money(totalDeductions), coral);
 
   section("III. ĐIỀU CHỈNH & HOÀN TRẢ");
-  row("Hoàn phúc lợi / công tác phí / thuế", money(Number(record.welfare_refund) + Number(record.business_trip_refund) + Number(record.personal_income_tax_refund)), teal);
+  row("Hoàn chi phí phúc lợi", money(record.welfare_refund), teal);
+  row("Hoàn công tác phí", money(record.business_trip_refund), teal);
+  row("Hoàn thuế TNCN", money(record.personal_income_tax_refund), teal);
   row("Truy lĩnh / điều chỉnh kỳ trước", money(record.prior_month_adjustment));
+  row("TỔNG CỘNG THÊM", money(totalAdjustments), teal);
+
+  row("Tổng thu nhập", money(record.gross_income), teal);
+  row("(-) Tổng khấu trừ", money(totalDeductions), coral);
+  row("(+) Điều chỉnh & hoàn trả", money(totalAdjustments), teal);
 
   page.drawRectangle({ x: 42, y: y - 16, width: width - 84, height: 56, color: teal });
-  page.drawText("THỰC LĨNH (NET)", { x: 56, y: y + 6, size: 13, font, color: rgb(1, 1, 1) });
+  page.drawText("THỰC LÃNH (NET PAY)", { x: 56, y: y + 6, size: 13, font, color: rgb(1, 1, 1) });
   const net = money(record.net_salary);
   page.drawText(net, { x: width - 56 - font.widthOfTextAtSize(net, 18), y: y + 2, size: 18, font, color: rgb(1, 1, 1) });
   page.drawText("Tài liệu được phát hành sau khi Admin phê duyệt trên TL Concepts HR Portal.", {

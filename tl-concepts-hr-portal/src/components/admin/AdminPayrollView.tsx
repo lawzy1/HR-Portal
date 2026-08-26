@@ -55,6 +55,9 @@ const HEADER_MAP: Record<string, keyof TablesInsert<'payroll_records'>> = {
   kpi: 'kpi_bonus',
   luong_ot: 'ot_pay',
   ot_pay: 'ot_pay',
+  ot_thuong_du_an: 'ot_pay',
+  thuong_ot_du_an: 'ot_pay',
+  ot_thuong_du_an_5_gio_ot: 'ot_pay',
   thuong_du_an: 'project_bonus_amount',
   project_bonus_amount: 'project_bonus_amount',
   thuong_le_ot: 'holiday_bonus_amount',
@@ -250,10 +253,21 @@ export const AdminPayrollView: React.FC = () => {
         + Number(row.project_bonus_amount || 0)
         + Number(row.holiday_bonus_amount || 0);
       const gross = 'gross_income' in row ? Number(row.gross_income || 0) : derivedGross;
+      const totalDeductions = Number(row.bhxh_deduction || 0)
+        + Number(row.bhyt_deduction || 0)
+        + Number(row.bhtn_deduction || 0)
+        + Number(row.personal_income_tax || 0)
+        + Number(row.advance_payment || 0)
+        + Number(row.other_deductions || 0);
+      const totalAdjustments = Number(row.welfare_refund || 0)
+        + Number(row.business_trip_refund || 0)
+        + Number(row.personal_income_tax_refund || 0)
+        + Number(row.prior_month_adjustment || 0);
+      const finalNet = gross - totalDeductions + totalAdjustments;
       let error: string | undefined;
       if (!employee) error = `Không tìm thấy mã nhân viên ${employeeCode || '(trống)'}`;
       else if (seen.has(normalizedEmployeeCode)) error = 'Mã nhân viên bị trùng trong file';
-      else if (!Number.isFinite(gross) || !Number.isFinite(row.net_salary) || gross < 0 || Number(row.net_salary) < 0) error = 'Gross/Net không hợp lệ';
+      else if (!Number.isFinite(gross) || !Number.isFinite(finalNet) || gross < 0 || finalNet < 0) error = 'Gross/Net không hợp lệ';
       seen.add(normalizedEmployeeCode);
 
       return {
@@ -266,7 +280,7 @@ export const AdminPayrollView: React.FC = () => {
           month: period.month,
           year: period.year,
           gross_income: gross,
-          net_salary: Number(row.net_salary || 0),
+          net_salary: finalNet,
           base_salary: Number(row.base_salary || 0),
           standard_work_days: Number(row.standard_work_days || 0),
           actual_work_days: Number(row.actual_work_days || 0),

@@ -1314,7 +1314,26 @@ export const AdminKpiOtView: React.FC = () => {
               </p>
             </div>
           </div>
-
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setOtEmpId(employeeList[0]?.id || '');
+                setOtDate(new Date().toISOString().split('T')[0]);
+                setOtHours(4);
+                setOtViewsRender(0);
+                setOtReason('');
+                setOtPresetType('AUTO');
+                setCustomOtPercentage(150);
+                setOtStatus('Đã hoàn thành');
+                setIsNewOtModalOpen(true);
+              }}
+              className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-primary-500/20 transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Tạo OT cho nhân viên
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">

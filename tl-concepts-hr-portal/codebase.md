@@ -1,6 +1,6 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
+Cập nhật lần cuối: **2026-08-27**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
@@ -11,10 +11,10 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 - Auth self-service: User/HR/Admin đều có thể xem hồ sơ tài khoản và đổi mật khẩu của chính mình; màn Login có luồng Quên mật khẩu gửi email reset qua Supabase Auth.
 - Hồ sơ nhân viên đầy đủ (thông tin chung, CCCD/MST/BHXH, ngân hàng, người thân, upload ảnh) + **chỉ tiêu KPI theo level/ngày riêng từng người** (mới).
 - Hợp đồng lao động + lịch sử tăng lương + **phụ lục hợp đồng** (mới) + cảnh báo pháp lý Điều 20 BLLĐ 2019.
-- Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ; range ngày lễ được tách thành từng ngày để dùng trong công thức ngày công.
-- KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công cá nhân (đã trừ lễ/Tết và phép đã duyệt)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT.
+- Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ; Admin có thể ghi nhận trực tiếp đã duyệt và sửa hạn dùng quỹ phép, có calendar nguồn lực theo tháng/toàn công ty; range ngày lễ được tách thành từng ngày để dùng trong công thức ngày công.
+- KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công cá nhân (đã trừ lễ/Tết và phép đã duyệt)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT; Admin tạo trực tiếp OT cho nhân viên được.
 - Payroll: bảng lương tháng là màn hình vận hành mặc định (chỉ tiêu ngày công, dòng lương và tổng Gross/BHXH-PIT/Net), import/paste Excel để nạp nhanh các dòng vào kỳ đó, form sửa từng phiếu, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
-- User chỉ tự tạo request nghỉ phép, OT, WFH thêm/đi trễ của chính mình; tất cả bắt đầu `Chờ duyệt` và chỉ Admin được duyệt/từ chối. HR/Kế toán chỉ xem các request này.
+- User chỉ tự tạo request nghỉ phép, OT, WFH thêm/đi trễ của chính mình; tất cả bắt đầu `Chờ duyệt`. Admin được duyệt/từ chối hoặc tạo trực tiếp bản ghi đã duyệt; HR/Kế toán chỉ xem các request này.
 
 **Đã deploy Supabase, chờ deploy frontend lên Vercel:**
 - Luồng **Admin mời → nhân viên đặt mật khẩu → onboarding → Admin duyệt** đã apply migration, deploy Edge Function `create-employee` và regenerate type từ DB thật. Đăng ký công khai đã bị tắt ở UI và Supabase Auth.
@@ -43,6 +43,14 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-27 — Admin ghi nhận trực tiếp thời gian làm việc và calendar nguồn lực
+
+- Migration production `20260827120000_admin_direct_time_entries.sql` đã apply và migration history local/remote đã đồng bộ. Migration thêm 3 RLS policy INSERT, giới hạn Admin đang hoạt động trong đúng công ty, cho `leave_requests`, `ot_records` và `work_events`; quyền self-service của User không đổi, HR vẫn không được tạo các request này.
+- `AdminKpiOtView` có nút **Tạo OT cho nhân viên** trong khối quản lý OT. Form chọn nhân viên, ngày, số giờ/views, mức chi trả, trạng thái và lý do; preview tiền OT dùng lương hiện tại, ngày công chuẩn và tỷ lệ OT.
+- `AdminLeaveManagementView` thêm luồng **Ghi nhận trực tiếp** để Admin tạo nghỉ phép, WFH hoặc đi trễ ở trạng thái `Đã duyệt`; thêm bảng xử lý WFH/đi trễ đang chờ và calendar nguồn lực tháng theo toàn công ty hoặc từng nhân viên. Click ngày mở chi tiết hoạt động.
+- Bảng quỹ phép cho phép Admin sửa `leave_balances.expiry_date` (hạn dùng quỹ phép) theo từng nhân viên. Đây là cột đã có sẵn nên không cần migration schema.
+- Verify: `npm run build` thành công. Cần UAT bằng tài khoản Admin và kiểm tra HR/employee vẫn bị RLS chặn ở các luồng ghi trực tiếp.
 
 ### 2026-08-26 — Sửa quyền outbox khi Admin phê duyệt payroll
 
@@ -125,7 +133,7 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 - Migration production `20260826120000_employee_requests_admin_approval.sql` tách quyền tạo request khỏi back-office: chỉ profile `employee` active được INSERT cho chính mình.
 - RLS và trigger buộc request mới là `Chờ duyệt`, không có approver/comment; User không thể ghi tiền/loại chi trả OT hoặc đổi trạng thái. HR/Kế toán chỉ SELECT, còn UPDATE/approve/reject chỉ dành cho Admin.
-- `NewLeaveModal` có thêm request OT cho User. Back-office không còn nút tạo OT trực tiếp; Admin xử lý request từ danh sách OT.
+- `NewLeaveModal` có thêm request OT cho User. Kể từ migration `20260827120000_admin_direct_time_entries.sql`, Admin cũng có thể tạo OT trực tiếp; HR/Kế toán vẫn chỉ xem các request này.
 
 ### 2026-08-26 — Chặn invitation Edge Function trước service-role side effect
 

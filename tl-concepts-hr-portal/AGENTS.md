@@ -28,7 +28,7 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 1. Viết SQL, gọi `mcp__supabase__apply_migration` với `name` snake_case mô tả đúng nội dung (KHÔNG đặt tên chung chung như `update` hay `fix`).
 2. **Lưu lại file migration xuống `supabase/migrations/` bằng đúng version mà tool trả về** (gọi `list_migrations` sau khi apply để lấy version chính xác, đừng tự đoán timestamp) — nếu không, DB và git sẽ lệch nhau.
 3. Regenerate `src/lib/database.types.ts` bằng `mcp__supabase__generate_typescript_types` (hoặc copy tay như đã làm — xem lịch sử trong `codebase.md`).
-4. Chạy `mcp__supabase__get_advisors({type:"security"})` sau mỗi migration để bắt RLS/permission thiếu.
+4. Chạy `mcp__supabase__get_advisors({type:"security"})` sau mỗi migration để bắt RLS/permission thiếu. Nếu MCP không khả dụng nhưng Supabase CLI đã linked, dùng `supabase migration list --linked` trước/sau và `supabase db push --linked` để áp dụng migration; chỉ làm vậy khi đã đối chiếu chính xác migration còn thiếu.
 5. **Trước khi viết file migration mới: kiểm tra `supabase/migrations/` xem có file untracked (`git status`) trùng chủ đề chưa** — có thể là bản nháp từ session trước chưa apply. Đọc nó trước khi ghi đè, đừng `Write` thẳng lên mà không `Read` trước (xem mục Lessons Learned #1).
 
 ## 3. Kiến trúc / cách đọc code
@@ -61,14 +61,15 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 - Khi hợp đồng `status = 'Đang hiệu lực'`, `ContractEditorModal` đồng thời ghi `employees.contract_type`/`current_salary` — hồ sơ nhân viên luôn phản ánh hợp đồng hiệu lực gần nhất.
 
 ### Leave (Ngày phép)
-- `leave_balances` theo năm/nhân viên, có `annual_entitlement`, `used_days`, `manual_adjustment`, function `refresh_leave_accrual(employee_id, year)` để tính lại tích lũy.
+- `leave_balances` theo năm/nhân viên, có `annual_entitlement`, `used_days`, `manual_adjustment`, `expiry_date`, function `refresh_leave_accrual(employee_id, year)` để tính lại tích lũy. Admin có thể chỉnh hạn dùng quỹ phép theo từng nhân viên/năm.
 - Ngày nghỉ trừ công thức tương tự KPI: T2–T6 = 1 ngày, T7 = 0.5, `company_holidays` không tính là ngày làm (nên leave request rơi vào ngày lễ không bị trừ phép).
+- `AdminLeaveManagementView` có luồng ghi nhận trực tiếp đã duyệt cho nghỉ phép, WFH và đi trễ, cùng calendar nguồn lực toàn công ty; chỉ Admin có quyền ghi.
 
 ### Auth / phân quyền
 - `profiles.role` là `admin`/`hr`/`employee`, kèm `profiles.employee_id` và `profiles.is_active`.
 - **User (`employee`)** xem dữ liệu liên quan chính mình và chỉ thấy item đã `published`; được tạo đúng ba yêu cầu của chính mình: nghỉ phép, OT và work-event (WFH thêm/đi trễ). Các yêu cầu luôn bắt đầu `Chờ duyệt`; User không tự đổi trạng thái hay thông tin chi trả OT.
 - **HR/Kế toán (`hr`)** xem/sửa dữ liệu nghiệp vụ toàn công ty, nhập payroll/KPI/hợp đồng và gửi duyệt; được xem các yêu cầu phép/OT/work-event nhưng không tạo, sửa hay duyệt chúng. HR được tự đổi mật khẩu của chính mình nhưng không reset/đổi mật khẩu tài khoản khác, không mời/thu hồi/quản lý account, không đổi role và không final approve/publish.
-- **Admin (`admin`)** quản lý tài khoản User, role và dữ liệu; là role duy nhất được mời/quản lý account, duyệt/từ chối yêu cầu phép-OT-work-event và final approval/publish.
+- **Admin (`admin`)** quản lý tài khoản User, role và dữ liệu; là role duy nhất được mời/quản lý account, tạo trực tiếp hoặc duyệt/từ chối yêu cầu phép-OT-work-event, và final approval/publish. Bản ghi tạo trực tiếp vẫn phải thuộc đúng `company_id` của Admin.
 - RLS/RPC dùng `current_company_id()`, `current_employee_id()`, `is_admin()`, `is_hr_accounting()`, `is_backoffice()`; Edge Function phải kiểm tra role active **trước** mọi service-role side effect như gửi email hoặc tạo Auth user.
 - Public self-registration đã tắt. Luồng chuẩn là Admin mời → nhân viên đặt mật khẩu/onboarding → Admin duyệt.
 

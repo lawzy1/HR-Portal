@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert, TablesUpdate } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbOtRecord = Tables<'ot_records'>;
 
@@ -43,7 +44,7 @@ export function useCreateOtRecord() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ot_records'] });
+      refreshQueries(queryClient, [['ot_records']]);
     },
   });
 }
@@ -58,7 +59,7 @@ export function useUpdateOtRecord() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ot_records'] });
+      refreshQueries(queryClient, [['ot_records']]);
     },
   });
 }

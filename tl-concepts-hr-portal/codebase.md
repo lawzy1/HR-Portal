@@ -44,6 +44,43 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 ## Lịch sử thay đổi
 
+### 2026-08-26 — Phase 1 đồng bộ dữ liệu qua cache/refetch, không polling
+
+- `QueryClient` dùng `staleTime: 0`, `refetchOnMount: 'always'`, `refetchOnWindowFocus: 'always'` và `refetchOnReconnect: 'always'` để mỗi lần mở lại module hoặc quay lại Portal đều đọc dữ liệu mới nhất từ Supabase.
+- Thêm `src/lib/queryRefresh.ts`: mutation sau khi ghi thành công invalidate theo prefix và refetch cả query đang inactive, giúp các module khác không giữ cache cũ.
+- Bổ sung invalidation cho các quan hệ phụ thuộc: hồ sơ nhân viên làm mới các danh sách có join nhân viên; hồ sơ nhạy cảm làm mới cả dashboard tổng hợp; ngày lễ làm mới số dư phép; onboarding/invitation làm mới danh sách nhân viên, profile và lời mời.
+- Bỏ `useHrDataRefresh` và polling 60 giây. Không bật Supabase Realtime ở phase này; khi cần sẽ đánh giá lại theo nhu cầu đồng bộ giữa nhiều thiết bị.
+- Đây là đồng bộ theo API/cache, không phải server push: tab hoặc thiết bị khác chỉ thấy dữ liệu mới khi focus/mount/refetch.
+
+### 2026-08-26 — Thêm form nhập phiếu lương thủ công
+
+- `AdminPayrollView` có nút **Thêm phiếu lương** mở form theo mẫu phiếu lương TL Concepts; form dùng upsert theo nhân viên + tháng/năm và luôn lưu bản ghi ở trạng thái Nháp.
+- Form tự liên kết lương/phụ cấp từ hợp đồng hiện hành, ngày công chuẩn từ lịch lễ, phép đã duyệt từ `leave_requests`, quỹ phép từ `leave_balances`, KPI/OT từ dữ liệu cùng kỳ và tỷ lệ bảo hiểm từ `company_settings`.
+- Tổng thu nhập, tổng khấu trừ, điều chỉnh/hoàn trả và thực lãnh được preview theo F01; `taxable_income`/`family_deduction` hiển thị tham chiếu, còn thuế TNCN vẫn nhập theo Kế toán (MVP). Trigger Phase 10 tiếp tục là nguồn sự thật khi lưu.
+- Phiếu đã chờ duyệt hoặc phát hành bị khóa chỉnh sửa; cột trạng thái thanh toán, ngày thanh toán và ghi chú vẫn nhập được trong form nháp.
+
+### 2026-08-26 — Gọn hóa bảng tài khoản và phân quyền
+
+- Bỏ cột trạng thái onboarding khỏi bảng Tài khoản & Phân quyền vì đây là trạng thái quy trình nội bộ, không cần hiển thị thường xuyên.
+- Giữ thao tác khóa quyền truy cập trong cột Thay đổi Vai trò để Admin vẫn quản lý được quyền đăng nhập.
+
+### 2026-08-26 — Giữ tab khi auth refresh và mở rộng preview payroll
+
+- Tab điều hướng User/HR/Admin được lưu trong query URL (`tab`/`adminTab`) và `sessionStorage`; khi `HRProvider` remount do auth refresh hoặc người dùng chuyển ứng dụng, Portal giữ nguyên màn hình đang mở.
+- `AuthContext` giữ profile/route hiện tại trong lúc `TOKEN_REFRESHED` của cùng user được revalidate, tránh tháo `ProtectedRoute`/`HRProvider` chỉ vì refresh token nền.
+- Không tách thành nhiều bundle/page độc lập: mỗi tab vẫn là SPA view nhưng có URL deep-link, ví dụ `/?adminTab=admin-payroll`.
+- Preview import payroll hiển thị toàn bộ tên cột và giá trị theo đúng thứ tự file Excel, có scroll ngang; file chỉ có cột Tên nhân viên cũng được nhận.
+- Preview không format lại cột tiền: hiển thị đúng chuỗi số nguồn từ Excel, không thêm dấu phân cách/`₫`/làm tròn; kiểu số trong bản ghi tính/lưu không đổi. Dòng `Tổng cộng` vẫn chỉ hiển thị, không được import thành nhân viên.
+- Đối chiếu nhân viên ưu tiên họ tên chuẩn hóa nếu khớp duy nhất (mã legacy được cảnh báo), dùng MSNV khi không có tên; tên trùng hoặc tên/mã trỏ hai hồ sơ khác nhau vẫn bị chặn an toàn.
+- Luồng chọn XLSX bắt buộc đọc được tháng/năm từ tiêu đề bảng lương trước khi tạo preview; không âm thầm dùng kỳ đang chọn trên UI khi file thiếu tiêu đề.
+
+### 2026-08-26 — Sửa parser import bảng lương Excel
+
+- Chuẩn hóa đúng ký tự `Đ/đ` trong header tiếng Việt, khôi phục map `Phụ cấp điện thoại` và các header có dấu tương tự.
+- Loại nhiễu IEEE-754 từ giá trị công thức Excel (ví dụ `247204.55000000002`) trước khi tính Net.
+- Map cột tổng hợp `Thưởng lễ + OT` vào một dòng OT/thưởng dự án, không cộng trùng.
+- Nếu MSNV trong file là mã legacy nhưng họ tên khớp duy nhất với employee master, preview cho phép import kèm cảnh báo; tên trùng nhiều người vẫn bị chặn. Preview cũng tự dựng lại khi danh sách nhân viên tải xong.
+
 ### 2026-08-26 — Quên mật khẩu và hồ sơ tài khoản backoffice
 
 - Thêm `ForgotPasswordPage` và `ResetPasswordPage`: gửi email reset với redirect URL theo origin hiện tại, cập nhật mật khẩu qua Supabase Auth rồi đóng recovery session trước khi đăng nhập lại.

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbProfile = Tables<'profiles'>;
 
@@ -31,7 +32,7 @@ export function useUpdateProfileRole() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      refreshQueries(queryClient, [['profiles']]);
     },
   });
 }
@@ -49,7 +50,7 @@ export function useUpdateProfileAccess() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
+    onSuccess: () => refreshQueries(queryClient, [['profiles']]),
   });
 }
 
@@ -65,8 +66,7 @@ export function useReviewEmployeeOnboarding() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      refreshQueries(queryClient, [['profiles'], ['employees']]);
     },
   });
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert, TablesUpdate } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbLeaveRequest = Tables<'leave_requests'>;
 export type DbLeaveBalance = Tables<'leave_balances'>;
@@ -97,7 +98,7 @@ export function useAddCompanyHoliday() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company_holidays'] });
+      refreshQueries(queryClient, [['company_holidays'], ['leave_balances']]);
     },
   });
 }
@@ -145,7 +146,7 @@ export function useAddLeaveAdjustment() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leave_balances'] });
+      refreshQueries(queryClient, [['leave_balances']]);
     },
   });
 }
@@ -166,7 +167,7 @@ export function useUpdateLeaveEntitlement() {
       });
       if (refreshError) throw refreshError;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leave_balances'] }),
+    onSuccess: () => refreshQueries(queryClient, [['leave_balances']]),
   });
 }
 
@@ -208,7 +209,7 @@ export function useCreateWorkEvent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['work_events'] }),
+    onSuccess: () => refreshQueries(queryClient, [['work_events']]),
   });
 }
 
@@ -220,7 +221,7 @@ export function useUpdateWorkEvent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['work_events'] }),
+    onSuccess: () => refreshQueries(queryClient, [['work_events']]),
   });
 }
 
@@ -263,8 +264,7 @@ export function useCreateLeaveRequest() {
       return data;
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
-      queryClient.invalidateQueries({ queryKey: ['leave_balances', variables.employeeId] });
+      refreshQueries(queryClient, [['leave_requests'], ['leave_balances', variables.employeeId]]);
     },
   });
 }
@@ -286,8 +286,7 @@ export function useUpdateLeaveStatus() {
       return data;
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['leave_requests'] });
-      queryClient.invalidateQueries({ queryKey: ['leave_balances', variables.employeeId] });
+      refreshQueries(queryClient, [['leave_requests'], ['leave_balances', variables.employeeId]]);
     },
   });
 }

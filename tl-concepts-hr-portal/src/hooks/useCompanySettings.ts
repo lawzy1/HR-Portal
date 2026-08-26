@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesUpdate } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbCompanySettings = Tables<'company_settings'>;
 export type DbCompany = Tables<'companies'>;
@@ -40,7 +41,7 @@ export function useUpdateCompanySettings() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company_settings'] });
+      refreshQueries(queryClient, [['company_settings'], ['leave_balances']]);
     },
   });
 }
@@ -53,6 +54,6 @@ export function useUpdateCompany() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['company'] }),
+    onSuccess: () => refreshQueries(queryClient, [['company']]),
   });
 }

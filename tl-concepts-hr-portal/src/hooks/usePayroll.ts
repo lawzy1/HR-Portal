@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbPayrollRecord = Tables<'payroll_records'>;
 
@@ -127,7 +128,7 @@ export function useUpsertPayrollRecord() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payroll_records'] });
+      refreshQueries(queryClient, [['payroll_records']]);
     },
   });
 }
@@ -144,7 +145,7 @@ export function useImportPayrollRecords() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payroll_records'] });
+      refreshQueries(queryClient, [['payroll_records']]);
     },
   });
 }
@@ -157,7 +158,7 @@ export function useSubmitPayrollMonth() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
   });
 }
 
@@ -169,7 +170,7 @@ export function useApprovePayrollMonth() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
   });
 }
 
@@ -191,7 +192,7 @@ export function useProcessPayslipNotifications() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
   });
 }
 
@@ -203,7 +204,7 @@ export function useRetryPayslipNotification() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
   });
 }
 
@@ -215,6 +216,6 @@ export function useRejectPayrollMonth() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payroll_records'] }),
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
   });
 }

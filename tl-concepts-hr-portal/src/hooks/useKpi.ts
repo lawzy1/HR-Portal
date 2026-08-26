@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert, TablesUpdate } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbKpiJobItem = Tables<'kpi_job_items'>;
 export type DbKpiMonthly = Tables<'kpi_monthly'>;
@@ -51,7 +52,7 @@ export function useCreateKpiJobItem() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kpi_job_items'] });
+      refreshQueries(queryClient, [['kpi_job_items']]);
     },
   });
 }
@@ -65,7 +66,7 @@ export function useUpdateKpiJobItem() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kpi_job_items'] });
+      refreshQueries(queryClient, [['kpi_job_items']]);
     },
   });
 }
@@ -78,7 +79,7 @@ export function useDeleteKpiJobItem() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kpi_job_items'] });
+      refreshQueries(queryClient, [['kpi_job_items']]);
     },
   });
 }
@@ -130,7 +131,7 @@ export function useUpsertKpiMonthly() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] });
+      refreshQueries(queryClient, [['kpi_monthly']]);
     },
   });
 }
@@ -143,7 +144,7 @@ export function useUpdateKpiMonthly() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+    onSuccess: () => refreshQueries(queryClient, [['kpi_monthly']]),
   });
 }
 
@@ -155,7 +156,7 @@ export function useSubmitKpiMonth() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+    onSuccess: () => refreshQueries(queryClient, [['kpi_monthly']]),
   });
 }
 
@@ -167,7 +168,7 @@ export function useApproveKpiMonth() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+    onSuccess: () => refreshQueries(queryClient, [['kpi_monthly']]),
   });
 }
 
@@ -179,6 +180,6 @@ export function useRejectKpiMonth() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kpi_monthly'] }),
+    onSuccess: () => refreshQueries(queryClient, [['kpi_monthly']]),
   });
 }

@@ -61,6 +61,13 @@ npm run lint
 
 Không có automated test suite. Kiểm tra tiêu chuẩn hiện tại là `typecheck`, `build`, `lint`, Browser UAT có dữ liệu test an toàn, và query DB/RLS bằng công cụ Supabase.
 
+### Đồng bộ dữ liệu Phase 1
+
+- Portal không bật Supabase Realtime và không chạy polling định kỳ.
+- TanStack Query luôn coi dữ liệu là stale; khi view mount lại, cửa sổ được focus hoặc reconnect, query refetch từ Supabase.
+- Mutation dùng `src/lib/queryRefresh.ts` để invalidate theo prefix và refetch cả query đang inactive, bao phủ các màn hình phụ thuộc cùng dữ liệu.
+- Đây không phải cơ chế server push. Nếu nhiều tab/thiết bị cần cập nhật ngay sau khi một nơi khác thay đổi, cần đánh giá Phase 2 (Realtime hoặc BroadcastChannel) riêng.
+
 ---
 
 ## 3. Nguyên tắc bắt buộc khi code tiếp
@@ -155,8 +162,8 @@ net_salary = gross_income - total_deductions + total_adjustments
 
 ### F03 — Hiển thị income
 
-- Dùng **một dòng “OT / thưởng dự án”** = `ot_pay + project_bonus_amount`.
-- `holiday_bonus_amount` hiển thị ở dòng **“Thưởng lễ”** riêng.
+- Workbook TL Concepts hiện có một cột **“Thưởng lễ + OT”** tổng hợp; importer map vào dòng “OT / thưởng dự án” (`ot_pay`).
+- Nếu nguồn lương có `holiday_bonus_amount` riêng thì mới hiển thị dòng **“Thưởng lễ”** riêng.
 - Không được map/hiển thị khiến một khoản bị cộng hai lần.
 
 ### F04/F05 — Taxable income vs PIT
@@ -228,7 +235,7 @@ UAT scenarios đã viết đầy đủ tại `docs/phase10-business-acceptance.m
 
 1. **U01/U02:** employee A không đọc được employee B, draft/pending payroll vô hình với User.
 2. **U03/U10:** HR có CRUD nghiệp vụ nhưng không role/account management hoặc final approval; Admin có quyền đó.
-3. **U04:** import workbook thật `BẢNG_LƯƠNG.xlsx`, period/header/MSNV/day map/BHXH and F01 net chuẩn.
+3. **U04:** import workbook thật `BẢNG_LƯƠNG.xlsx`, preview đủ toàn bộ cột, đối chiếu tên duy nhất khi mã legacy, period/header/MSNV/day map/BHXH và F01 net chuẩn.
 4. **U05:** publish một payroll test, PDF render/download đúng field + checksum stable; email `skipped` expected nếu chưa cấu hình provider.
 5. **U06:** reject/resubmit payroll.
 6. **U07:** company leave default + employee override.
@@ -247,7 +254,9 @@ Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions c
 
 - Chạy và ghi nhận UAT 3 vai trò + payroll import/publish/PDF bằng dữ liệu test.
 - Xác nhận business xem số net preview/PDF đúng F01 trong UI sau frontend deploy.
-- Bắt buộc chặn import khi không đọc được kỳ từ tiêu đề bảng lương. Hiện parser còn fallback về tháng/năm đang chọn trên UI đối với paste/CSV hoặc workbook thiếu tiêu đề, không đúng quy tắc F07 “Portal luôn lấy kỳ từ tiêu đề”.
+- Kiểm tra deep-link tab: đang ở Payroll, chuyển qua ứng dụng khác rồi quay lại phải vẫn ở Payroll; URL giữ `adminTab`/`tab` tương ứng.
+- Root cause đã xử lý trong `AuthContext`: không còn xóa `profile`/tháo `HRProvider` khi `TOKEN_REFRESHED` cùng user; state URL/session là lớp phục hồi khi provider thực sự remount.
+- Bắt buộc chặn import khi không đọc được kỳ từ tiêu đề bảng lương. Luồng XLSX hiện đã chặn file thiếu tiêu đề; parser paste/CSV vẫn còn fallback về tháng/năm đang chọn trên UI, cần harden nếu tiếp tục hỗ trợ hai dạng này theo F07.
 - Nếu cần gửi payslip email: provision email provider secrets và test recipient; không dùng payroll thật để test.
 
 ### P1 — đã quyết định hoãn hoặc cần hardening

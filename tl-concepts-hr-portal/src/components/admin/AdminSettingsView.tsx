@@ -293,7 +293,6 @@ export const AdminSettingsView: React.FC = () => {
                 <th className="py-3 px-4">Chức danh & Phòng ban</th>
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Vai trò Phân quyền hiện tại</th>
-                <th className="py-3 px-4">Trạng thái onboarding</th>
                 <th className="py-3 px-4 text-center">Thay đổi Vai trò</th>
               </tr>
             </thead>
@@ -322,31 +321,29 @@ export const AdminSettingsView: React.FC = () => {
                         {profile.role}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <button
-                        type="button"
-                        onClick={() => profile.is_active && handleAccessChange(profile.id, false)}
-                        disabled={updateProfileAccess.isPending || !profile.is_active}
-                        className={`rounded-lg px-3 py-1.5 text-[10px] font-bold cursor-pointer disabled:opacity-60 ${
-                          profile.is_active
-                            ? 'bg-success-100 text-success-800 hover:bg-success-200'
-                            : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-                        }`}
-                      >
-                        {profile.is_active ? 'Đang hoạt động · Khóa' : profile.onboarding_status === 'submitted' ? 'Đang chờ duyệt' : profile.onboarding_status === 'needs_changes' ? 'Cần bổ sung' : profile.onboarding_status === 'in_progress' ? 'Đang điền hồ sơ' : profile.onboarding_status === 'revoked' ? 'Lời mời đã thu hồi' : 'Đã gửi lời mời'}
-                      </button>
-                    </td>
                     <td className="py-3 px-4 text-center">
-                      <select
-                        value={profile.role}
-                        onChange={e => handleRoleChange(profile.id, e.target.value as 'admin' | 'hr' | 'employee')}
-                        disabled={updateProfileRole.isPending}
-                        className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 disabled:opacity-60"
-                      >
-                        <option value="admin">Admin / Ban Giám Đốc</option>
-                        <option value="hr">HR / Kế toán</option>
-                        <option value="employee">Employee / Nhân viên</option>
-                      </select>
+                      <div className="flex flex-col items-center gap-2">
+                        <select
+                          value={profile.role}
+                          onChange={e => handleRoleChange(profile.id, e.target.value as 'admin' | 'hr' | 'employee')}
+                          disabled={updateProfileRole.isPending}
+                          className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 disabled:opacity-60"
+                        >
+                          <option value="admin">Admin / Ban Giám Đốc</option>
+                          <option value="hr">HR / Kế toán</option>
+                          <option value="employee">Employee / Nhân viên</option>
+                        </select>
+                        {profile.is_active && (
+                          <button
+                            type="button"
+                            onClick={() => handleAccessChange(profile.id, false)}
+                            disabled={updateProfileAccess.isPending}
+                            className="rounded-lg bg-success-100 px-3 py-1.5 text-[10px] font-bold text-success-800 transition-colors hover:bg-success-200 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Khóa quyền truy cập
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

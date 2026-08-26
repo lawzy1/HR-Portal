@@ -65,15 +65,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30);
   const profileRequestId = useRef(0);
+  const lastSessionUserId = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
     const syncAuthState = async (nextSession: Session | null) => {
       const requestId = ++profileRequestId.current;
-      setLoading(true);
+      const nextUserId = nextSession?.user?.id ?? null;
+      const isSameUser = Boolean(nextUserId && nextUserId === lastSessionUserId.current);
+      lastSessionUserId.current = nextUserId;
       setSession(nextSession);
-      setProfile(null);
+
+      // TOKEN_REFRESHED/SIGNED_IN events for the current user are normal
+      // background auth activity. Keep the existing profile and route mounted
+      // while it is revalidated; otherwise ProtectedRoute unmounts HRProvider
+      // and every in-memory navigation tab falls back to its first item.
+      if (!isSameUser) {
+        setLoading(true);
+        setProfile(null);
+      }
 
       if (!nextSession?.user) {
         if (isMounted && requestId === profileRequestId.current) {

@@ -40,7 +40,19 @@ import { ImportKpiModal } from './components/ImportKpiModal';
 import { PayslipDetailModal } from './components/PayslipDetailModal';
 import { NewEmployeeModal } from './components/NewEmployeeModal';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Always read the current server value when a view is mounted again or
+      // the user returns to the portal. Cached data can still render while
+      // the request is in flight, but it is never treated as authoritative.
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: 'always',
+      refetchOnReconnect: 'always',
+    },
+  },
+});
 
 function MainContent() {
   const { profile } = useAuth();

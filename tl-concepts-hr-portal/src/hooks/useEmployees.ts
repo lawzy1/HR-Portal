@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesUpdate } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbEmployee = Tables<'employees'>;
 export type DbEmployeeSensitiveInfo = Tables<'employee_sensitive_info'>;
@@ -46,7 +47,7 @@ export function useManageEmployeeInvitation() {
       return data!;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: EMPLOYEE_INVITATIONS_KEY });
+      refreshQueries(queryClient, [EMPLOYEE_INVITATIONS_KEY]);
     },
   });
 }
@@ -104,7 +105,7 @@ export function useCreateEmployee() {
       return data!.employee;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: EMPLOYEES_KEY });
+      refreshQueries(queryClient, [EMPLOYEES_KEY, ['profiles'], EMPLOYEE_INVITATIONS_KEY]);
     },
   });
 }
@@ -118,7 +119,20 @@ export function useUpdateEmployee() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: EMPLOYEES_KEY });
+      // Employee names, departments, avatars, and salary fields are joined
+      // into several back-office lists, so refresh those cached projections
+      // together with the employee master record.
+      refreshQueries(queryClient, [
+        EMPLOYEES_KEY,
+        ['profiles'],
+        ['contracts'],
+        ['salary_history'],
+        ['leave_requests'],
+        ['ot_records'],
+        ['work_events'],
+        ['kpi_job_items'],
+        ['payroll_records'],
+      ]);
     },
   });
 }
@@ -142,12 +156,16 @@ export function useDeleteOffboardedEmployee() {
       if (error) throw error;
     },
     onSuccess: (_data, employeeId) => {
-      queryClient.invalidateQueries({ queryKey: EMPLOYEES_KEY });
       queryClient.removeQueries({ queryKey: [...EMPLOYEES_KEY, employeeId] });
       queryClient.removeQueries({ queryKey: ['employee_sensitive_info', employeeId] });
       queryClient.removeQueries({ queryKey: ['employee_relatives', employeeId] });
-      queryClient.invalidateQueries({ queryKey: EMPLOYEE_INVITATIONS_KEY });
-      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      refreshQueries(queryClient, [
+        EMPLOYEES_KEY,
+        ['employee_sensitive_info'],
+        ['employee_relatives'],
+        EMPLOYEE_INVITATIONS_KEY,
+        ['profiles'],
+      ]);
     },
   });
 }
@@ -206,8 +224,8 @@ export function useUpsertEmployeeSensitiveInfo() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['employee_sensitive_info', variables.employeeId] });
+    onSuccess: () => {
+      refreshQueries(queryClient, [['employee_sensitive_info']]);
     },
   });
 }
@@ -276,8 +294,8 @@ export function useSetEmployeeRelatives() {
       if (insertError) throw insertError;
       return data;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['employee_relatives', variables.employeeId] });
+    onSuccess: () => {
+      refreshQueries(queryClient, [['employee_relatives']]);
     },
   });
 }

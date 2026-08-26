@@ -45,7 +45,7 @@ Trong phiếu mẫu:
 - `B22` (Thưởng lễ) cũng liên kết `K3`.
 - `B23 = SUM(B17:B22)`.
 
-Đã chốt: dùng một cột tổng hợp `OT/thưởng dự án`; `Thưởng lễ` giữ là một khoản riêng theo Excel. Portal/PDF không cộng trùng.
+Đã chốt: workbook hiện tại có một cột tổng hợp `Thưởng lễ + OT`; importer đưa cột này vào một dòng `OT/thưởng dự án` (`ot_pay`) và không tách/cộng trùng. Nếu một nguồn khác có cột `Thưởng lễ` riêng thì cột đó mới map vào `holiday_bonus_amount`.
 
 ### F04 — Thu nhập chịu thuế đang loại trừ phụ cấp
 
@@ -143,7 +143,10 @@ Expected:
 - `BHXH 10.5% = 735.000` hiển thị thành một dòng `BHXH / BHYT / BHTN`.
 - Các khoản chi tiết giữ nguyên giá trị Excel; Net preview và database tính theo F01.
 - Dữ liệu mẫu cho ra `18.204.202` từ `18.800.000 - 799.250 + 203.452`.
-- Không cho lưu nếu trùng MSNV hoặc không tìm thấy nhân viên.
+- Preview phải hiển thị đủ tên và giá trị của toàn bộ cột có trong file, không chỉ Gross/Net.
+- Số trong preview giữ nguyên giá trị Excel nhưng các cột tiền được thêm dấu phân cách hàng nghìn để dễ đọc (không thêm `₫`, không tự làm tròn/đổi giá trị); dòng `Tổng cộng` vẫn hiển thị nhưng không được lưu thành phiếu nhân viên.
+- Đối chiếu tạm thời ưu tiên họ tên chuẩn hóa nếu khớp duy nhất (mã legacy được cảnh báo), dùng MSNV khi không có tên; tên trùng hoặc tên/mã trỏ hai hồ sơ khác nhau thì không cho lưu.
+- Không cho lưu nếu không xác định được nhân viên hoặc có dòng trùng cùng một hồ sơ.
 
 **Điều kiện bắt buộc F07:** nếu không đọc được tháng/năm từ tiêu đề bảng lương thì phải dừng import và yêu cầu bổ sung tiêu đề; không dùng tháng/năm đang chọn trên giao diện làm giá trị thay thế.
 
@@ -263,6 +266,36 @@ Expected:
 - Email không tồn tại vẫn nhận thông báo chung, không làm lộ thông tin tài khoản.
 - Link đã dùng/hết hạn hiển thị hướng dẫn yêu cầu link mới và không đổi được mật khẩu.
 - Trang reset không có session hợp lệ không cho cập nhật mật khẩu.
+
+### U14 — Nhập phiếu lương bằng form thủ công
+
+1. HR/Kế toán mở `Payroll & phê duyệt phiếu lương`, chọn `Thêm phiếu lương`.
+2. Chọn nhân viên và kỳ lương; kiểm tra các trường liên kết từ hợp đồng, ngày lễ, phép đã duyệt, KPI/OT và cấu hình bảo hiểm.
+3. Nhập thuế TNCN cùng các khoản điều chỉnh/hoàn trả theo số Kế toán xác nhận.
+4. Kiểm tra phần tổng kết rồi bấm `Lưu phiếu nháp`.
+5. Gửi kỳ lương cho Admin duyệt; Admin phát hành và User mở phiếu.
+
+Expected:
+
+- Tên, email, MSNV, chức vụ/phòng ban và lương/phụ cấp lấy đúng nhân viên đã chọn; ngày công chuẩn loại trừ ngày lễ và ngày công thực tế mặc định trừ phép đã duyệt.
+- KPI/OT chỉ là giá trị gợi ý từ dữ liệu cùng kỳ và vẫn cho phép Kế toán điều chỉnh; thuế TNCN không tự tính.
+- Tổng thu nhập, tổng khấu trừ, điều chỉnh/hoàn trả và thực lãnh hiển thị theo F01; giá trị lưu cuối cùng do trigger Phase 10 xác nhận.
+- Phiếu lưu ở trạng thái `draft`, xuất hiện trong bảng kỳ lương và User chưa nhìn thấy cho tới khi Admin phát hành.
+- Chọn lại nhân viên + kỳ đã có phiếu nháp sẽ cập nhật đúng phiếu đó; phiếu `pending_approval`/`published` không cho sửa.
+
+### U15 — Dữ liệu mới nhất sau khi chuyển module
+
+1. Đăng nhập cùng một tài khoản ở Portal.
+2. Mở một module có dữ liệu (ví dụ Hồ sơ nhân viên, Ngày phép hoặc Payroll), thực hiện một thao tác lưu/duyệt hợp lệ.
+3. Chuyển sang module khác rồi quay lại module vừa thay đổi.
+4. Chuyển sang ứng dụng khác, quay lại cửa sổ Portal và kiểm tra lại.
+
+Expected:
+
+- Sau mutation thành công, các query liên quan được invalidate theo prefix và refetch cả dữ liệu của module đang tạm ẩn; không cần reload thủ công.
+- Khi module mount lại hoặc cửa sổ được focus, Portal luôn gọi API lấy dữ liệu mới nhất; cache cũ chỉ được dùng trong lúc request đang chạy.
+- Không có polling định kỳ và chưa bật Supabase Realtime trong Phase 1. Nếu thay đổi được tạo ở một browser/thiết bị khác, cần focus/mount/refetch ở Portal hiện tại để đọc bản ghi mới.
+- Quyền User/HR/Admin vẫn do RLS/RPC kiểm soát; cơ chế refresh không mở thêm dữ liệu.
 
 ## 4. Technical debt đã hoãn
 

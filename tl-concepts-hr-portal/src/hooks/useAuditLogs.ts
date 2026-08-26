@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export function useAuditLogs() {
   return useQuery({
@@ -28,6 +29,6 @@ export function useRecordAuditEvent() {
       });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['audit_logs'] }),
+    onSuccess: () => refreshQueries(queryClient, [['audit_logs']]),
   });
 }

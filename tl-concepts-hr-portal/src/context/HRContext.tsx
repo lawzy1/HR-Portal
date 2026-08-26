@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Employee,
   TabType,
@@ -12,7 +13,6 @@ import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
 import { useAllProfiles } from '../hooks/useProfiles';
-import { useHrDataRefresh } from '../hooks/useHrDataRefresh';
 
 const DAY_MS = 86_400_000;
 const daysUntil = (date: string) => Math.ceil((new Date(`${date}T00:00:00`).getTime() - Date.now()) / DAY_MS);
@@ -64,8 +64,51 @@ interface HRContextType {
 
 const HRContext = createContext<HRContextType | undefined>(undefined);
 
+const USER_TAB_VALUES: readonly TabType[] = ['dashboard', 'profile', 'contracts', 'payslips', 'leaves', 'kpi'];
+const ADMIN_TAB_VALUES: readonly AdminTabType[] = [
+  'admin-dashboard',
+  'admin-profile',
+  'admin-employees',
+  'admin-contracts',
+  'admin-leaves',
+  'admin-kpi',
+  'admin-payroll',
+  'admin-reminders',
+  'admin-reports',
+  'admin-settings',
+];
+
+const isStoredTab = <T extends string>(value: string | null, allowed: readonly T[]): value is T =>
+  value !== null && allowed.includes(value as T);
+
+const readStoredTab = <T extends string>(queryKey: string, storageKey: string, fallback: T, allowed: readonly T[]): T => {
+  if (typeof window === 'undefined') return fallback;
+
+  const fromUrl = new URLSearchParams(window.location.search).get(queryKey);
+  if (isStoredTab(fromUrl, allowed)) return fromUrl;
+
+  try {
+    const fromSession = window.sessionStorage.getItem(storageKey);
+    if (isStoredTab(fromSession, allowed)) return fromSession;
+  } catch {
+    // Private browsing / storage-disabled environments should still be able
+    // to use the portal; the in-memory default remains valid in that case.
+  }
+  return fallback;
+};
+
+const persistTab = (storageKey: string, value: string) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(storageKey, value);
+  } catch {
+    // URL state below is still sufficient when sessionStorage is unavailable.
+  }
+};
+
 export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  useHrDataRefresh();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [employees] = useState<Employee[]>(() => {
     const local = localStorage.getItem('misa_bamboo_hr_employees_v2');
     if (local) {
@@ -79,8 +122,44 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   });
 
   // Active navigation
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [adminTab, setAdminTab] = useState<AdminTabType>('admin-dashboard');
+  // Keep the selected view in the URL as well as sessionStorage. Auth token
+  // refreshes can briefly remount HRProvider; in-memory-only state then jumps
+  // back to the first tab. A query-backed tab is also directly shareable and
+  // survives switching browser windows/apps without creating separate bundles.
+  const [activeTab, setActiveTabState] = useState<TabType>(() =>
+    readStoredTab('tab', 'tl-hr-active-tab', 'dashboard', USER_TAB_VALUES),
+  );
+  const [adminTab, setAdminTabState] = useState<AdminTabType>(() =>
+    readStoredTab('adminTab', 'tl-hr-active-admin-tab', 'admin-dashboard', ADMIN_TAB_VALUES),
+  );
+
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(location.search).get('tab');
+    if (isStoredTab(fromUrl, USER_TAB_VALUES) && fromUrl !== activeTab) setActiveTabState(fromUrl);
+  }, [activeTab, location.search]);
+
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(location.search).get('adminTab');
+    if (isStoredTab(fromUrl, ADMIN_TAB_VALUES) && fromUrl !== adminTab) setAdminTabState(fromUrl);
+  }, [adminTab, location.search]);
+
+  const setActiveTab = useCallback((tab: TabType) => {
+    setActiveTabState(tab);
+    persistTab('tl-hr-active-tab', tab);
+    const params = new URLSearchParams(location.search);
+    params.delete('adminTab');
+    params.set('tab', tab);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}`, hash: location.hash }, { replace: true });
+  }, [location.hash, location.pathname, location.search, navigate]);
+
+  const setAdminTab = useCallback((tab: AdminTabType) => {
+    setAdminTabState(tab);
+    persistTab('tl-hr-active-admin-tab', tab);
+    const params = new URLSearchParams(location.search);
+    params.delete('tab');
+    params.set('adminTab', tab);
+    navigate({ pathname: location.pathname, search: `?${params.toString()}`, hash: location.hash }, { replace: true });
+  }, [location.hash, location.pathname, location.search, navigate]);
 
   // Employee Selection
   // Empty, not a mock id like 'emp-01' — these now also feed real Supabase

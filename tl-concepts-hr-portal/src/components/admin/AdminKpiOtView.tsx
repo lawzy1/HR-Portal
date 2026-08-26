@@ -904,16 +904,6 @@ export const AdminKpiOtView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={selectedEmployeeIdForAdmin || employeeList[0]?.id || ''}
-              onChange={e => setSelectedEmployeeIdForAdmin(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
-              title="Nhân viên đang chọn để Liên kết Bảng KPI"
-            >
-              {employeeList.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code})</option>
-              ))}
-            </select>
             <button
               onClick={() => {
                 if (!selectedEmployeeIdForAdmin && employeeList[0]) {
@@ -933,7 +923,7 @@ export const AdminKpiOtView: React.FC = () => {
               className="px-3 py-1.5 bg-success-50 hover:bg-success-100 text-success-700 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Tải file Excel</span>
+              <span>Export Excel</span>
             </button>
 
             <button

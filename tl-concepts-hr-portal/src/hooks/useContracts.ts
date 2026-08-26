@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert, TablesUpdate } from '../lib/database.types';
+import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbContract = Tables<'contracts'>;
 export type DbSalaryHistory = Tables<'salary_history'>;
@@ -46,7 +47,7 @@ export function useCreateContract() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+    onSuccess: () => refreshQueries(queryClient, [['contracts']]),
   });
 }
 
@@ -58,7 +59,7 @@ export function useUpdateContract() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+    onSuccess: () => refreshQueries(queryClient, [['contracts']]),
   });
 }
 
@@ -70,7 +71,7 @@ export function useSubmitContract() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+    onSuccess: () => refreshQueries(queryClient, [['contracts']]),
   });
 }
 
@@ -83,9 +84,7 @@ export function useApproveContract() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['salary_history'] });
+      refreshQueries(queryClient, [['contracts'], ['employees'], ['salary_history']]);
     },
   });
 }
@@ -98,7 +97,7 @@ export function useRejectContract() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contracts'] }),
+    onSuccess: () => refreshQueries(queryClient, [['contracts']]),
   });
 }
 

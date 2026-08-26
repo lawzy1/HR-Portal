@@ -8,7 +8,7 @@ HR Portal nội bộ cho **TL Concepts** — studio render nội thất/kiến t
 
 Stack: React 19 + TypeScript + Vite, Tailwind CSS, TanStack Query, React Router, Supabase (Postgres + Auth + Storage + RLS), react-hook-form + zod.
 
-Không có backend riêng — mọi logic nghiệp vụ nằm ở (a) Postgres (RLS, trigger, function) hoặc (b) trực tiếp trong component/hook phía client gọi thẳng Supabase qua `src/lib/supabaseClient.ts`. Không có Express/Nest server.
+Không có Express/Nest server. Logic nghiệp vụ và security boundary nằm ở (a) Postgres (RLS, trigger, function) và (b) Supabase Edge Functions cho các thao tác cần service role như mời/xóa tài khoản hoặc gửi phiếu lương. Client chỉ gọi Supabase qua `src/lib/supabaseClient.ts`.
 
 ## 2. Lệnh hay dùng
 
@@ -34,7 +34,7 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 ## 3. Kiến trúc / cách đọc code
 
 - **Không dùng React Router path-based cho nội dung chính** — `App.tsx` render 1 `MainContent` duy nhất, chuyển view bằng state (`activeTab` / `adminTab`) trong `HRContext`. Router chỉ dùng cho `/login` vs app.
-- **2 role duy nhất**: `admin` và `employee` (enum `user_role` trong DB). `AuthContext` đọc `profiles.role` sau khi login → quyết định render `AdminSidebar`/admin views hay `Sidebar`/employee views. Component admin nằm trong `src/components/admin/`, component employee (self-service) nằm thẳng trong `src/components/`.
+- **3 role**: `admin`, `hr`, `employee` (enum `user_role` trong DB). `admin` và `hr` đều vào back-office (`AdminSidebar`); chỉ `admin` thấy account/role management và final approval. `employee` chỉ dùng self-service. UI chỉ là hiển thị; RLS/RPC/Edge Function mới là security boundary.
 - **Multi-tenant qua `company_id`** — mọi bảng nghiệp vụ có cột `company_id`. RLS tự lọc theo `current_company_id()` (Postgres function), **không cần** filter `company_id` ở client. Khi viết query mới, đừng thêm `.eq('company_id', ...)` thủ công trừ khi đang INSERT (bắt buộc phải set khi insert).
 - **Hooks theo pattern TanStack Query**: mỗi bảng có file `src/hooks/use<Table>.ts` xuất `Db<Table>` type (= `Tables<'table_name'>` từ `database.types.ts`), `use<Table>()` (query), `useCreate<Table>()`/`useUpdate<Table>()` (mutation, tự `invalidateQueries`). Theo đúng pattern này khi thêm bảng mới, đừng tạo cách gọi Supabase khác.
 - **Modal toàn cục**: các modal lớn (`EditProfileModal`, `NewLeaveModal`, `ImportKpiModal`, `PayslipDetailModal`, `NewEmployeeModal`) được mount 1 lần trong `App.tsx` và tự ẩn/hiện qua state cờ (`isEditProfileModalOpen`, ...) + `selectedEmployeeIdForAdmin` trong `HRContext`. **`EditProfileModal` return `null` nếu `selectedEmployeeIdForAdmin` chưa được set** — nút "Chỉnh sửa hồ sơ" ở list chỉ mở được modal nếu nhân viên đã được chọn/click trước đó trong danh sách bên trái.
@@ -63,9 +63,12 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 - Ngày nghỉ trừ công thức tương tự KPI: T2–T6 = 1 ngày, T7 = 0.5, `company_holidays` không tính là ngày làm (nên leave request rơi vào ngày lễ không bị trừ phép).
 
 ### Auth / phân quyền
-- `profiles.role` (`admin`/`employee`) + `profiles.employee_id` (null với admin thuần, hoặc trỏ employee nếu admin đồng thời là nhân viên) + `profiles.is_active`.
-- RLS dùng 3 function: `current_company_id()`, `current_employee_id()`, `is_admin()` — luôn ưu tiên các function này thay vì check role ở client cho mọi thứ liên quan bảo mật (client chỉ dùng role để quyết định UI hiển thị gì, không phải nguồn bảo mật thật).
-- **Có 1 luồng "tự đăng ký" (employee self-registration) đang xây dở, CHƯA hoàn thiện** — xem `codebase.md` mục "Việc dở dang".
+- `profiles.role` là `admin`/`hr`/`employee`, kèm `profiles.employee_id` và `profiles.is_active`.
+- **User (`employee`)** chỉ xem dữ liệu liên quan chính mình và chỉ thấy item đã `published`; không account management hay final approval.
+- **HR/Kế toán (`hr`)** xem/sửa dữ liệu nghiệp vụ toàn công ty, nhập payroll/KPI/OT/hợp đồng và gửi duyệt; không reset password, không mời/thu hồi/quản lý account, không đổi role và không final approve/publish.
+- **Admin (`admin`)** quản lý tài khoản User, role và dữ liệu; là role duy nhất được mời/quản lý account và final approval/publish.
+- RLS/RPC dùng `current_company_id()`, `current_employee_id()`, `is_admin()`, `is_hr_accounting()`, `is_backoffice()`; Edge Function phải kiểm tra role active **trước** mọi service-role side effect như gửi email hoặc tạo Auth user.
+- Public self-registration đã tắt. Luồng chuẩn là Admin mời → nhân viên đặt mật khẩu/onboarding → Admin duyệt.
 
 ## 5. Coding conventions đã thấy trong repo (follow theo)
 

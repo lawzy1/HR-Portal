@@ -13,6 +13,8 @@ TL Concepts HR Portal là HR portal nội bộ cho studio render nội thất/ki
 Production Supabase hiện đã có Phase 1–10, bao gồm workflow 3 vai trò và payroll approval. Mốc mới nhất đã deploy:
 
 - **Phase 10 migration:** `20260825153557_phase10_business_alignment.sql` — đã apply production ngày 2026-08-26.
+- **Onboarding RLS repair:** `20260826034008_fix_onboarding_employee_read_rls.sql` — đã apply production, khôi phục quyền đọc đúng hồ sơ onboarding của chính User mà không mở dữ liệu nhân viên khác.
+- **Invitation authorization repair:** `create-employee` Edge Function phải kiểm tra `admin` active trước mọi Auth/email side effect. Không bao giờ dựa vào UI để bảo vệ endpoint.
 - **Edge Function:** `process-payslip-outbox` — `ACTIVE`, version 2.
 - **Project ref:** `xtyjeduckvopbdeokhfn`.
 - **Frontend Phase 10:** source đã commit nhưng **chưa deploy theo yêu cầu business**. Người dùng sẽ tự deploy frontend.

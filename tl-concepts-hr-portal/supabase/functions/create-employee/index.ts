@@ -63,6 +63,21 @@ Deno.serve(async (req: Request) => {
   const { data: { user: callerUser }, error: callerError } = await callerClient.auth.getUser();
   if (callerError || !callerUser) return jsonResponse(req, { error: "Phiên đăng nhập không hợp lệ" }, 401);
 
+  // Verify the caller at the trusted boundary before creating an Auth invite.
+  // UI visibility is not an authorization control: any signed-in user can
+  // otherwise call this public Edge endpoint directly.
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: callerProfile, error: profileError } = await admin
+    .from("profiles")
+    .select("role, is_active")
+    .eq("id", callerUser.id)
+    .maybeSingle();
+  if (profileError || !callerProfile || callerProfile.role !== "admin" || !callerProfile.is_active) {
+    return jsonResponse(req, { error: "Chỉ Admin đang hoạt động mới được mời nhân viên" }, 403);
+  }
+
   const body = (await req.json().catch(() => null)) as CreateEmployeeBody | null;
   const email = body?.email?.trim().toLowerCase();
   if (!body || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -72,10 +87,6 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { error: "Vui lòng điền đủ mã NV, họ tên, phòng ban và chức danh" }, 400);
   }
   if (!isValidDate(body.startDate)) return jsonResponse(req, { error: "Ngày vào làm không hợp lệ" }, 400);
-
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 
   // Auth owns the email and sends the invitation. No password is ever
   // generated or returned by this endpoint.

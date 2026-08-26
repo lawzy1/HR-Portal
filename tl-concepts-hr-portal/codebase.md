@@ -1,13 +1,13 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-08-25**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
+Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
 ## Trạng thái hiện tại (snapshot)
 
-**Đã hoàn thiện & apply vào DB thật, verify qua UI:**
-- Auth 2 role (admin/employee), multi-tenant RLS qua `company_id`.
+**Đã hoàn thiện & apply vào DB thật, verify qua UI/RLS:**
+- Auth 3 role (`admin`/`hr`/`employee`), multi-tenant RLS qua `company_id`. HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role hoặc final approve; Admin là role duy nhất làm các thao tác này.
 - Hồ sơ nhân viên đầy đủ (thông tin chung, CCCD/MST/BHXH, ngân hàng, người thân, upload ảnh) + **chỉ tiêu KPI theo level/ngày riêng từng người** (mới).
 - Hợp đồng lao động + lịch sử tăng lương + **phụ lục hợp đồng** (mới) + cảnh báo pháp lý Điều 20 BLLĐ 2019.
 - Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ.
@@ -40,6 +40,12 @@ Cập nhật lần cuối: **2026-08-25**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-26 — Chặn invitation Edge Function trước service-role side effect
+
+- `create-employee` kiểm tra caller có profile `admin` đang active ngay sau khi xác thực JWT và **trước** `inviteUserByEmail`.
+- User hoặc HR/Kế toán gọi trực tiếp endpoint sẽ nhận `403`; không tạo Auth user và không gửi email. Đây là backend boundary bắt buộc, không dựa vào việc UI có ẩn nút mời nhân viên.
+- Business RBAC đã được đồng bộ trong `AGENTS.md`: User chỉ xem dữ liệu của mình; HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role, reset password hay final approval; Admin có các quyền đó.
 
 ### 2026-08-25 — Xóa vĩnh viễn nhân viên đã nghỉ việc
 

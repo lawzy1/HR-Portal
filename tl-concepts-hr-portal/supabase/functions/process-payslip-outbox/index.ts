@@ -3,6 +3,10 @@ import { withSupabase } from "@supabase/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 
+function publicError(code: string, message: string, status: number) {
+  return Response.json({ error: { code, message } }, { status });
+}
+
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const NOTIFICATION_FROM_EMAIL = Deno.env.get("NOTIFICATION_FROM_EMAIL");
 const APP_URL = (Deno.env.get("APP_URL") ?? "https://hr-portal-tl.vercel.app").replace(/\/$/, "");
@@ -193,7 +197,7 @@ async function sendPayslipEmail(to: string, employeeName: string, month: number,
 
 export default {
   fetch: withSupabase({ auth: "user" }, async (request, ctx) => {
-    if (request.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405 });
+    if (request.method !== "POST") return publicError("INVALID_REQUEST", "Phương thức gửi yêu cầu không hợp lệ.", 405);
     const actorId = ctx.userClaims?.id;
     const { data: actor } = await ctx.supabaseAdmin
       .from("profiles")
@@ -201,7 +205,7 @@ export default {
       .eq("id", actorId ?? "")
       .maybeSingle();
     if (!actor || actor.role !== "admin" || !actor.is_active) {
-      return Response.json({ error: "Chỉ Admin đang hoạt động mới xử lý thông báo phiếu lương." }, { status: 403 });
+      return publicError("FORBIDDEN", "Bạn không có quyền xử lý thông báo phiếu lương.", 403);
     }
 
     const input = await request.json().catch(() => ({})) as { limit?: number; payrollId?: string };
@@ -217,9 +221,12 @@ export default {
       .limit(limit);
     if (typeof input.payrollId === "string") query = query.eq("entity_id", input.payrollId);
     const { data: jobs, error: jobsError } = await query;
-    if (jobsError) return Response.json({ error: jobsError.message }, { status: 500 });
+    if (jobsError) {
+      console.error("load payslip notification jobs failed", jobsError);
+      return publicError("INTERNAL_ERROR", "Chưa thể tải hàng đợi gửi phiếu lương. Vui lòng thử lại sau.", 500);
+    }
 
-    const results: Array<{ id: string; status: string; error?: string }> = [];
+    const results: Array<{ id: string; status: string; code?: string }> = [];
     for (const job of jobs ?? []) {
       const attempt = Number(job.attempts) + 1;
       const { data: claimed } = await ctx.supabaseAdmin
@@ -286,9 +293,10 @@ export default {
             notification_sent_at: delivery.status === "sent" ? now : null,
           }).eq("id", payroll.id),
         ]);
-        results.push({ id: job.id, status: delivery.status, ...(delivery.error ? { error: delivery.error } : {}) });
+        results.push({ id: job.id, status: delivery.status, ...(delivery.error ? { code: "EMAIL_DELIVERY_FAILED" } : {}) });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Lỗi không xác định.";
+        console.error("process payslip notification failed", { jobId: job.id, error });
         const retryAt = new Date(Date.now() + Math.min(60, 2 ** attempt) * 60_000).toISOString();
         await Promise.all([
           ctx.supabaseAdmin.from("notification_outbox").update({
@@ -297,7 +305,7 @@ export default {
           }).eq("id", job.id),
           ctx.supabaseAdmin.from("payroll_records").update({ notification_status: "failed" }).eq("id", job.entity_id),
         ]);
-        results.push({ id: job.id, status: "failed", error: message });
+        results.push({ id: job.id, status: "failed", code: "EMAIL_DELIVERY_FAILED" });
       }
     }
     return Response.json({ processed: results.length, results });

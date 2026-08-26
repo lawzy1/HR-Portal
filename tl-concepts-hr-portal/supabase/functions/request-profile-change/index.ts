@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { logInternalError, publicError } from "../_shared/error-response.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,6 +34,10 @@ function jsonResponse(request: Request, body: unknown, status: number) {
   });
 }
 
+function errorResponse(request: Request, options: Parameters<typeof publicError>[2]) {
+  return publicError(request, corsHeaders(request), options);
+}
+
 async function sendEmail(recipients: string[], subject: string, html: string) {
   if (!RESEND_API_KEY || !NOTIFICATION_FROM_EMAIL) {
     return { delivered: false, error: "Chưa cấu hình RESEND_API_KEY hoặc NOTIFICATION_FROM_EMAIL" };
@@ -50,22 +55,22 @@ async function sendEmail(recipients: string[], subject: string, html: string) {
 
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
-  if (request.method !== "POST") return jsonResponse(request, { error: "Method not allowed" }, 405);
+  if (request.method !== "POST") return errorResponse(request, { code: "INVALID_REQUEST", message: "Phương thức gửi yêu cầu không hợp lệ.", status: 405 });
 
   const authorization = request.headers.get("Authorization");
-  if (!authorization) return jsonResponse(request, { error: "Missing Authorization header" }, 401);
+  if (!authorization) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
 
   const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authorization } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: { user }, error: userError } = await callerClient.auth.getUser();
-  if (userError || !user) return jsonResponse(request, { error: "Phiên đăng nhập không hợp lệ" }, 401);
+  if (userError || !user) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
 
   const body = await request.json().catch(() => null) as { message?: unknown } | null;
   const message = typeof body?.message === "string" ? body.message.trim() : "";
   if (message.length < 5 || message.length > 2000) {
-    return jsonResponse(request, { error: "Nội dung yêu cầu phải từ 5 đến 2.000 ký tự" }, 400);
+    return errorResponse(request, { code: "VALIDATION_ERROR", message: "Nội dung yêu cầu phải từ 5 đến 2.000 ký tự.", status: 400, field: "message" });
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -76,7 +81,8 @@ Deno.serve(async (request: Request) => {
     .maybeSingle();
 
   if (profileError || !profile || profile.role !== "employee" || !profile.is_active || profile.onboarding_status !== "approved" || !profile.employee_id) {
-    return jsonResponse(request, { error: "Chỉ nhân viên đã hoàn tất onboarding mới có thể gửi yêu cầu thay đổi" }, 403);
+    logInternalError("profile change authorization failed", profileError);
+    return errorResponse(request, { code: "FORBIDDEN", message: "Bạn chưa thể gửi yêu cầu thay đổi thông tin.", status: 403 });
   }
 
   const { data: changeRequest, error: insertError } = await admin
@@ -84,7 +90,10 @@ Deno.serve(async (request: Request) => {
     .insert({ company_id: profile.company_id, employee_id: profile.employee_id, requested_by: user.id, message })
     .select("id")
     .single();
-  if (insertError || !changeRequest) return jsonResponse(request, { error: insertError?.message ?? "Không thể lưu yêu cầu thay đổi" }, 500);
+  if (insertError || !changeRequest) {
+    logInternalError("profile change request insert failed", insertError);
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể lưu yêu cầu thay đổi. Vui lòng thử lại sau.", status: 500 });
+  }
 
   const { data: adminProfiles, error: adminsError } = await admin
     .from("profiles")

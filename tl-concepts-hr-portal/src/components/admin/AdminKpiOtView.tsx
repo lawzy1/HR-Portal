@@ -15,6 +15,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import { useAuth } from '../../context/AuthContext';
 import { useEmployees } from '../../hooks/useEmployees';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
@@ -29,6 +30,8 @@ import {
   useSubmitKpiMonth,
   useApproveKpiMonth,
   useRejectKpiMonth,
+  useCompanyWorkdayOverride,
+  useUpsertCompanyWorkdayOverride,
 } from '../../hooks/useKpi';
 import { useAllOtRecords, useCreateOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
@@ -100,6 +103,8 @@ export const AdminKpiOtView: React.FC = () => {
   const monthWorkInfo = useMemo(() => {
     return getMonthWorkDays(selectedMonth, selectedYear, holidayDatesInMonth);
   }, [selectedMonth, selectedYear, holidayDatesInMonth]);
+  const { data: workdayOverride } = useCompanyWorkdayOverride(selectedMonth, selectedYear);
+  const effectiveStandardWorkDays = workdayOverride?.standard_work_days ?? monthWorkInfo.standardWorkDays;
 
   const approvedLeaveDaysByEmployee = useMemo(() => {
     const daysByEmployee = new Map<string, number>();
@@ -115,7 +120,7 @@ export const AdminKpiOtView: React.FC = () => {
   }, [allLeaveRequests, holidayDatesInMonth, selectedMonth, selectedYear]);
 
   const getEmployeeWorkDays = (employeeId: string) => Number(
-    Math.max(0, monthWorkInfo.standardWorkDays - (approvedLeaveDaysByEmployee.get(employeeId) || 0)).toFixed(1),
+    Math.max(0, effectiveStandardWorkDays - (approvedLeaveDaysByEmployee.get(employeeId) || 0)).toFixed(1),
   );
 
   // Mỗi nhân viên có chỉ tiêu KPI/ngày riêng (Hồ sơ nhân viên) — quy đổi ra
@@ -142,6 +147,7 @@ export const AdminKpiOtView: React.FC = () => {
   const submitKpiMonth = useSubmitKpiMonth();
   const approveKpiMonth = useApproveKpiMonth();
   const rejectKpiMonth = useRejectKpiMonth();
+  const upsertWorkdayOverride = useUpsertCompanyWorkdayOverride();
   const createOtRecord = useCreateOtRecord();
   const updateOtRecord = useUpdateOtRecord();
 
@@ -173,6 +179,8 @@ export const AdminKpiOtView: React.FC = () => {
   const [otStatus, setOtStatus] = useState<'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming'>('Đã hoàn thành');
   const [kpiDecision, setKpiDecision] = useState<'approve' | 'reject' | null>(null);
   const [kpiRejectionReason, setKpiRejectionReason] = useState('');
+  const [isWorkdayEditorOpen, setIsWorkdayEditorOpen] = useState(false);
+  const [editedStandardWorkDays, setEditedStandardWorkDays] = useState<number>(effectiveStandardWorkDays);
 
   const formatVND = (num: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
@@ -387,6 +395,35 @@ export const AdminKpiOtView: React.FC = () => {
     window.print();
   };
 
+  const openWorkdayEditor = () => {
+    if (hasPendingKpi || hasPublishedKpi) {
+      showToast('KPI tháng đang chờ duyệt hoặc đã phát hành nên không thể đổi ngày công chuẩn.');
+      return;
+    }
+    setEditedStandardWorkDays(effectiveStandardWorkDays);
+    setIsWorkdayEditorOpen(true);
+  };
+
+  const handleSaveWorkdayOverride = async () => {
+    if (!profile?.companyId) return;
+    if (!Number.isFinite(editedStandardWorkDays) || editedStandardWorkDays <= 0 || editedStandardWorkDays > 31) {
+      showToast('Ngày công chuẩn phải lớn hơn 0 và không vượt quá 31 công.');
+      return;
+    }
+    try {
+      await upsertWorkdayOverride.mutateAsync({
+        company_id: profile.companyId,
+        month: selectedMonth,
+        year: selectedYear,
+        standard_work_days: Number(editedStandardWorkDays.toFixed(1)),
+      });
+      setIsWorkdayEditorOpen(false);
+      showToast('Đã lưu ngày công chuẩn của kỳ KPI. Hãy tạo lại bản nháp KPI để cập nhật chỉ tiêu và thưởng.');
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể lưu ngày công chuẩn của kỳ KPI. Vui lòng thử lại.'));
+    }
+  };
+
   // Sync KPI points directly to employee records & payroll (kpi_monthly upsert)
   const handleSyncKpiToProfiles = async () => {
     if (!companySettings || !profile?.companyId) {
@@ -430,7 +467,7 @@ export const AdminKpiOtView: React.FC = () => {
         .filter(ot => ot.employee_id === emp.id && isSameMonthYear(ot.date, selectedMonth, selectedYear))
         .reduce((sum, ot) => sum + (ot.hours || 0), 0);
 
-      const otHourlyRate = Math.round((emp.current_salary || 0) / companySettings.standard_work_days / 8);
+      const otHourlyRate = Math.round((emp.current_salary || 0) / effectiveStandardWorkDays / 8);
 
       await upsertKpiMonthly.mutateAsync({
         employee_id: emp.id,
@@ -454,7 +491,7 @@ export const AdminKpiOtView: React.FC = () => {
         // No real "benefit" data source in this phase — left at 0 for admin to fill in
         // manually, rather than fabricating a plausible-looking number.
         benefit_amount: 0,
-        notes: `Tính từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${getEmployeeWorkDays(emp.id)} công (đã trừ ${approvedLeaveDaysByEmployee.get(emp.id) || 0} ngày phép đã duyệt) = ${target} view; commission ${commissionRate.toLocaleString('vi-VN')} VNĐ/view; bù đảm bảo thu nhập ${guaranteedIncomeTopup.toLocaleString('vi-VN')} VNĐ. QC commission được HR nhập khi có số liệu QC thực tế.`,
+        notes: `Tính từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${getEmployeeWorkDays(emp.id)} công (quy chuẩn ${effectiveStandardWorkDays}, đã trừ ${approvedLeaveDaysByEmployee.get(emp.id) || 0} ngày phép đã duyệt) = ${target} view; commission ${commissionRate.toLocaleString('vi-VN')} VNĐ/view; bù đảm bảo thu nhập ${guaranteedIncomeTopup.toLocaleString('vi-VN')} VNĐ. QC commission được HR nhập khi có số liệu QC thực tế.`,
       });
     }));
 
@@ -488,7 +525,7 @@ export const AdminKpiOtView: React.FC = () => {
       });
       showToast(`Đã cập nhật QC commission cho ${record.employees?.full_name || 'nhân viên'}.`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể cập nhật QC commission.');
+      showToast(await getUserFacingError(error, 'Không thể cập nhật QC commission. Vui lòng thử lại.'));
     }
   };
 
@@ -497,7 +534,7 @@ export const AdminKpiOtView: React.FC = () => {
       await submitKpiMonth.mutateAsync({ month: selectedMonth, year: selectedYear });
       showToast(`Đã gửi KPI tháng ${selectedMonth}/${selectedYear} cho Admin duyệt.`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể gửi duyệt KPI.');
+      showToast(await getUserFacingError(error, 'Không thể gửi duyệt KPI. Vui lòng thử lại.'));
     }
   };
 
@@ -514,7 +551,7 @@ export const AdminKpiOtView: React.FC = () => {
       setKpiDecision(null);
       setKpiRejectionReason('');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể xử lý KPI tháng.');
+      showToast(await getUserFacingError(error, 'Không thể xử lý KPI tháng. Vui lòng thử lại.'));
     }
   };
 
@@ -546,7 +583,7 @@ export const AdminKpiOtView: React.FC = () => {
       return;
     }
 
-    const hourly = Math.round((targetEmp.current_salary || 0) / companySettings.standard_work_days / 8);
+    const hourly = Math.round((targetEmp.current_salary || 0) / effectiveStandardWorkDays / 8);
     const effPct = getEffectiveOtPercentage();
     const calcAmount = Math.round(otHours * hourly * (effPct / 100));
 
@@ -680,6 +717,21 @@ export const AdminKpiOtView: React.FC = () => {
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success-500/20 text-success-300 border border-success-400/30">
                   Lịch 5.5 ngày/tuần
                 </span>
+                {workdayOverride && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-500/20 text-primary-200 border border-primary-400/30">
+                    Đã điều chỉnh
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={openWorkdayEditor}
+                  disabled={hasPendingKpi || hasPublishedKpi}
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-500/70 text-slate-200 transition hover:border-success-300 hover:bg-success-500/15 hover:text-success-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={hasPendingKpi || hasPublishedKpi ? 'Kỳ KPI đã khóa ngày công chuẩn' : 'Chỉnh ngày công chuẩn của tháng'}
+                  aria-label="Chỉnh ngày công chuẩn của tháng"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </button>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
                 Chu kỳ từ ngày <strong>01/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> đến <strong>{monthWorkInfo.lastDayOfMonth}/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> ({monthWorkInfo.totalCalendarDays} ngày dương lịch) — ngày phép đã duyệt được trừ riêng theo từng nhân viên ở bảng bên dưới.
@@ -724,9 +776,9 @@ export const AdminKpiOtView: React.FC = () => {
           <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
             <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
             <p className="text-lg font-black text-success-300 font-mono mt-0.5">
-              {monthWorkInfo.standardWorkDays} <span className="text-xs font-semibold text-success-400">công</span>
+              {effectiveStandardWorkDays} <span className="text-xs font-semibold text-success-400">công</span>
             </p>
-            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth} (đã trừ lễ/Tết, chưa trừ phép cá nhân)</span>
+            <span className="text-[10px] text-success-400 font-medium">{workdayOverride ? `Điều chỉnh từ ${monthWorkInfo.standardWorkDays} công theo lịch` : `Quy chuẩn tháng ${selectedMonth} (đã trừ lễ/Tết, chưa trừ phép cá nhân)`}</span>
           </div>
         </div>
       </div>
@@ -1628,7 +1680,7 @@ export const AdminKpiOtView: React.FC = () => {
               {(() => {
                 const targetEmp = employeeList.find(emp => emp.id === otEmpId);
                 const hourly = targetEmp && companySettings
-                  ? Math.round((targetEmp.current_salary || 0) / companySettings.standard_work_days / 8)
+                  ? Math.round((targetEmp.current_salary || 0) / effectiveStandardWorkDays / 8)
                   : 0;
                 const effPct = getEffectiveOtPercentage();
                 const calcAmt = Math.round(otHours * hourly * (effPct / 100));
@@ -1663,6 +1715,30 @@ export const AdminKpiOtView: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={isWorkdayEditorOpen}
+        onOpenChange={setIsWorkdayEditorOpen}
+        title={`Chỉnh ngày công chuẩn Tháng ${selectedMonth}/${selectedYear}`}
+        description="Đây là quy chuẩn chung của kỳ KPI. Hệ thống vẫn trừ phép đã duyệt riêng trên từng nhân viên; sau khi lưu, hãy tạo lại bản nháp KPI để cập nhật chỉ tiêu, thưởng và đơn giá OT."
+        confirmLabel="Lưu ngày công"
+        onConfirm={() => void handleSaveWorkdayOverride()}
+        isPending={upsertWorkdayOverride.isPending}
+        isConfirmDisabled={!Number.isFinite(editedStandardWorkDays) || editedStandardWorkDays <= 0 || editedStandardWorkDays > 31}
+      >
+        <label className="block text-sm font-semibold text-slate-700">Ngày công chuẩn *
+          <input
+            type="number"
+            min="0.5"
+            max="31"
+            step="0.5"
+            value={editedStandardWorkDays}
+            onChange={(event) => setEditedStandardWorkDays(Number(event.target.value))}
+            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 font-mono text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+          />
+        </label>
+        <p className="mt-2 text-xs text-slate-500">Theo lịch hiện tại: {monthWorkInfo.standardWorkDays} công (đã trừ lễ/Tết).</p>
+      </ConfirmationDialog>
 
       <ConfirmationDialog
         open={kpiDecision !== null}

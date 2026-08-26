@@ -5,6 +5,7 @@ import { useCreateContract, useUpdateContract } from '../../hooks/useContracts';
 import type { DbEmployee } from '../../hooks/useEmployees';
 import { calculateFileSha256, useFileUpload } from '../../hooks/useFileUpload';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import { CurrencyInput } from '../CurrencyInput';
 
 const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn', 'Phụ lục hợp đồng'];
@@ -163,7 +164,7 @@ export const ContractEditorModal: React.FC<{
       showToast(contract ? 'Đã cập nhật hợp đồng nháp.' : 'Đã tạo hợp đồng nháp. Hãy gửi Admin duyệt trước khi áp dụng.');
       onClose();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể lưu hợp đồng.');
+      showToast(await getUserFacingError(error, 'Không thể lưu hợp đồng. Vui lòng thử lại.'));
     }
   };
 

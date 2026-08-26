@@ -3,6 +3,7 @@ import { Loader2, Mail, UserPlus, X } from 'lucide-react';
 import { useHR } from '../context/HRContext';
 import { useCreateEmployee } from '../hooks/useEmployees';
 import { JOB_TITLES } from '../types';
+import { getUserFacingError } from '../lib/userFacingError';
 
 const DEPARTMENTS = [
   'Phòng Thiết kế Nội thất',
@@ -35,7 +36,7 @@ export const NewEmployeeModal: React.FC = () => {
       showToast(`Đã gửi lời mời kích hoạt tới ${email.trim().toLowerCase()}.`);
       close();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Không thể gửi lời mời.');
+      setError(await getUserFacingError(caught, 'Không thể gửi lời mời kích hoạt. Vui lòng thử lại.'));
     }
   };
 

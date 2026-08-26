@@ -12,6 +12,7 @@ import {
 } from '../hooks/useEmployees';
 import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
 import { useRequestOwnProfileChange } from '../hooks/useProfileChangeRequest';
+import { getUserFacingError } from '../lib/userFacingError';
 import { CurrencyInput } from './CurrencyInput';
 import {
   X,
@@ -289,7 +290,7 @@ export const EditProfileModal: React.FC = () => {
         setChangeRequestMessage('');
         setIsEditProfileModalOpen(false);
       } catch (error) {
-        showToast(error instanceof Error ? `Không thể gửi yêu cầu: ${error.message}` : 'Không thể gửi yêu cầu thay đổi.');
+        showToast(await getUserFacingError(error, 'Không thể gửi yêu cầu thay đổi. Vui lòng thử lại.'));
       }
     };
 
@@ -405,7 +406,7 @@ export const EditProfileModal: React.FC = () => {
       showToast('Đã lưu hồ sơ nhân viên thành công!');
       setIsEditProfileModalOpen(false);
     } catch (err) {
-      showToast(err instanceof Error ? `Lỗi khi lưu: ${err.message}` : 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+      showToast(await getUserFacingError(err, 'Không thể lưu hồ sơ. Vui lòng thử lại.'));
     } finally {
       setIsSaving(false);
     }

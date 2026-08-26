@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
+import { getUserFacingError } from '../lib/userFacingError';
 
 const BUCKET = 'employee-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
@@ -42,7 +43,7 @@ export function useFileUpload() {
 
       return path;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Tải file lên thất bại.';
+      const message = await getUserFacingError(err, 'Tải tệp lên thất bại. Vui lòng thử lại.');
       setError(message);
       throw err;
     } finally {

@@ -3,6 +3,7 @@
 // Auth link generation, and email delivery happen server-side.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { logInternalError, publicError } from "../_shared/error-response.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -37,6 +38,10 @@ function jsonResponse(request: Request, body: unknown, status: number) {
   });
 }
 
+function errorResponse(request: Request, options: Parameters<typeof publicError>[2]) {
+  return publicError(request, corsHeaders(request), options);
+}
+
 function escapeHtml(value: string) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
@@ -68,22 +73,22 @@ interface Body {
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
-  if (request.method !== "POST") return jsonResponse(request, { error: "Method not allowed" }, 405);
-  if (!APP_URL) return jsonResponse(request, { error: "Server chưa cấu hình APP_URL cho link kích hoạt" }, 500);
+  if (request.method !== "POST") return errorResponse(request, { code: "INVALID_REQUEST", message: "Phương thức gửi yêu cầu không hợp lệ.", status: 405 });
+  if (!APP_URL) return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xử lý lời mời. Vui lòng thử lại sau.", status: 500 });
 
   const authorization = request.headers.get("Authorization");
-  if (!authorization) return jsonResponse(request, { error: "Missing Authorization header" }, 401);
+  if (!authorization) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
   const body = await request.json().catch(() => null) as Body | null;
   const action = body?.action === "resend" || body?.action === "revoke" ? body.action : null;
   const employeeId = typeof body?.employeeId === "string" ? body.employeeId : null;
-  if (!action || !employeeId) return jsonResponse(request, { error: "Yêu cầu không hợp lệ" }, 400);
+  if (!action || !employeeId) return errorResponse(request, { code: "INVALID_REQUEST", message: "Yêu cầu không hợp lệ.", status: 400 });
 
   const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authorization } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
-  if (callerError || !caller) return jsonResponse(request, { error: "Phiên đăng nhập không hợp lệ" }, 401);
+  if (callerError || !caller) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: adminProfile, error: adminError } = await admin
@@ -92,7 +97,8 @@ Deno.serve(async (request) => {
     .eq("id", caller.id)
     .maybeSingle();
   if (adminError || !adminProfile || adminProfile.role !== "admin" || !adminProfile.is_active) {
-    return jsonResponse(request, { error: "Chỉ Admin đang hoạt động mới quản lý được lời mời" }, 403);
+    logInternalError("manage invitation authorization failed", adminError);
+    return errorResponse(request, { code: "FORBIDDEN", message: "Bạn không có quyền quản lý lời mời.", status: 403 });
   }
 
   const { data: invitation, error: invitationError } = await admin
@@ -101,11 +107,14 @@ Deno.serve(async (request) => {
     .eq("company_id", adminProfile.company_id)
     .eq("employee_id", employeeId)
     .maybeSingle();
-  if (invitationError || !invitation) return jsonResponse(request, { error: "Không tìm thấy lời mời của nhân viên này" }, 404);
+  if (invitationError || !invitation) {
+    logInternalError("manage invitation lookup failed", invitationError);
+    return errorResponse(request, { code: "NOT_FOUND", message: "Không tìm thấy lời mời của nhân viên này.", status: 404 });
+  }
 
   const employee = invitation.employees as { full_name?: string; status?: string } | null;
   if (employee?.status !== "Chờ kích hoạt") {
-    return jsonResponse(request, { error: "Chỉ có thể quản lý lời mời khi nhân viên đang chờ kích hoạt" }, 409);
+    return errorResponse(request, { code: "CONFLICT", message: "Lời mời này không còn ở trạng thái chờ kích hoạt.", status: 409 });
   }
 
   if (action === "revoke") {
@@ -113,9 +122,15 @@ Deno.serve(async (request) => {
       .from("employee_invitations")
       .update({ revoked_at: new Date().toISOString(), revoked_by: caller.id })
       .eq("id", invitation.id);
-    if (error) return jsonResponse(request, { error: error.message }, 500);
+    if (error) {
+      logInternalError("revoke invitation failed", error);
+      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể thu hồi lời mời. Vui lòng thử lại sau.", status: 500 });
+    }
     const { error: profileUpdateError } = await admin.from("profiles").update({ onboarding_status: "revoked" }).eq("id", invitation.auth_user_id);
-    if (profileUpdateError) return jsonResponse(request, { error: profileUpdateError.message }, 500);
+    if (profileUpdateError) {
+      logInternalError("revoke invitation profile update failed", profileUpdateError);
+      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể thu hồi lời mời. Vui lòng thử lại sau.", status: 500 });
+    }
     await admin.from("audit_logs").insert({
       company_id: adminProfile.company_id,
       actor_profile_id: caller.id,
@@ -133,7 +148,8 @@ Deno.serve(async (request) => {
     options: { redirectTo: `${APP_URL}/auth/activate` },
   });
   if (linkError || !link.properties.action_link) {
-    return jsonResponse(request, { error: linkError?.message ?? "Không thể tạo link kích hoạt mới" }, 400);
+    logInternalError("generate invitation link failed", linkError);
+    return errorResponse(request, { code: "INVITATION_SEND_FAILED", message: "Chưa thể tạo link kích hoạt mới. Vui lòng thử lại sau.", status: 502 });
   }
 
   const now = new Date();
@@ -149,9 +165,15 @@ Deno.serve(async (request) => {
       last_email_error: emailResult.error,
     })
     .eq("id", invitation.id);
-  if (updateError) return jsonResponse(request, { error: updateError.message }, 500);
+  if (updateError) {
+    logInternalError("update invitation after resend failed", updateError);
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể cập nhật lời mời. Vui lòng thử lại sau.", status: 500 });
+  }
   const { error: profileUpdateError } = await admin.from("profiles").update({ onboarding_status: "invited" }).eq("id", invitation.auth_user_id);
-  if (profileUpdateError) return jsonResponse(request, { error: profileUpdateError.message }, 500);
+  if (profileUpdateError) {
+    logInternalError("update profile after resend failed", profileUpdateError);
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể cập nhật lời mời. Vui lòng thử lại sau.", status: 500 });
+  }
 
   await admin.from("audit_logs").insert({
     company_id: adminProfile.company_id,

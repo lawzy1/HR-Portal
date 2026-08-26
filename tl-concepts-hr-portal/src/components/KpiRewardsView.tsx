@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
-import { useKpiJobItems, useKpiMonthly } from '../hooks/useKpi';
+import { useCompanyWorkdayOverride, useKpiJobItems, useKpiMonthly } from '../hooks/useKpi';
 import { useCompanyHolidays, useLeaveRequests } from '../hooks/useLeave';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../utils/workDays';
@@ -43,6 +43,7 @@ export const KpiRewardsView: React.FC = () => {
   const { data: employee } = useEmployee(employeeId);
   const { data: jobs } = useKpiJobItems(employeeId, selectedMonth, selectedYear);
   const { data: kpiMonthly } = useKpiMonthly(employeeId, selectedMonth, selectedYear);
+  const { data: workdayOverride } = useCompanyWorkdayOverride(selectedMonth, selectedYear);
   const { data: holidays } = useCompanyHolidays();
   const { data: leaveRequests } = useLeaveRequests(employeeId);
 
@@ -64,8 +65,8 @@ export const KpiRewardsView: React.FC = () => {
 
   const workDaysInfo = useMemo(() => ({
     ...baseWorkDaysInfo,
-    standardWorkDays: Number(Math.max(0, baseWorkDaysInfo.standardWorkDays - approvedLeaveDays).toFixed(1)),
-  }), [approvedLeaveDays, baseWorkDaysInfo]);
+    standardWorkDays: Number(Math.max(0, (workdayOverride?.standard_work_days ?? baseWorkDaysInfo.standardWorkDays) - approvedLeaveDays).toFixed(1)),
+  }), [approvedLeaveDays, baseWorkDaysInfo, workdayOverride?.standard_work_days]);
 
   const dynamicKpiTarget = Number((kpiTargetPerDay * workDaysInfo.standardWorkDays).toFixed(1));
 
@@ -200,6 +201,7 @@ export const KpiRewardsView: React.FC = () => {
           <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
             <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
             <p className="text-lg font-black text-success-300 font-mono mt-0.5">{workDaysInfo.standardWorkDays} <span className="text-xs font-semibold text-success-400">công</span></p>
+            {workdayOverride && <span className="block text-[10px] text-success-400">Quy chuẩn tháng đã được điều chỉnh bởi HR/Kế toán</span>}
           </div>
           <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-primary-950/80 p-3 rounded-xl border border-primary-500/40">
             <span className="text-[11px] text-primary-200 font-bold block">Chỉ tiêu KPI Tháng</span>

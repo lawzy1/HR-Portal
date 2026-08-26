@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileCheck, TrendingUp, Receipt, AlertTriangle, Plus, Pencil, Send, ShieldCheck, RotateCcw } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import { useAuth } from '../../context/AuthContext';
 import { useEmployees, useEmployee } from '../../hooks/useEmployees';
 import { useApproveContract, useContracts, useRejectContract, useSalaryHistory, useSubmitContract, useContractLegalWarnings, type DbContract } from '../../hooks/useContracts';
@@ -37,7 +38,7 @@ export const AdminContractSalaryView: React.FC = () => {
       await submitContract.mutateAsync(contract.id);
       showToast(`Đã gửi ${contract.contract_code} cho Admin duyệt.`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể gửi duyệt hợp đồng.');
+      showToast(await getUserFacingError(error, 'Không thể gửi duyệt hợp đồng. Vui lòng thử lại.'));
     }
   };
 
@@ -54,7 +55,7 @@ export const AdminContractSalaryView: React.FC = () => {
       setDecision(null);
       setRejectionReason('');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể xử lý hợp đồng.');
+      showToast(await getUserFacingError(error, 'Không thể xử lý hợp đồng. Vui lòng thử lại.'));
     }
   };
 

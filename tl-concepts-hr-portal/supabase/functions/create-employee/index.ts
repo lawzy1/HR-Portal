@@ -3,6 +3,7 @@
 // create an Auth invite and the database function re-validates the admin.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { logInternalError, publicError } from "../_shared/error-response.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -44,24 +45,36 @@ function jsonResponse(request: Request, body: unknown, status: number) {
   });
 }
 
+function errorResponse(request: Request, options: Parameters<typeof publicError>[2]) {
+  return publicError(request, corsHeaders(request), options);
+}
+
+function isDuplicateError(error: { code?: string | null; message?: string | null } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return error?.code === "23505" || message.includes("already been registered") || message.includes("already registered") || message.includes("duplicate");
+}
+
 function isValidDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
-  if (req.method !== "POST") return jsonResponse(req, { error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return errorResponse(req, { code: "INVALID_REQUEST", message: "Phương thức gửi yêu cầu không hợp lệ.", status: 405 });
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return jsonResponse(req, { error: "Missing Authorization header" }, 401);
-  if (!APP_URL) return jsonResponse(req, { error: "Server chưa cấu hình APP_URL cho link kích hoạt" }, 500);
+  if (!authHeader) return errorResponse(req, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
+  if (!APP_URL) {
+    logInternalError("create-employee missing APP_URL", null);
+    return errorResponse(req, { code: "INTERNAL_ERROR", message: "Chưa thể gửi lời mời. Vui lòng thử lại sau.", status: 500 });
+  }
 
   const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: { user: callerUser }, error: callerError } = await callerClient.auth.getUser();
-  if (callerError || !callerUser) return jsonResponse(req, { error: "Phiên đăng nhập không hợp lệ" }, 401);
+  if (callerError || !callerUser) return errorResponse(req, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
 
   // Verify the caller at the trusted boundary before creating an Auth invite.
   // UI visibility is not an authorization control: any signed-in user can
@@ -75,18 +88,19 @@ Deno.serve(async (req: Request) => {
     .eq("id", callerUser.id)
     .maybeSingle();
   if (profileError || !callerProfile || callerProfile.role !== "admin" || !callerProfile.is_active) {
-    return jsonResponse(req, { error: "Chỉ Admin đang hoạt động mới được mời nhân viên" }, 403);
+    logInternalError("create-employee admin authorization failed", profileError);
+    return errorResponse(req, { code: "FORBIDDEN", message: "Bạn không có quyền mời nhân viên.", status: 403 });
   }
 
   const body = (await req.json().catch(() => null)) as CreateEmployeeBody | null;
   const email = body?.email?.trim().toLowerCase();
   if (!body || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return jsonResponse(req, { error: "Email không hợp lệ" }, 400);
+    return errorResponse(req, { code: "INVALID_EMAIL", message: "Email không hợp lệ.", status: 400, field: "email" });
   }
   if (![body.employeeCode, body.fullName, body.department, body.jobTitle].every((value) => value?.trim())) {
-    return jsonResponse(req, { error: "Vui lòng điền đủ mã NV, họ tên, phòng ban và chức danh" }, 400);
+    return errorResponse(req, { code: "VALIDATION_ERROR", message: "Vui lòng điền đủ các thông tin bắt buộc.", status: 400 });
   }
-  if (!isValidDate(body.startDate)) return jsonResponse(req, { error: "Ngày vào làm không hợp lệ" }, 400);
+  if (!isValidDate(body.startDate)) return errorResponse(req, { code: "VALIDATION_ERROR", message: "Ngày vào làm không hợp lệ.", status: 400, field: "startDate" });
 
   // Auth owns the email and sends the invitation. No password is ever
   // generated or returned by this endpoint.
@@ -95,7 +109,11 @@ Deno.serve(async (req: Request) => {
     data: { invitation_source: "employee_admin_invite" },
   });
   if (inviteError || !invited.user) {
-    return jsonResponse(req, { error: inviteError?.message ?? "Không thể gửi lời mời kích hoạt" }, 400);
+    logInternalError("create-employee invite failed", inviteError);
+    if (isDuplicateError(inviteError)) {
+      return errorResponse(req, { code: "EMPLOYEE_EMAIL_EXISTS", message: "Email này đã được đăng ký.", status: 409, field: "email" });
+    }
+    return errorResponse(req, { code: "INVITATION_SEND_FAILED", message: "Chưa thể gửi lời mời kích hoạt. Vui lòng thử lại sau.", status: 502 });
   }
 
   const { data: employee, error: createError } = await admin.rpc("create_employee_invitation", {
@@ -113,7 +131,11 @@ Deno.serve(async (req: Request) => {
     // The Auth user was created only moments ago. Roll it back so the admin
     // can correct duplicate data and retry without leaving an orphan account.
     await admin.auth.admin.deleteUser(invited.user.id);
-    return jsonResponse(req, { error: createError?.message ?? "Không thể tạo hồ sơ nhân viên" }, 400);
+    logInternalError("create-employee profile creation failed", createError);
+    if (isDuplicateError(createError)) {
+      return errorResponse(req, { code: "EMPLOYEE_CODE_EXISTS", message: "Mã nhân viên hoặc email đã tồn tại.", status: 409 });
+    }
+    return errorResponse(req, { code: "INTERNAL_ERROR", message: "Chưa thể tạo hồ sơ nhân viên. Vui lòng thử lại sau.", status: 500 });
   }
 
   return jsonResponse(req, { employee }, 201);

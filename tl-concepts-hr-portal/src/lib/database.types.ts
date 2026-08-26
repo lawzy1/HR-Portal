@@ -1206,6 +1206,41 @@ export type Database = {
           },
         ]
       }
+      company_workday_overrides: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          month: number
+          standard_work_days: number
+          year: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          month: number
+          standard_work_days: number
+          year: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          standard_work_days?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_workday_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_records: {
         Row: {
           actual_work_days: number

@@ -9,6 +9,7 @@ import {
   Save,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import { useAuth } from '../../context/AuthContext';
 import { useEmployees } from '../../hooks/useEmployees';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
@@ -141,7 +142,7 @@ export const AdminLeaveManagementView: React.FC = () => {
       setNewHolidayEndDate('');
       setNewHolidayName('');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể thêm lịch nghỉ lễ.');
+      showToast(await getUserFacingError(error, 'Không thể thêm lịch nghỉ lễ. Vui lòng thử lại.'));
     }
   };
 
@@ -197,7 +198,7 @@ export const AdminLeaveManagementView: React.FC = () => {
       });
       showToast('Đã lưu hạn mức phép năm.');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể lưu hạn mức phép năm.');
+      showToast(await getUserFacingError(error, 'Không thể lưu hạn mức phép năm. Vui lòng thử lại.'));
     }
   };
 

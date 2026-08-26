@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
+import { getUserFacingError } from '../lib/userFacingError';
 
 export type AppRole = 'admin' | 'hr' | 'employee';
 
@@ -134,14 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-    return { error: error?.message ?? null };
+    return { error: error ? await getUserFacingError(error, 'Email hoặc mật khẩu không đúng.') : null };
   };
 
   const requestPasswordReset = async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase();
     const redirectTo = `${window.location.origin}/auth/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
-    return { error: error?.message ?? null };
+    return { error: error ? await getUserFacingError(error, 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.') : null };
   };
 
   // Password changes are deliberately scoped to the currently authenticated
@@ -161,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    return { error: error?.message ?? null };
+    return { error: error ? await getUserFacingError(error, 'Không thể đổi mật khẩu. Vui lòng thử lại.') : null };
   };
 
   const refreshProfile = async () => {

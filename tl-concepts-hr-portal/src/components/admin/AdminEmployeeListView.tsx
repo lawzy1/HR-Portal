@@ -23,6 +23,7 @@ import {
   MessageSquareWarning,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import { useEmployees, useEmployee, useEmployeeInvitations, useManageEmployeeInvitation, useOffboardEmployee, useDeleteOffboardedEmployee, type DbEmployee, type DbEmployeeInvitation } from '../../hooks/useEmployees';
 import { useEmployeeSensitiveInfo, useEmployeeRelatives, useUpsertEmployeeSensitiveInfo } from '../../hooks/useEmployees';
 import { useAuth } from '../../context/AuthContext';
@@ -182,7 +183,7 @@ export const AdminEmployeeListView: React.FC = () => {
       if (result.actionLink) setManualActivationLink(result.actionLink);
       showToast(result.emailDelivered ? `Đã gửi link kích hoạt mới tới ${selectedEmp.email}.` : 'Đã tạo link mới nhưng email chưa gửi được.');
     } catch (caught) {
-      setInvitationActionError(caught instanceof Error ? caught.message : 'Không thể cập nhật lời mời kích hoạt.');
+      setInvitationActionError(await getUserFacingError(caught, 'Không thể cập nhật lời mời kích hoạt. Vui lòng thử lại.'));
     }
   };
 

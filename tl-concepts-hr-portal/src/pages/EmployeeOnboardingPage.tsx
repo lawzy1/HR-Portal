@@ -8,6 +8,7 @@ import {
 } from '../hooks/useEmployees';
 import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
 import { supabase } from '../lib/supabaseClient';
+import { getUserFacingError } from '../lib/userFacingError';
 
 export const EmployeeOnboardingPage: React.FC = () => {
   const { profile, signOut, refreshProfile } = useAuth();
@@ -154,7 +155,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
       setBackFile(null);
       setVneidFile(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Không thể lưu hồ sơ. Vui lòng thử lại.');
+      setError(await getUserFacingError(caught, 'Không thể lưu hồ sơ. Vui lòng thử lại.'));
     } finally {
       setIsSaving(false);
     }

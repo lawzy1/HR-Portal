@@ -7,6 +7,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import {
   useCompany,
   useCompanySettings,
@@ -116,7 +117,7 @@ export const AdminSettingsView: React.FC = () => {
       ]);
       showToast('Đã lưu thông số doanh nghiệp, bảo hiểm, ngày công và ngày phép.');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể lưu cấu hình doanh nghiệp.');
+      showToast(await getUserFacingError(error, 'Không thể lưu cấu hình doanh nghiệp. Vui lòng thử lại.'));
     }
   };
 

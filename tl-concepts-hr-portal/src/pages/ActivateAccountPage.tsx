@@ -3,6 +3,7 @@ import { CheckCircle2, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { getUserFacingError } from '../lib/userFacingError';
 
 export const ActivateAccountPage: React.FC = () => {
   const { session, loading, profile, refreshProfile } = useAuth();
@@ -20,9 +21,9 @@ export const ActivateAccountPage: React.FC = () => {
       return;
     }
     let isMounted = true;
-    supabase.rpc('mark_own_invitation_opened').then(({ error: invitationError }) => {
+    supabase.rpc('mark_own_invitation_opened').then(async ({ error: invitationError }) => {
       if (!isMounted) return;
-      setError(invitationError?.message ?? null);
+      setError(invitationError ? await getUserFacingError(invitationError, 'Không thể kiểm tra lời mời. Vui lòng thử lại.') : null);
       setIsCheckingInvitation(false);
     });
     return () => { isMounted = false; };
@@ -52,7 +53,7 @@ export const ActivateAccountPage: React.FC = () => {
       await refreshProfile();
       navigate('/', { replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Không thể kích hoạt tài khoản.');
+      setError(await getUserFacingError(caught, 'Không thể kích hoạt tài khoản. Vui lòng thử lại.'));
     } finally {
       setIsSaving(false);
     }

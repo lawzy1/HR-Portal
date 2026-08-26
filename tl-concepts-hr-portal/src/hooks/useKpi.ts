@@ -6,6 +6,40 @@ import { refreshQueries } from '../lib/queryRefresh';
 export type DbKpiJobItem = Tables<'kpi_job_items'>;
 export type DbKpiMonthly = Tables<'kpi_monthly'>;
 export type DbKpiAdjustment = Tables<'kpi_adjustments'>;
+export type DbCompanyWorkdayOverride = Tables<'company_workday_overrides'>;
+
+/** Optional company-wide standard workday override for one KPI/payroll month. */
+export function useCompanyWorkdayOverride(month: number, year: number) {
+  return useQuery({
+    queryKey: ['company_workday_overrides', month, year],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_workday_overrides')
+        .select('*')
+        .eq('month', month)
+        .eq('year', year)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useUpsertCompanyWorkdayOverride() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TablesInsert<'company_workday_overrides'>) => {
+      const { data, error } = await supabase
+        .from('company_workday_overrides')
+        .upsert(input, { onConflict: 'company_id,month,year' })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => refreshQueries(queryClient, [['company_workday_overrides'], ['kpi_monthly']]),
+  });
+}
 
 // employee_id is a required FK now — no more fuzzy assigneeName string
 // matching against employees.full_name like the prototype did.

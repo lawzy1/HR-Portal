@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calculator, Link2, Save, X } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { getUserFacingError } from '../../lib/userFacingError';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { useContracts } from '../../hooks/useContracts';
 import type { DbEmployee } from '../../hooks/useEmployees';
@@ -16,6 +17,7 @@ type PayrollFormState = {
   employeeId: string;
   month: number;
   year: number;
+  standardWorkDays: number;
   actualWorkDays: number;
   annualLeaveUsedDays: number;
   annualLeaveRemainingDays: number;
@@ -62,6 +64,7 @@ const createInitialForm = (employeeId: string, month: number, year: number): Pay
   employeeId,
   month,
   year,
+  standardWorkDays: 0,
   actualWorkDays: 0,
   annualLeaveUsedDays: 0,
   annualLeaveRemainingDays: 0,
@@ -204,9 +207,9 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
   }, [otRecordsQuery.data, form.month, form.year]);
 
   const workdaySalary = useMemo(() => {
-    if (form.actualWorkDays <= 0 || workDaysInfo.standardWorkDays <= 0) return 0;
-    return Math.round((form.baseSalary * form.actualWorkDays) / workDaysInfo.standardWorkDays);
-  }, [form.actualWorkDays, form.baseSalary, workDaysInfo.standardWorkDays]);
+    if (form.actualWorkDays <= 0 || form.standardWorkDays <= 0) return 0;
+    return Math.round((form.baseSalary * form.actualWorkDays) / form.standardWorkDays);
+  }, [form.actualWorkDays, form.baseSalary, form.standardWorkDays]);
   const grossIncome = useMemo(
     () => workdaySalary + form.lunchAllowance + form.phoneAllowance + form.kpiBonus + form.otPay + form.projectBonusAmount + form.holidayBonusAmount,
     [workdaySalary, form.lunchAllowance, form.phoneAllowance, form.kpiBonus, form.otPay, form.projectBonusAmount, form.holidayBonusAmount],
@@ -263,6 +266,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       employeeId: form.employeeId,
       month: form.month,
       year: form.year,
+      standardWorkDays: existingRecord?.standard_work_days ?? standardDays,
       actualWorkDays: existingRecord?.actual_work_days ?? defaultActualDays,
       annualLeaveUsedDays: existingRecord?.annual_leave_used_days ?? leaveUsed,
       annualLeaveRemainingDays: existingRecord?.annual_leave_remaining_days ?? asMoney(leaveBalanceQuery.data?.remaining_days),
@@ -331,7 +335,11 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       showToast('Phiếu lương đang chờ duyệt hoặc đã phát hành nên không thể chỉnh sửa.');
       return;
     }
-    if (form.actualWorkDays > workDaysInfo.standardWorkDays) {
+    if (form.standardWorkDays <= 0) {
+      showToast('Ngày công chuẩn phải lớn hơn 0.');
+      return;
+    }
+    if (form.actualWorkDays > form.standardWorkDays) {
       showToast('Ngày công thực tế không được lớn hơn ngày công chuẩn của kỳ lương.');
       return;
     }
@@ -346,7 +354,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       month: form.month,
       year: form.year,
       base_salary: form.baseSalary,
-      standard_work_days: workDaysInfo.standardWorkDays,
+      standard_work_days: form.standardWorkDays,
       actual_work_days: form.actualWorkDays,
       workday_salary: workdaySalary,
       annual_leave_used_days: form.annualLeaveUsedDays,
@@ -387,7 +395,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       showToast(existingRecord ? 'Đã cập nhật phiếu lương nháp.' : 'Đã thêm phiếu lương nháp. Kiểm tra tổng trước khi gửi duyệt.');
       onSaved(form.month, form.year);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Không thể lưu phiếu lương.');
+      showToast(await getUserFacingError(error, 'Không thể lưu phiếu lương. Vui lòng thử lại.'));
     }
   };
 
@@ -440,7 +448,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
             )}
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-              <NumberField label="Ngày công chuẩn" value={workDaysInfo.standardWorkDays} onChange={() => undefined} step={0.5} hint={`${workDaysInfo.holidaysDeducted} công lễ/Tết`} readOnly />
+              <NumberField label="Ngày công chuẩn" value={form.standardWorkDays} onChange={(value) => updateField('standardWorkDays', value)} step={0.5} hint={`Mặc định ${workDaysInfo.standardWorkDays} · ${workDaysInfo.holidaysDeducted} công lễ/Tết`} />
               <NumberField label="Ngày công thực tế" value={form.actualWorkDays} onChange={(value) => updateField('actualWorkDays', value)} step={0.5} />
               <NumberField label="Phép đã sử dụng" value={form.annualLeaveUsedDays} onChange={(value) => updateField('annualLeaveUsedDays', value)} step={0.5} hint="Đã duyệt" />
               <NumberField label="Phép còn lại" value={form.annualLeaveRemainingDays} onChange={(value) => updateField('annualLeaveRemainingDays', value)} step={0.5} hint="Từ quỹ phép" />

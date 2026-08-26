@@ -176,7 +176,7 @@ export function useApprovePayrollMonth() {
 
 export type PayslipNotificationResult = {
   processed: number;
-  results: Array<{ id: string; status: string; error?: string }>;
+  results: Array<{ id: string; status: string; code?: string }>;
 };
 
 // Admin-only worker invocation. Approval and queue creation happen atomically

@@ -15,6 +15,7 @@ Production Supabase hiện đã có Phase 1–10, bao gồm workflow 3 vai trò 
 - **Phase 10 migration:** `20260825153557_phase10_business_alignment.sql` — đã apply production ngày 2026-08-26.
 - **Onboarding RLS repair:** `20260826034008_fix_onboarding_employee_read_rls.sql` — đã apply production, khôi phục quyền đọc đúng hồ sơ onboarding của chính User mà không mở dữ liệu nhân viên khác.
 - **Request approval RBAC:** `20260826120000_employee_requests_admin_approval.sql` — đã apply production. Chỉ User active tạo request nghỉ phép/OT/work-event của chính mình; HR chỉ xem; Admin duyệt hoặc từ chối.
+- **Payroll outbox approval repair:** `20260826133000_payroll_outbox_admin_update_policy.sql` — đã apply production. Admin cùng công ty có `UPDATE` RLS/privilege trên `notification_outbox`, bắt buộc cho `approve_payroll_month` và retry email dùng `INSERT ... ON CONFLICT DO UPDATE`; HR/User vẫn không có quyền này.
 - **Invitation authorization repair:** `create-employee` Edge Function phải kiểm tra `admin` active trước mọi Auth/email side effect. Không bao giờ dựa vào UI để bảo vệ endpoint.
 - **Edge Function:** `process-payslip-outbox` — `ACTIVE`, version 2.
 - **Project ref:** `xtyjeduckvopbdeokhfn`.
@@ -22,6 +23,18 @@ Production Supabase hiện đã có Phase 1–10, bao gồm workflow 3 vai trò 
 - **Git commit mới nhất:** `e17450f fix: align phase 10 payroll business rules`.
 
 Không có backend Node/Express riêng. Logic tin cậy nằm ở Supabase Postgres (RLS, trigger, function, RPC) và Edge Functions; React client chỉ là UI/data access layer.
+
+### Cập nhật UI Payroll mới nhất (2026-08-26)
+
+- `AdminPayrollView` dùng **bảng lương tháng** làm màn hình mặc định. Bảng có các cột theo template: ngày công, lương/phụ cấp, KPI/OT/thưởng lễ, Gross, BHXH-BHYT-BHTN, giảm trừ, PIT và Net; form phiếu lương dùng để thêm/sửa một dòng.
+- Import XLSX/CSV/TSV chỉ là nạp nhanh (upsert) vào bảng tháng đã chọn bởi tiêu đề workbook. Nếu file không có `Ngày công chuẩn`, frontend map chuẩn công theo `getMonthWorkDays(month, year, company_holidays)`; ngày công thực tế vẫn giữ số Excel.
+- Không có migration hay thay đổi quyền Supabase cho hạng mục UI này. Không tự commit/push/deploy frontend.
+
+### Cập nhật ngày công KPI/OT (2026-08-26)
+
+- Production migration `20260826130000_company_workday_overrides.sql` đã apply: lưu override ngày công chuẩn theo `company_id + month + year`, không ghi đè lịch sử tháng khác.
+- `AdminKpiOtView` cho HR/Kế toán và Admin bấm icon bút tại card ngày công để chỉnh. Giá trị này thay thế quy chuẩn lịch trong KPI target và snapshot đơn giá OT; phép đã duyệt vẫn trừ theo từng nhân viên.
+- RLS cho phép mọi thành viên công ty đọc để User thấy KPI đúng, nhưng chỉ back-office ghi. Trigger chặn INSERT/UPDATE/DELETE khi KPI kỳ đó đang `pending_approval` hoặc `published`.
 
 ---
 

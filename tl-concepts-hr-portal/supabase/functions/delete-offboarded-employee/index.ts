@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { logInternalError, publicError } from "../_shared/error-response.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -29,6 +30,10 @@ function jsonResponse(request: Request, body: unknown, status: number) {
   });
 }
 
+function errorResponse(request: Request, options: Parameters<typeof publicError>[2]) {
+  return publicError(request, corsHeaders(request), options);
+}
+
 async function removeEmployeeFiles(admin: ReturnType<typeof createClient>, companyId: string, employeeId: string) {
   const folder = `${companyId}/${employeeId}`;
 
@@ -48,20 +53,20 @@ async function removeEmployeeFiles(admin: ReturnType<typeof createClient>, compa
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
-  if (request.method !== "POST") return jsonResponse(request, { error: "Method not allowed" }, 405);
+  if (request.method !== "POST") return errorResponse(request, { code: "INVALID_REQUEST", message: "Phương thức gửi yêu cầu không hợp lệ.", status: 405 });
 
   const authorization = request.headers.get("Authorization");
-  if (!authorization) return jsonResponse(request, { error: "Missing Authorization header" }, 401);
+  if (!authorization) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
   const body = await request.json().catch(() => null) as { employeeId?: unknown } | null;
   const employeeId = typeof body?.employeeId === "string" ? body.employeeId : null;
-  if (!employeeId) return jsonResponse(request, { error: "Yêu cầu không hợp lệ" }, 400);
+  if (!employeeId) return errorResponse(request, { code: "INVALID_REQUEST", message: "Yêu cầu không hợp lệ.", status: 400 });
 
   const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authorization } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: { user: caller }, error: callerError } = await callerClient.auth.getUser();
-  if (callerError || !caller) return jsonResponse(request, { error: "Phiên đăng nhập không hợp lệ" }, 401);
+  if (callerError || !caller) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
   const { data: adminProfile, error: adminError } = await admin
@@ -70,7 +75,8 @@ Deno.serve(async (request) => {
     .eq("id", caller.id)
     .maybeSingle();
   if (adminError || !adminProfile || adminProfile.role !== "admin" || !adminProfile.is_active) {
-    return jsonResponse(request, { error: "Chỉ Admin đang hoạt động mới được xóa vĩnh viễn nhân viên" }, 403);
+    logInternalError("delete employee authorization failed", adminError);
+    return errorResponse(request, { code: "FORBIDDEN", message: "Bạn không có quyền xóa nhân viên.", status: 403 });
   }
 
   const { data: employee, error: employeeError } = await admin
@@ -79,29 +85,39 @@ Deno.serve(async (request) => {
     .eq("id", employeeId)
     .eq("company_id", adminProfile.company_id)
     .maybeSingle();
-  if (employeeError || !employee) return jsonResponse(request, { error: "Không tìm thấy nhân viên" }, 404);
+  if (employeeError || !employee) {
+    logInternalError("delete employee lookup failed", employeeError);
+    return errorResponse(request, { code: "NOT_FOUND", message: "Không tìm thấy nhân viên.", status: 404 });
+  }
   if (employee.status !== "Đã nghỉ việc") {
-    return jsonResponse(request, { error: "Chỉ có thể xóa vĩnh viễn nhân viên đã nghỉ việc" }, 409);
+    return errorResponse(request, { code: "CONFLICT", message: "Chỉ có thể xóa vĩnh viễn nhân viên đã nghỉ việc.", status: 409 });
   }
 
   const { data: profileLinks, error: profilesError } = await admin
     .from("profiles")
     .select("id, role")
     .eq("employee_id", employeeId);
-  if (profilesError) return jsonResponse(request, { error: profilesError.message }, 500);
+  if (profilesError) {
+    logInternalError("delete employee profile lookup failed", profilesError);
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
+  }
   if (profileLinks?.some((profile) => profile.role === "admin")) {
-    return jsonResponse(request, { error: "Không thể xóa nhân viên đang gắn với tài khoản Admin" }, 409);
+    return errorResponse(request, { code: "CONFLICT", message: "Không thể xóa nhân viên đang gắn với tài khoản Admin.", status: 409 });
   }
 
   try {
     await removeEmployeeFiles(admin, adminProfile.company_id, employeeId);
   } catch (error) {
-    return jsonResponse(request, { error: error instanceof Error ? error.message : "Không thể xóa tài liệu của nhân viên" }, 500);
+    logInternalError("delete employee files failed", error);
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
   }
 
   for (const profile of profileLinks || []) {
     const { error } = await admin.auth.admin.deleteUser(profile.id);
-    if (error) return jsonResponse(request, { error: error.message }, 500);
+    if (error) {
+      logInternalError("delete employee auth user failed", error);
+      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
+    }
   }
 
   const { error: deleteError } = await admin
@@ -110,7 +126,10 @@ Deno.serve(async (request) => {
     .eq("id", employeeId)
     .eq("company_id", adminProfile.company_id)
     .eq("status", "Đã nghỉ việc");
-  if (deleteError) return jsonResponse(request, { error: deleteError.message }, 500);
+  if (deleteError) {
+    logInternalError("delete employee record failed", deleteError);
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
+  }
 
   return jsonResponse(request, { deleted: true }, 200);
 });

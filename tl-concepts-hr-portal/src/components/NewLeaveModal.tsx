@@ -5,6 +5,7 @@ import { useLeaveBalance, useCompanyHolidays, useCreateLeaveRequest, useCreateWo
 import { useCreateOtRecord } from '../hooks/useOt';
 import { LeaveType, HalfDayOption } from '../types';
 import { getLeaveDaysForRange } from '../utils/workDays';
+import { getUserFacingError } from '../lib/userFacingError';
 import { X, Calendar, Clock, AlertCircle, Send, Loader2 } from 'lucide-react';
 
 export const NewLeaveModal: React.FC = () => {
@@ -104,7 +105,7 @@ export const NewLeaveModal: React.FC = () => {
       setIsNewLeaveModalOpen(false);
       setReason('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể gửi yêu cầu. Vui lòng thử lại.');
+      setError(await getUserFacingError(err, 'Không thể gửi yêu cầu. Vui lòng thử lại.'));
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useHR } from '../context/HRContext';
+import { getUserFacingError } from '../lib/userFacingError';
 
 /**
  * Self-service account security for every role. This component never accepts
@@ -51,7 +52,7 @@ export const AccountSecurityCard: React.FC = () => {
       setConfirmPassword('');
       showToast('Đã đổi mật khẩu tài khoản thành công.');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+      setError(await getUserFacingError(caught, 'Không thể đổi mật khẩu. Vui lòng thử lại.'));
     } finally {
       setIsSaving(false);
     }

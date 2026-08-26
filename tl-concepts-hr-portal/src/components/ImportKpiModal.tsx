@@ -3,6 +3,7 @@ import { useHR } from '../context/HRContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployees } from '../hooks/useEmployees';
 import { useUpsertKpiMonthly } from '../hooks/useKpi';
+import { getUserFacingError } from '../lib/userFacingError';
 import { X, FileSpreadsheet, Check, AlertCircle, Link, Loader2 } from 'lucide-react';
 
 interface ParsedKpiRow {
@@ -126,7 +127,7 @@ export const ImportKpiModal: React.FC = () => {
       setIsImportKpiModalOpen(false);
       setRawText('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Import thất bại. Vui lòng thử lại.');
+      setError(await getUserFacingError(err, 'Import KPI thất bại. Vui lòng thử lại.'));
     } finally {
       setIsImporting(false);
     }

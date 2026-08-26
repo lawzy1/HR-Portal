@@ -13,7 +13,7 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 - Hợp đồng lao động + lịch sử tăng lương + **phụ lục hợp đồng** (mới) + cảnh báo pháp lý Điều 20 BLLĐ 2019.
 - Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ; range ngày lễ được tách thành từng ngày để dùng trong công thức ngày công.
 - KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công cá nhân (đã trừ lễ/Tết và phép đã duyệt)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT.
-- Payroll: import/paste phiếu lương, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
+- Payroll: bảng lương tháng là màn hình vận hành mặc định (chỉ tiêu ngày công, dòng lương và tổng Gross/BHXH-PIT/Net), import/paste Excel để nạp nhanh các dòng vào kỳ đó, form sửa từng phiếu, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
 - User chỉ tự tạo request nghỉ phép, OT, WFH thêm/đi trễ của chính mình; tất cả bắt đầu `Chờ duyệt` và chỉ Admin được duyệt/từ chối. HR/Kế toán chỉ xem các request này.
 
 **Đã deploy Supabase, chờ deploy frontend lên Vercel:**
@@ -43,6 +43,27 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-26 — Sửa quyền outbox khi Admin phê duyệt payroll
+
+- Migration production `20260826133000_payroll_outbox_admin_update_policy.sql` bổ sung quyền và RLS `UPDATE` cho **Admin trong đúng công ty** trên `notification_outbox`.
+- Lý do: `approve_payroll_month` và gửi lại phiếu đều dùng `INSERT ... ON CONFLICT DO UPDATE`; Phase 9 chỉ cấp `SELECT, INSERT`, khiến bản ghi outbox có sẵn trả về 403 khi Admin final approve.
+- Không mở quyền cho `hr` hoặc `employee`; RPC vẫn tự kiểm tra `is_admin()` trước khi phát hành payroll. Migration history local/production đã đồng bộ; security advisor không phát sinh warning mới từ thay đổi này.
+
+### 2026-08-26 — Điều chỉnh ngày công chuẩn theo kỳ KPI
+
+- Migration production `20260826130000_company_workday_overrides.sql` thêm `company_workday_overrides`, unique theo công ty/tháng/năm. RLS: User chỉ đọc quy chuẩn của công ty mình; HR/Kế toán/Admin mới được tạo/sửa/xóa.
+- `AdminKpiOtView` có icon bút cạnh card ngày công. Giá trị mặc định vẫn lấy lịch 5,5 ngày/tuần trừ lễ/Tết, nhưng HR/Kế toán/Admin có thể lưu một số công khác cho đúng kỳ; phép đã duyệt vẫn trừ riêng theo từng nhân viên.
+- Override ảnh hưởng chỉ tiêu KPI tháng, thưởng KPI sau khi tạo lại bản nháp, và mẫu số đơn giá OT. Trigger chặn đổi khi KPI đang `pending_approval`/`published`; User thấy quy chuẩn đã điều chỉnh nhưng không có quyền sửa.
+- Verify production: migration được apply; bảng mới bật RLS với 4 policy. Security advisor không phát sinh warning từ migration (các warning còn lại là function cũ/thiết lập Auth của dự án).
+
+### 2026-08-26 — Payroll chuyển sang bảng lương tháng làm luồng chính
+
+- `AdminPayrollView` hiển thị bảng lương tháng trước phần import, gồm MSNV, nhân viên/vị trí, ngày công chuẩn/thực tế, lương cơ bản, phụ cấp, KPI, OT/thưởng dự án, thưởng lễ, Gross, bảo hiểm, giảm trừ gia cảnh, PIT và Net theo mẫu TL Concepts.
+- Có tổng Gross, tổng bảo hiểm, tổng PIT và tổng Net; có tìm kiếm nhân viên; mỗi dòng Nháp/Trả lại có nút sửa, mọi dòng có nút xem/in phiếu. Admin vẫn có thể tạo lại PDF/gửi lại email cho phiếu đã phát hành.
+- Card ngày công lấy `getMonthWorkDays()` cùng `company_holidays`; khi file Excel thiếu cột ngày công chuẩn, import tự gán ngày công chuẩn của tháng theo lịch công ty, còn ngày công thực tế giữ từ file. Trong form từng phiếu, ngày công chuẩn là giá trị mặc định nhưng HR/Kế toán có thể chỉnh và công thức lương ngày công sẽ dùng số đã chỉnh.
+- Import Excel/paste là bước nạp nhanh (upsert theo nhân viên + tháng/năm), không còn là bảng nghiệp vụ riêng; kỳ lương tiếp tục lấy bắt buộc từ tiêu đề workbook.
+- Thay đổi này chỉ dùng schema/query hiện hữu, **không cần migration Supabase**.
 
 ### 2026-08-26 — Phase 1 đồng bộ dữ liệu qua cache/refetch, không polling
 

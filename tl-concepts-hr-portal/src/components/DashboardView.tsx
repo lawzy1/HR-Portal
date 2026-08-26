@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useHR } from '../context/HRContext';
+import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
@@ -7,7 +8,7 @@ import { useContracts } from '../hooks/useContracts';
 import { useLeaveBalance, useLeaveRequests } from '../hooks/useLeave';
 import { useKpiMonthly } from '../hooks/useKpi';
 import { useLatestPayrollRecord } from '../hooks/usePayroll';
-import { formatVND, formatDate } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
 import {
   CreditCard,
   CalendarDays,
@@ -28,6 +29,7 @@ export const DashboardView: React.FC = () => {
     setSelectedPayslipId,
     setIsEditProfileModalOpen
   } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
   const employeeId = profile?.employeeId ?? undefined;
 
@@ -120,7 +122,7 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
-            {formatVND(employee.current_salary || 0)}
+            {formatMoney(employee.current_salary || 0)}
           </p>
           <p className="text-[11px] text-slate-500 mt-1.5 flex items-center justify-between">
             <span>Review gần nhất: {employee.last_salary_review_date ? formatDate(employee.last_salary_review_date) : 'Chưa có'}</span>
@@ -195,7 +197,7 @@ export const DashboardView: React.FC = () => {
                 <p className="text-sm sm:text-base font-bold mt-1">
                   {latestKpi.kpi_converted_views ?? 0}/{latestKpi.kpi_target ?? 0} view quy đổi
                 </p>
-                <p className="text-[11px] text-primary-100 mt-1">{latestKpi.ot_hours ?? 0} giờ OT &bull; Thưởng & phụ cấp {formatVND((latestKpi.bonus_amount || 0) + (latestKpi.benefit_amount || 0))}</p>
+                <p className="text-[11px] text-primary-100 mt-1">{latestKpi.ot_hours ?? 0} giờ OT &bull; Thưởng & phụ cấp {formatMoney((latestKpi.bonus_amount || 0) + (latestKpi.benefit_amount || 0))}</p>
               </>
             ) : (
               <p className="text-sm sm:text-base font-bold mt-1">Chưa có dữ liệu KPI tháng này</p>
@@ -241,17 +243,17 @@ export const DashboardView: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-xs">
                 <div>
                   <span className="text-slate-500 block text-[11px]">Lương Gross</span>
-                  <strong className="text-slate-900 font-mono text-xs">{formatVND(latestPayslip.gross_income)}</strong>
+                  <strong className="text-slate-900 font-mono text-xs">{formatMoney(latestPayslip.gross_income)}</strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[11px]">Bảo hiểm</span>
                   <strong className="text-rose-700 font-mono text-xs">
-                    -{formatVND(latestPayslip.bhxh_deduction + latestPayslip.bhyt_deduction + latestPayslip.bhtn_deduction)}
+                    -{formatMoney(latestPayslip.bhxh_deduction + latestPayslip.bhyt_deduction + latestPayslip.bhtn_deduction)}
                   </strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[11px]">Thuế TNCN</span>
-                  <strong className="text-rose-700 font-mono text-xs">-{formatVND(latestPayslip.personal_income_tax)}</strong>
+                  <strong className="text-rose-700 font-mono text-xs">-{formatMoney(latestPayslip.personal_income_tax)}</strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[11px]">Trạng thái</span>
@@ -266,7 +268,7 @@ export const DashboardView: React.FC = () => {
               <div className="bg-success-900 text-white p-4 rounded-xl flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-bold text-success-300 uppercase tracking-wider">THỰC LĨNH CHUYỂN KHOẢN (NET)</p>
-                  <p className="text-xl sm:text-2xl font-black font-mono mt-0.5">{formatVND(latestPayslip.net_salary)}</p>
+                  <p className="text-xl sm:text-2xl font-black font-mono mt-0.5">{formatMoney(latestPayslip.net_salary)}</p>
                 </div>
                 <div className="text-right">
                   {latestPayslip.payment_date && (
@@ -308,7 +310,7 @@ export const DashboardView: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-slate-600">Thưởng & Phụ cấp khác:</span>
-                <span className="font-bold text-success-700 font-mono">+{formatVND((latestKpi?.bonus_amount || 0) + (latestKpi?.benefit_amount || 0))}</span>
+                <span className="font-bold text-success-700 font-mono">+{formatMoney((latestKpi?.bonus_amount || 0) + (latestKpi?.benefit_amount || 0))}</span>
               </div>
             </div>
           </div>

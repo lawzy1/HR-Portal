@@ -24,7 +24,7 @@ function getFontBytes() {
 }
 
 function money(value: unknown) {
-  return `${new Intl.NumberFormat("vi-VN").format(Number(value) || 0)} đ`;
+  return new Intl.NumberFormat("vi-VN").format(Number(value) || 0);
 }
 
 function escapeHtml(value: string) {
@@ -156,10 +156,11 @@ async function createPayslipPdf(record: PayrollRecord) {
   row("(-) Tổng khấu trừ", money(totalDeductions), coral);
   row("(+) Điều chỉnh & hoàn trả", money(totalAdjustments), teal);
 
-  page.drawRectangle({ x: 42, y: y - 16, width: width - 84, height: 56, color: teal });
-  page.drawText("THỰC LÃNH (NET PAY)", { x: 56, y: y + 6, size: 13, font, color: rgb(1, 1, 1) });
+  page.drawLine({ start: { x: 42, y: y + 28 }, end: { x: width - 42, y: y + 28 }, thickness: 1.4, color: ink });
+  page.drawText("THỰC LÃNH (NET PAY)", { x: 52, y: y + 8, size: 13, font, color: teal });
   const net = money(record.net_salary);
-  page.drawText(net, { x: width - 56 - font.widthOfTextAtSize(net, 18), y: y + 2, size: 18, font, color: rgb(1, 1, 1) });
+  page.drawText(net, { x: width - 52 - font.widthOfTextAtSize(net, 18), y: y + 2, size: 18, font, color: ink });
+  page.drawLine({ start: { x: 42, y: y - 10 }, end: { x: width - 42, y: y - 10 }, thickness: 1.4, color: ink });
   page.drawText("Tài liệu được phát hành sau khi Admin phê duyệt trên TL Concepts HR Portal.", {
     x: 52, y: 38, size: 7.5, font, color: muted,
   });

@@ -15,6 +15,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useAuth } from '../../context/AuthContext';
 import { useEmployees } from '../../hooks/useEmployees';
@@ -77,6 +78,7 @@ const isSameMonthYear = (dateStr: string, month: number, year: number): boolean 
 
 export const AdminKpiOtView: React.FC = () => {
   const { selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin, setIsImportKpiModalOpen, showToast } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
 
@@ -181,10 +183,6 @@ export const AdminKpiOtView: React.FC = () => {
   const [kpiRejectionReason, setKpiRejectionReason] = useState('');
   const [isWorkdayEditorOpen, setIsWorkdayEditorOpen] = useState(false);
   const [editedStandardWorkDays, setEditedStandardWorkDays] = useState<number>(effectiveStandardWorkDays);
-
-  const formatVND = (num: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
-  };
 
   // Helper date formatter for Deadline (e.g. "Thứ Ba, 15/08")
   const formatDeadlineFromDateStr = (dateStr: string): string => {
@@ -907,7 +905,7 @@ export const AdminKpiOtView: React.FC = () => {
                         {record.employees?.full_name}
                         <span className="block font-mono text-[10px] font-normal text-slate-400">{record.employees?.employee_code}</span>
                       </td>
-                      <td className="p-3 text-right font-mono">{formatVND(record.performance_commission_amount)}</td>
+                      <td className="p-3 text-right font-mono">{formatMoney(record.performance_commission_amount)}</td>
                       <td className="p-3 text-center">
                         {record.qc_rate_snapshot > 0 ? (
                           <input
@@ -925,10 +923,10 @@ export const AdminKpiOtView: React.FC = () => {
                           />
                         ) : <span className="text-slate-400">Không áp dụng</span>}
                       </td>
-                      <td className="p-3 text-right font-mono">{record.qc_rate_snapshot > 0 ? formatVND(record.qc_rate_snapshot) : '—'}</td>
-                      <td className="p-3 text-right font-mono text-primary-700">{formatVND(record.qc_commission_amount)}</td>
-                      <td className="p-3 text-right font-mono">{formatVND(record.guaranteed_income_topup)}</td>
-                      <td className="p-3 text-right font-mono font-bold text-success-700">{formatVND(record.bonus_amount || 0)}</td>
+                      <td className="p-3 text-right font-mono">{record.qc_rate_snapshot > 0 ? formatMoney(record.qc_rate_snapshot) : '—'}</td>
+                      <td className="p-3 text-right font-mono text-primary-700">{formatMoney(record.qc_commission_amount)}</td>
+                      <td className="p-3 text-right font-mono">{formatMoney(record.guaranteed_income_topup)}</td>
+                      <td className="p-3 text-right font-mono font-bold text-success-700">{formatMoney(record.bonus_amount || 0)}</td>
                     </tr>
                   );
                 })}
@@ -1292,7 +1290,7 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                   <span>Tổng: <b>{totalViews} views</b></span>
-                  <span className="font-bold text-success-700">{formatVND(estimatedBonus)}</span>
+                  <span className="font-bold text-success-700">{formatMoney(estimatedBonus)}</span>
                 </div>
               </div>
             );
@@ -1360,7 +1358,7 @@ export const AdminKpiOtView: React.FC = () => {
                     <td className="py-3 px-4 font-semibold text-primary-700">
                       {ot.pay_type}
                     </td>
-                    <td className="py-3 px-4 font-bold text-success-600">{formatVND(ot.amount || 0)}</td>
+                    <td className="py-3 px-4 font-bold text-success-600">{formatMoney(ot.amount || 0)}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] ${
                         ot.status === 'Đã hoàn thành' || ot.status === 'Đã duyệt'
@@ -1689,9 +1687,9 @@ export const AdminKpiOtView: React.FC = () => {
                   <div className="p-3 bg-primary-50/70 rounded-xl border border-primary-200 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-bold text-slate-600 block">Tự tính Lương OT ({effPct}%):</span>
-                      <span className="text-[11px] text-slate-500">{otHours} giờ x {formatVND(hourly)}/giờ</span>
+                      <span className="text-[11px] text-slate-500">{otHours} giờ x {formatMoney(hourly)}/giờ</span>
                     </div>
-                    <span className="text-base font-black text-primary-700">{formatVND(calcAmt)}</span>
+                    <span className="text-base font-black text-primary-700">{formatMoney(calcAmt)}</span>
                   </div>
                 );
               })()}

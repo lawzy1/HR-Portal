@@ -1,6 +1,6 @@
 export function formatVND(amount: number): string {
-  if (isNaN(amount)) return '0 ₫';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  if (isNaN(amount)) return '0';
+  return new Intl.NumberFormat('vi-VN').format(amount);
 }
 
 export function formatDate(dateString: string): string {

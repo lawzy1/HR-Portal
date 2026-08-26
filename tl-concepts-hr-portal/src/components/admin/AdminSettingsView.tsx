@@ -14,7 +14,7 @@ import {
   useUpdateCompany,
   useUpdateCompanySettings,
 } from '../../hooks/useCompanySettings';
-import { useAllProfiles, useUpdateProfileAccess, useUpdateProfileRole } from '../../hooks/useProfiles';
+import { useAllProfiles, useUpdateProfileRole } from '../../hooks/useProfiles';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
@@ -49,7 +49,6 @@ export const AdminSettingsView: React.FC = () => {
   const { data: profilesData } = useAllProfiles();
   const profiles = profilesData || [];
   const updateProfileRole = useUpdateProfileRole();
-  const updateProfileAccess = useUpdateProfileAccess();
 
   // Company parameter form state — seeded from the real row once it loads.
   const [bhxhEmployeeRate, setBhxhEmployeeRate] = useState(8);
@@ -82,13 +81,6 @@ export const AdminSettingsView: React.FC = () => {
       {
         onSuccess: () => showToast('Đã cập nhật vai trò phân quyền mới cho nhân viên.'),
       }
-    );
-  };
-
-  const handleAccessChange = (profileId: string, isActive: boolean) => {
-    updateProfileAccess.mutate(
-      { profileId, isActive },
-      { onSuccess: () => showToast(isActive ? 'Đã duyệt và kích hoạt tài khoản.' : 'Đã khóa quyền truy cập tài khoản.') }
     );
   };
 
@@ -323,7 +315,7 @@ export const AdminSettingsView: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center justify-center">
                         <select
                           value={profile.role}
                           onChange={e => handleRoleChange(profile.id, e.target.value as 'admin' | 'hr' | 'employee')}
@@ -334,16 +326,6 @@ export const AdminSettingsView: React.FC = () => {
                           <option value="hr">HR / Kế toán</option>
                           <option value="employee">Employee / Nhân viên</option>
                         </select>
-                        {profile.is_active && (
-                          <button
-                            type="button"
-                            onClick={() => handleAccessChange(profile.id, false)}
-                            disabled={updateProfileAccess.isPending}
-                            className="rounded-lg bg-success-100 px-3 py-1.5 text-[10px] font-bold text-success-800 transition-colors hover:bg-success-200 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            Khóa quyền truy cập
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>

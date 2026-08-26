@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, ClipboardPaste, FileSpreadsheet, Mail, Pencil, Plus, Printer, RotateCcw, Search, Send, ShieldCheck, Upload } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileText, Mail, Pencil, Plus, RotateCcw, Search, Send, ShieldCheck, Upload } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHR } from '../../context/HRContext';
+import { MoneyVisibilityToggle, useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useEmployees } from '../../hooks/useEmployees';
 import { useCompanyHolidays } from '../../hooks/useLeave';
@@ -15,7 +16,6 @@ import {
   useSubmitPayrollMonth,
 } from '../../hooks/usePayroll';
 import type { TablesInsert } from '../../lib/database.types';
-import { formatVND } from '../../utils/formatters';
 import { getMonthWorkDays, getWorkDaysFormulaText } from '../../utils/workDays';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { PayrollEntryModal } from './PayrollEntryModal';
@@ -309,6 +309,7 @@ export const AdminPayrollView: React.FC = () => {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const { showToast, setSelectedPayslipId } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [sourceName, setSourceName] = useState('Dán từ Excel');
@@ -634,7 +635,7 @@ export const AdminPayrollView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Tổng chi phí quỹ lương · Gross" value={totals.gross} />
+        <Metric label="Tổng chi phí quỹ lương · Gross" value={totals.gross} showToggle />
         <Metric label="Trích nộp BHXH / BHYT / BHTN" value={totals.insurance} tone="rose" />
         <Metric label="Thuế TNCN (PIT) khấu trừ" value={totals.pit} tone="primary" />
         <Metric label="Tổng lương thực nhận · Net" value={totals.net} tone="success" />
@@ -687,12 +688,12 @@ export const AdminPayrollView: React.FC = () => {
                   <td className="p-3 font-mono text-[11px] font-bold text-slate-700">{record.employees?.employee_code || '—'}</td>
                   <td className="p-3"><strong className="block text-slate-900">{record.employees?.full_name || '—'}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{record.employees?.job_title || 'Chưa cập nhật vị trí'}</span></td>
                   <td className="p-3 text-center font-semibold text-slate-700">{record.standard_work_days} / {record.actual_work_days}</td>
-                  <td className="p-3 text-right font-semibold">{formatVND(record.base_salary)}</td><td className="p-3 text-right text-slate-600">{formatVND(record.lunch_allowance)}</td><td className="p-3 text-right text-slate-600">{formatVND(record.phone_allowance)}</td>
-                  <td className="p-3 text-right font-semibold text-success-800">{formatVND(record.kpi_bonus)}</td><td className="p-3 text-right font-semibold text-success-800">{formatVND(record.ot_pay + record.project_bonus_amount)}</td><td className="p-3 text-right font-semibold text-success-800">{formatVND(record.holiday_bonus_amount)}</td>
-                  <td className="bg-slate-50 p-3 text-right font-extrabold text-slate-900">{formatVND(record.gross_income)}</td><td className="p-3 text-right font-semibold text-rose-700">−{formatVND(insurance)}</td>
-                  <td className="p-3 text-right text-slate-500">{formatVND(record.family_deduction)}</td><td className="p-3 text-right font-semibold text-primary-700">−{formatVND(record.personal_income_tax)}</td>
-                  <td className="bg-success-50 p-3 text-right font-extrabold text-success-800">{formatVND(record.net_salary)}</td>
-                  <td className="p-3"><div className="flex items-center justify-center gap-1.5"><button type="button" onClick={() => { setEditingEmployeeId(record.employee_id); setIsPayrollFormOpen(true); }} disabled={!canEdit} className="inline-flex items-center gap-1 rounded-lg bg-primary-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-45" title={canEdit ? 'Sửa phiếu lương' : 'Kỳ lương đã khóa'}><Pencil className="h-3 w-3" />Sửa lương</button><button type="button" onClick={() => setSelectedPayslipId(record.id)} className="rounded-lg bg-slate-100 p-1.5 text-slate-700 transition hover:bg-slate-200" title="Xem/in phiếu lương"><Printer className="h-3.5 w-3.5" /></button>{isAdmin && record.publish_status === 'published' && record.notification_status !== 'sent' && <button type="button" onClick={() => void handleRetryNotification(record.id)} disabled={retryNotification.isPending || processNotifications.isPending} className="rounded-lg bg-primary-50 p-1.5 text-primary-700 transition hover:bg-primary-100 disabled:opacity-50" title="Tạo PDF / gửi lại email"><Mail className="h-3.5 w-3.5" /></button>}</div></td>
+                  <td className="p-3 text-right font-semibold">{formatMoney(record.base_salary)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.lunch_allowance)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.phone_allowance)}</td>
+                  <td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.kpi_bonus)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.ot_pay + record.project_bonus_amount)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.holiday_bonus_amount)}</td>
+                  <td className="bg-slate-50 p-3 text-right font-extrabold text-slate-900">{formatMoney(record.gross_income)}</td><td className="p-3 text-right font-semibold text-rose-700">−{formatMoney(insurance)}</td>
+                  <td className="p-3 text-right text-slate-500">{formatMoney(record.family_deduction)}</td><td className="p-3 text-right font-semibold text-primary-700">−{formatMoney(record.personal_income_tax)}</td>
+                  <td className="bg-success-50 p-3 text-right font-extrabold text-success-800">{formatMoney(record.net_salary)}</td>
+                    <td className="p-3"><div className="flex items-center justify-center gap-1.5"><button type="button" onClick={() => { setEditingEmployeeId(record.employee_id); setIsPayrollFormOpen(true); }} disabled={!canEdit} className="inline-flex items-center gap-1 rounded-lg bg-primary-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-45" title={canEdit ? 'Sửa phiếu lương' : 'Kỳ lương đã khóa'}><Pencil className="h-3 w-3" />Sửa lương</button><button type="button" onClick={() => setSelectedPayslipId(record.id)} className="rounded-lg bg-slate-100 p-1.5 text-slate-700 transition hover:bg-slate-200" title="Xem phiếu lương"><FileText className="h-3.5 w-3.5" /></button>{isAdmin && record.publish_status === 'published' && record.notification_status !== 'sent' && <button type="button" onClick={() => void handleRetryNotification(record.id)} disabled={retryNotification.isPending || processNotifications.isPending} className="rounded-lg bg-primary-50 p-1.5 text-primary-700 transition hover:bg-primary-100 disabled:opacity-50" title="Tạo PDF / gửi lại email"><Mail className="h-3.5 w-3.5" /></button>}</div></td>
                 </tr>;
               })}
             </tbody>
@@ -859,11 +860,12 @@ export const AdminPayrollView: React.FC = () => {
   );
 };
 
-const Metric: React.FC<{ label: string; value: number; tone?: 'rose' | 'primary' | 'success' }> = ({ label, value, tone }) => {
+const Metric: React.FC<{ label: string; value: number; tone?: 'rose' | 'primary' | 'success'; showToggle?: boolean }> = ({ label, value, tone, showToggle = false }) => {
+  const { formatMoney } = useMoneyVisibility();
   const valueClass = tone === 'rose' ? 'text-rose-600' : tone === 'primary' ? 'text-primary-600' : tone === 'success' ? 'text-white' : 'text-slate-900';
   const cardClass = tone === 'success' ? 'border-success-700 bg-success-800' : 'border-slate-200 bg-white';
   const labelClass = tone === 'success' ? 'text-success-100' : 'text-slate-500';
-  return <div className={`rounded-2xl border p-5 shadow-sm ${cardClass}`}><span className={`text-[10px] font-bold uppercase tracking-wide ${labelClass}`}>{label}</span><div className={`mt-2 text-2xl font-black ${valueClass}`}>{formatVND(value)}</div></div>;
+  return <div className={`rounded-2xl border p-5 shadow-sm ${cardClass}`}><span className={`text-[10px] font-bold uppercase tracking-wide ${labelClass}`}>{label}</span><div className={`mt-2 inline-flex items-center gap-1 text-2xl font-black ${valueClass}`}>{formatMoney(value)}{showToggle && <MoneyVisibilityToggle className="h-6 w-6" />}</div></div>;
 };
 
 const ApprovalSummary: React.FC<{ label: string; value: number; tone?: 'amber' | 'success' }> = ({ label, value, tone }) => {

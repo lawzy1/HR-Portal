@@ -8,11 +8,19 @@ import {
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { setIsNewLeaveModalOpen } = useHR();
+  const { setIsNewLeaveModalOpen, setActiveTab, setAdminTab } = useHR();
   const { profile, session, signOut } = useAuth();
 
   const isAdmin = profile?.role === 'admin';
   const isBackoffice = isAdmin || profile?.role === 'hr';
+  const openAccountProfile = () => {
+    if (isBackoffice) {
+      setAdminTab('admin-profile');
+      return;
+    }
+
+    setActiveTab('profile');
+  };
 
   return (
     <header className="md:col-start-2 md:row-start-1 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30">
@@ -32,7 +40,12 @@ export const Header: React.FC = () => {
           <div className="h-6 w-px bg-slate-200"></div>
 
           {/* Authenticated user */}
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 pr-3 border border-slate-200 rounded-xl">
+          <button
+            type="button"
+            onClick={openAccountProfile}
+            title="Mở hồ sơ tài khoản"
+            className="flex items-center gap-2 bg-slate-50 p-1.5 pr-3 border border-slate-200 rounded-xl transition-colors hover:bg-primary-50 hover:border-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 cursor-pointer"
+          >
             <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs">
               {session?.user.email?.[0]?.toUpperCase() ?? '?'}
             </div>
@@ -45,7 +58,7 @@ export const Header: React.FC = () => {
                 {isAdmin ? 'Admin' : profile?.role === 'hr' ? 'HR / Kế toán' : 'Nhân viên'}
               </span>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={() => signOut()}

@@ -33,11 +33,6 @@ export const AdminSidebar: React.FC = () => {
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
-      id: 'admin-profile',
-      label: 'Hồ sơ tài khoản',
-      icon: <UserCircle className="w-5 h-5" />,
-    },
-    {
       id: 'admin-employees',
       label: 'Hồ sơ Nhân viên',
       icon: <Users className="w-5 h-5" />,
@@ -80,6 +75,11 @@ export const AdminSidebar: React.FC = () => {
       label: 'Cài đặt Phân quyền',
       icon: <ShieldCheck className="w-5 h-5" />,
       adminOnly: true,
+    },
+    {
+      id: 'admin-profile',
+      label: 'Hồ sơ tài khoản',
+      icon: <UserCircle className="w-5 h-5" />,
     },
   ];
 
@@ -149,12 +149,6 @@ export const AdminSidebar: React.FC = () => {
       </nav>
 
       {/* Footer Info */}
-      <div className="p-4 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
-        <div>
-          <p className="font-medium text-slate-600">TL CONCEPTS</p>
-          <p className="text-[11px] text-slate-400">TL CONCEPTS HR Portal v2.4</p>
-        </div>
-      </div>
     </aside>
   );
 };

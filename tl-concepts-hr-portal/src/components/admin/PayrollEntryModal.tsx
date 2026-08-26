@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Calculator, Link2, Save, X } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { useContracts } from '../../hooks/useContracts';
@@ -94,8 +95,6 @@ const createInitialForm = (employeeId: string, month: number, year: number): Pay
 
 const asMoney = (value: number | null | undefined) => Number.isFinite(value) ? Number(value) : 0;
 
-const formatNumber = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(value);
-
 const MoneyField: React.FC<{
   label: string;
   value: number;
@@ -166,6 +165,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
   onSaved,
 }) => {
   const { showToast } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const employees = employeeOptions;
   const [form, setForm] = useState<PayrollFormState>(() => createInitialForm(initialEmployeeId, initialMonth, initialYear));
   const [prefillKey, setPrefillKey] = useState<string | null>(null);
@@ -465,7 +465,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
               <MoneyField label="Phụ cấp điện thoại" value={form.phoneAllowance} onChange={(value) => updateField('phoneAllowance', value)} hint="HĐLĐ" />
               <div className="rounded-xl border border-dashed border-success-300 bg-success-50/60 p-3">
                 <span className="block text-xs font-semibold text-slate-700">Lương ngày công</span>
-                <strong className="mt-1 block font-mono text-lg text-success-800">{formatNumber(workdaySalary)}</strong>
+                <strong className="mt-1 block font-mono text-lg text-success-800">{formatMoney(workdaySalary)}</strong>
                 <span className="mt-1 block text-[10px] text-slate-500">Lương cơ bản × ngày công thực tế / ngày công chuẩn</span>
               </div>
               <MoneyField label="Thưởng KPI sản phẩm" value={form.kpiBonus} onChange={(value) => updateField('kpiBonus', value)} hint="KPI tháng" />
@@ -474,7 +474,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
               <MoneyField label="Thưởng dự án (tách riêng)" value={form.projectBonusAmount} onChange={(value) => updateField('projectBonusAmount', value)} />
               <MoneyField label="Thưởng lễ" value={form.holidayBonusAmount} onChange={(value) => updateField('holidayBonusAmount', value)} />
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-sm font-extrabold text-success-900"><span>TỔNG THU NHẬP</span><span className="font-mono">{formatNumber(grossIncome)}</span></div>
+            <div className="flex items-center justify-between rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-sm font-extrabold text-success-900"><span>TỔNG THU NHẬP</span><span className="font-mono">{formatMoney(grossIncome)}</span></div>
           </section>
 
           <section className="space-y-3">
@@ -488,10 +488,10 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
               <MoneyField label="Khấu trừ khác" value={form.otherDeductions} onChange={(value) => updateField('otherDeductions', value)} />
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><span className="font-semibold">Giảm trừ gia cảnh (tự tính)</span><strong className="mt-1 block font-mono text-sm text-slate-900">{formatNumber(familyDeduction)}</strong><span className="mt-1 block text-[10px]">Bản thân + người phụ thuộc theo cấu hình công ty</span></div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><span className="font-semibold">Thu nhập chịu thuế (tham chiếu)</span><strong className={`mt-1 block font-mono text-sm ${taxableIncome < 0 ? 'text-slate-700' : 'text-rose-700'}`}>{formatNumber(taxableIncome)}</strong><span className="mt-1 block text-[10px]">Lương ngày công + KPI + OT/thưởng − BHXH 10,5% − giảm trừ</span></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><span className="font-semibold">Giảm trừ gia cảnh (tự tính)</span><strong className="mt-1 block font-mono text-sm text-slate-900">{formatMoney(familyDeduction)}</strong><span className="mt-1 block text-[10px]">Bản thân + người phụ thuộc theo cấu hình công ty</span></div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><span className="font-semibold">Thu nhập chịu thuế (tham chiếu)</span><strong className={`mt-1 block font-mono text-sm ${taxableIncome < 0 ? 'text-slate-700' : 'text-rose-700'}`}>{formatMoney(taxableIncome)}</strong><span className="mt-1 block text-[10px]">Lương ngày công + KPI + OT/thưởng − BHXH 10,5% − giảm trừ</span></div>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-900"><span>TỔNG KHẤU TRỪ</span><span className="font-mono">{formatNumber(totalDeductions)}</span></div>
+            <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-900"><span>TỔNG KHẤU TRỪ</span><span className="font-mono">{formatMoney(totalDeductions)}</span></div>
           </section>
 
           <section className="space-y-3">
@@ -502,15 +502,15 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
               <MoneyField label="Hoàn thuế TNCN" value={form.personalIncomeTaxRefund} onChange={(value) => updateField('personalIncomeTaxRefund', value)} />
               <MoneyField label="Truy lĩnh / điều chỉnh kỳ trước" value={form.priorMonthAdjustment} onChange={(value) => updateField('priorMonthAdjustment', value)} />
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-extrabold text-primary-900"><span>TỔNG CỘNG THÊM</span><span className="font-mono">{formatNumber(totalAdjustments)}</span></div>
+            <div className="flex items-center justify-between rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-extrabold text-primary-900"><span>TỔNG CỘNG THÊM</span><span className="font-mono">{formatMoney(totalAdjustments)}</span></div>
           </section>
 
           <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="rounded-2xl bg-slate-900 p-4 text-white md:col-span-2">
               <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-success-300"><Calculator className="h-4 w-4" /> Kiểm tra trước khi lưu</div>
-              <div className="grid grid-cols-3 gap-3 text-xs"><div><span className="block text-slate-400">Tổng thu nhập</span><strong className="font-mono text-sm">{formatNumber(grossIncome)}</strong></div><div><span className="block text-slate-400">Tổng khấu trừ</span><strong className="font-mono text-sm">− {formatNumber(totalDeductions)}</strong></div><div><span className="block text-slate-400">Điều chỉnh & hoàn trả</span><strong className="font-mono text-sm">+ {formatNumber(totalAdjustments)}</strong></div></div>
+              <div className="grid grid-cols-3 gap-3 text-xs"><div><span className="block text-slate-400">Tổng thu nhập</span><strong className="font-mono text-sm">{formatMoney(grossIncome)}</strong></div><div><span className="block text-slate-400">Tổng khấu trừ</span><strong className="font-mono text-sm">− {formatMoney(totalDeductions)}</strong></div><div><span className="block text-slate-400">Điều chỉnh & hoàn trả</span><strong className="font-mono text-sm">+ {formatMoney(totalAdjustments)}</strong></div></div>
             </div>
-            <div className="rounded-2xl border border-success-300 bg-success-50 p-4 text-right"><span className="block text-xs font-bold uppercase tracking-wider text-success-800">THỰC LÃNH (NET PAY)</span><strong className={`mt-1 block font-mono text-2xl ${netSalary < 0 ? 'text-rose-700' : 'text-success-900'}`}>{formatNumber(netSalary)}</strong><span className="mt-1 block text-[10px] text-success-800">Tổng thu nhập − Tổng khấu trừ + Điều chỉnh</span></div>
+            <div className="rounded-2xl border border-success-300 bg-success-50 p-4 text-right"><span className="block text-xs font-bold uppercase tracking-wider text-success-800">THỰC LÃNH (NET PAY)</span><strong className={`mt-1 block font-mono text-2xl ${netSalary < 0 ? 'text-rose-700' : 'text-success-900'}`}>{formatMoney(netSalary)}</strong><span className="mt-1 block text-[10px] text-success-800">Tổng thu nhập − Tổng khấu trừ + Điều chỉnh</span></div>
           </section>
 
           <section className="grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 md:grid-cols-3">

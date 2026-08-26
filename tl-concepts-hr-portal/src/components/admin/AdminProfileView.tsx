@@ -11,9 +11,10 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { useEmployee } from '../../hooks/useEmployees';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
-import { formatDate, formatVND } from '../../utils/formatters';
+import { formatDate } from '../../utils/formatters';
 import { AccountSecurityCard } from '../AccountSecurityCard';
 
 const roleLabels = {
@@ -24,6 +25,7 @@ const roleLabels = {
 
 export const AdminProfileView: React.FC = () => {
   const { profile, session } = useAuth();
+  const { formatMoney } = useMoneyVisibility();
   const { data: employee } = useEmployee(profile?.employeeId ?? undefined);
   const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
   const roleLabel = profile?.role ? roleLabels[profile.role] : 'Chưa xác định';
@@ -77,7 +79,7 @@ export const AdminProfileView: React.FC = () => {
               <InfoRow icon={<BriefcaseBusiness className="w-4 h-4" />} label="Chức danh / phòng ban" value={`${employee.job_title || '—'} • ${employee.department || '—'}`} />
               <InfoRow icon={<Phone className="w-4 h-4" />} label="Số điện thoại" value={employee.phone || '—'} />
               <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Ngày bắt đầu" value={employee.start_date ? formatDate(employee.start_date) : '—'} />
-              <InfoRow icon={<WalletCards className="w-4 h-4" />} label="Mức lương hiện tại" value={employee.current_salary == null ? '—' : formatVND(employee.current_salary)} />
+              <InfoRow icon={<WalletCards className="w-4 h-4" />} label="Mức lương hiện tại" value={employee.current_salary == null ? '—' : formatMoney(employee.current_salary)} />
             </div>
           ) : (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs leading-5 text-slate-500">
@@ -92,7 +94,7 @@ export const AdminProfileView: React.FC = () => {
   );
 };
 
-const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+const InfoRow: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({ icon, label, value }) => (
   <div className="flex items-start justify-between gap-4 p-3 bg-slate-50 rounded-xl text-xs">
     <span className="flex items-center gap-2 text-slate-500 shrink-0">
       <span className="text-slate-400">{icon}</span>

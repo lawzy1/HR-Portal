@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HRProvider, useHR } from './context/HRContext';
+import { MoneyVisibilityProvider } from './context/MoneyVisibilityContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
@@ -121,9 +122,11 @@ export default function App() {
               path="/*"
               element={
                 <ProtectedRoute>
-                  <HRProvider>
-                    <MainContent />
-                  </HRProvider>
+                  <MoneyVisibilityProvider>
+                    <HRProvider>
+                      <MainContent />
+                    </HRProvider>
+                  </MoneyVisibilityProvider>
                 </ProtectedRoute>
               }
             />

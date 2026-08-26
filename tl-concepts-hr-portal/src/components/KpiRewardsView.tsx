@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useCompanyWorkdayOverride, useKpiJobItems, useKpiMonthly } from '../hooks/useKpi';
 import { useCompanyHolidays, useLeaveRequests } from '../hooks/useLeave';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../utils/workDays';
-import { formatVND } from '../utils/formatters';
 import {
   Award,
   Calendar,
@@ -29,6 +29,7 @@ const AssigneeAvatar: React.FC<{ path: string | null | undefined; className: str
 };
 
 export const KpiRewardsView: React.FC = () => {
+  const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
   const employeeId = profile?.employeeId ?? undefined;
 
@@ -405,21 +406,21 @@ export const KpiRewardsView: React.FC = () => {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl bg-slate-50 p-3">
               <span className="text-[11px] font-semibold text-slate-500">Commission hiệu suất</span>
-              <p className="mt-1 font-mono text-base font-black text-slate-900">{formatVND(kpiMonthly.performance_commission_amount)}</p>
+              <p className="mt-1 font-mono text-base font-black text-slate-900">{formatMoney(kpiMonthly.performance_commission_amount)}</p>
             </div>
             {kpiMonthly.qc_commission_amount > 0 && (
               <div className="rounded-xl bg-primary-50 p-3">
                 <span className="text-[11px] font-semibold text-primary-700">QC commission ({kpiMonthly.qc_views} views)</span>
-                <p className="mt-1 font-mono text-base font-black text-primary-800">{formatVND(kpiMonthly.qc_commission_amount)}</p>
+                <p className="mt-1 font-mono text-base font-black text-primary-800">{formatMoney(kpiMonthly.qc_commission_amount)}</p>
               </div>
             )}
             <div className="rounded-xl bg-amber-50 p-3">
               <span className="text-[11px] font-semibold text-amber-700">Bù đảm bảo thu nhập</span>
-              <p className="mt-1 font-mono text-base font-black text-amber-800">{formatVND(kpiMonthly.guaranteed_income_topup)}</p>
+              <p className="mt-1 font-mono text-base font-black text-amber-800">{formatMoney(kpiMonthly.guaranteed_income_topup)}</p>
             </div>
             <div className="rounded-xl bg-success-50 p-3 ring-1 ring-success-200">
               <span className="text-[11px] font-semibold text-success-700">Tổng thưởng KPI tháng</span>
-              <p className="mt-1 font-mono text-lg font-black text-success-800">{formatVND(kpiMonthly.bonus_amount || 0)}</p>
+              <p className="mt-1 font-mono text-lg font-black text-success-800">{formatMoney(kpiMonthly.bonus_amount || 0)}</p>
             </div>
           </div>
         </div>

@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
+import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployeeSensitiveInfo } from '../hooks/useEmployees';
 import { usePayrollRecord } from '../hooks/usePayroll';
-import { formatVND, formatDate } from '../utils/formatters';
-import { X, Printer, Download, Building2, CheckCircle2, FileText } from 'lucide-react';
+import { formatDate } from '../utils/formatters';
+import { X, Download, Building2, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 
 export const PayslipDetailModal: React.FC = () => {
-  const { selectedPayslipId, setSelectedPayslipId } = useHR();
+  const { selectedPayslipId, setSelectedPayslipId, showToast } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const { profile, session } = useAuth();
   const [verifiedPayslipId, setVerifiedPayslipId] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [reauthError, setReauthError] = useState('');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const needsReauth = profile?.role === 'employee' && verifiedPayslipId !== selectedPayslipId;
 
   const { data: payslip } = usePayrollRecord(needsReauth ? undefined : selectedPayslipId ?? undefined);
@@ -27,6 +30,27 @@ export const PayslipDetailModal: React.FC = () => {
     setVerifiedPayslipId(null);
     setPassword('');
     setReauthError('');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!payslipPdfUrl || !payslip) return;
+    setIsDownloadingPdf(true);
+    try {
+      const response = await fetch(payslipPdfUrl);
+      if (!response.ok) throw new Error('Không thể tải file PDF.');
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `phieu-luong-${payslip.month}-${payslip.year}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      showToast('Không thể tải PDF. Vui lòng thử lại.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const handleReauth = async (event: React.FormEvent) => {
@@ -66,10 +90,6 @@ export const PayslipDetailModal: React.FC = () => {
 
   const employee = payslip.employees;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
@@ -81,30 +101,23 @@ export const PayslipDetailModal: React.FC = () => {
             <span className="font-bold text-sm">Chi tiết Phiếu lương • Tháng {payslip.month}/{payslip.year}</span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>In phiếu lương</span>
-            </button>
             {payslipPdfUrl ? (
-              <a
-                href={payslipPdfUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-success-600 hover:bg-success-700 text-white text-xs font-bold rounded-lg transition-colors"
+              <button
+                onClick={() => void handleDownloadPdf()}
+                disabled={isDownloadingPdf}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-success-600 hover:bg-success-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:cursor-wait disabled:opacity-70"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Tải PDF chính thức</span>
-              </a>
+                <span>{isDownloadingPdf ? 'Đang tải PDF...' : 'Tải phiếu lương PDF'}</span>
+              </button>
             ) : (
               <button
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-success-600 hover:bg-success-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                disabled
+                title="PDF được tạo khi phiếu lương được phát hành"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-bold rounded-lg cursor-not-allowed"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>In / Lưu PDF</span>
+                <span>PDF chưa sẵn sàng</span>
               </button>
             )}
             <button
@@ -116,7 +129,7 @@ export const PayslipDetailModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Printable Payslip Body */}
+        {/* Payslip body */}
         <div className="p-6 md:p-8 overflow-y-auto space-y-6 text-slate-800 printable-payslip">
 
           {/* Company branding header */}
@@ -126,7 +139,6 @@ export const PayslipDetailModal: React.FC = () => {
                 <Building2 className="w-5 h-5" />
                 <span>TL CONCEPTS</span>
               </div>
-              <p className="text-xs text-slate-500">Phiếu lương nội bộ — dữ liệu từ kết quả kế toán đã được duyệt.</p>
             </div>
             <div className="text-left sm:text-right">
               <span className="inline-block px-3 py-1 bg-success-50 text-success-800 font-bold text-xs rounded-lg border border-success-200 mb-1">
@@ -194,13 +206,13 @@ export const PayslipDetailModal: React.FC = () => {
               <div className="p-4 space-y-2.5 text-xs">
                 {payslip.workday_salary > 0 ? (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">Lương theo ngày công <small className="block text-[10px] text-slate-400">Lương HĐ: {formatVND(payslip.base_salary)}</small></span>
-                    <span className="font-medium font-mono">{formatVND(payslip.workday_salary)}</span>
+                    <span className="text-slate-600">Lương theo ngày công <small className="block text-[10px] text-slate-400">Lương HĐ: {formatMoney(payslip.base_salary)}</small></span>
+                    <span className="font-semibold tabular-nums">{formatMoney(payslip.workday_salary)}</span>
                   </div>
                 ) : (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
                     <span className="text-slate-600">Lương cơ bản hợp đồng:</span>
-                    <span className="font-medium font-mono">{formatVND(payslip.base_salary)}</span>
+                    <span className="font-semibold tabular-nums">{formatMoney(payslip.base_salary)}</span>
                   </div>
                 )}
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
@@ -208,36 +220,36 @@ export const PayslipDetailModal: React.FC = () => {
                     <span className="text-slate-600 block">Ngày công thực tế / chuẩn:</span>
                     <span className="text-[10px] text-slate-400 font-medium">Theo dữ liệu kỳ lương đã import</span>
                   </div>
-                  <span className="font-bold font-mono text-slate-800 self-center">{payslip.actual_work_days} / {payslip.standard_work_days} ngày</span>
+                  <span className="font-bold tabular-nums text-slate-800 self-center">{payslip.actual_work_days} / {payslip.standard_work_days} ngày</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">Lương KPI hoàn thành:</span>
-                  <span className="font-medium font-mono text-success-700">+{formatVND(payslip.kpi_bonus)}</span>
+                  <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.kpi_bonus)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">OT / thưởng dự án:</span>
-                  <span className="font-medium font-mono text-success-700">+{formatVND(payslip.ot_pay + payslip.project_bonus_amount)}</span>
+                  <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.ot_pay + payslip.project_bonus_amount)}</span>
                 </div>
 
                 <div className="flex justify-between pb-1.5 border-b border-slate-100 pl-2 text-[11px]">
                   <span className="text-slate-500">• Phụ cấp điện thoại:</span>
-                  <span className="font-medium font-mono">+{formatVND(payslip.phone_allowance)}</span>
+                  <span className="font-semibold tabular-nums">+{formatMoney(payslip.phone_allowance)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100 pl-2 text-[11px]">
                   <span className="text-slate-500">• Phụ cấp ăn trưa:</span>
-                  <span className="font-medium font-mono">+{formatVND(payslip.lunch_allowance)}</span>
+                  <span className="font-semibold tabular-nums">+{formatMoney(payslip.lunch_allowance)}</span>
                 </div>
 
                 {payslip.holiday_bonus_amount > 0 && (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
                     <span className="text-slate-600">Thưởng lễ:</span>
-                    <span className="font-medium font-mono text-success-700">+{formatVND(payslip.holiday_bonus_amount)}</span>
+                    <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.holiday_bonus_amount)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between pt-2 text-xs font-bold text-slate-900 border-t-2 border-slate-200">
                   <span>TỔNG THU NHẬP (GROSS):</span>
-                  <span className="font-mono text-success-800">{formatVND(payslip.gross_income)}</span>
+                  <span className="tabular-nums text-success-800">{formatMoney(payslip.gross_income)}</span>
                 </div>
               </div>
             </div>
@@ -251,33 +263,33 @@ export const PayslipDetailModal: React.FC = () => {
               <div className="p-4 space-y-2.5 text-xs">
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">BHXH / BHYT / BHTN bắt buộc (theo Excel):</span>
-                  <span className="font-medium font-mono text-rose-700">-{formatVND(
+                  <span className="font-semibold tabular-nums text-rose-700">-{formatMoney(
                     payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction
                   )}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
                   <span className="text-slate-600">Thuế Thu nhập cá nhân (TNCN):</span>
-                  <span className="font-medium font-mono text-rose-700">-{formatVND(payslip.personal_income_tax)}</span>
+                  <span className="font-semibold tabular-nums text-rose-700">-{formatMoney(payslip.personal_income_tax)}</span>
                 </div>
 
                 {payslip.advance_payment > 0 && (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
                     <span className="text-slate-600">Khấu trừ tạm ứng:</span>
-                    <span className="font-medium font-mono text-rose-700">-{formatVND(payslip.advance_payment)}</span>
+                    <span className="font-semibold tabular-nums text-rose-700">-{formatMoney(payslip.advance_payment)}</span>
                   </div>
                 )}
 
                 {payslip.other_deductions > 0 && (
                   <div className="flex justify-between pb-1.5 border-b border-slate-100">
                     <span className="text-slate-600">Khấu trừ khác:</span>
-                    <span className="font-medium font-mono text-rose-700">-{formatVND(payslip.other_deductions)}</span>
+                    <span className="font-semibold tabular-nums text-rose-700">-{formatMoney(payslip.other_deductions)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between pt-2 text-xs font-bold text-slate-900 border-t-2 border-slate-200">
                   <span>TỔNG KHẤU TRỪ:</span>
-                  <span className="font-mono text-rose-700">
-                    -{formatVND(payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction + payslip.personal_income_tax + payslip.advance_payment + payslip.other_deductions)}
+                  <span className="tabular-nums text-rose-700">
+                    -{formatMoney(payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction + payslip.personal_income_tax + payslip.advance_payment + payslip.other_deductions)}
                   </span>
                 </div>
               </div>
@@ -292,33 +304,30 @@ export const PayslipDetailModal: React.FC = () => {
                 <span>SỐ TIỀN (VNĐ)</span>
               </div>
               <div className="grid grid-cols-1 gap-2 p-4 text-xs sm:grid-cols-2">
-                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn chi phí phúc lợi</span><b className="font-mono">+{formatVND(payslip.welfare_refund)}</b></div>
-                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn công tác phí</span><b className="font-mono">+{formatVND(payslip.business_trip_refund)}</b></div>
-                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn thuế TNCN</span><b className="font-mono">+{formatVND(payslip.personal_income_tax_refund)}</b></div>
-                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Truy lĩnh / điều chỉnh kỳ trước</span><b className="font-mono">{payslip.prior_month_adjustment > 0 ? '+' : ''}{formatVND(payslip.prior_month_adjustment)}</b></div>
+                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn chi phí phúc lợi</span><b className="tabular-nums">+{formatMoney(payslip.welfare_refund)}</b></div>
+                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn công tác phí</span><b className="tabular-nums">+{formatMoney(payslip.business_trip_refund)}</b></div>
+                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn thuế TNCN</span><b className="tabular-nums">+{formatMoney(payslip.personal_income_tax_refund)}</b></div>
+                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Truy lĩnh / điều chỉnh kỳ trước</span><b className="tabular-nums">{payslip.prior_month_adjustment > 0 ? '+' : ''}{formatMoney(payslip.prior_month_adjustment)}</b></div>
               </div>
             </div>
           )}
 
-          {/* NET SALARY HIGHLIGHT BOX */}
-          <div className="bg-gradient-to-r from-success-800 to-teal-900 text-white p-5 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Net pay is intentionally plain: the final figure needs hierarchy, not a competing card treatment. */}
+          <div className="flex flex-col items-start justify-between gap-4 border-y-2 border-slate-900 py-5 sm:flex-row sm:items-end">
             <div>
-              <p className="text-xs uppercase font-bold text-success-200 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET SALARY)</p>
-              <h2 className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mt-0.5">
-                {formatVND(payslip.net_salary)}
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">THỰC LÃNH (NET PAY)</p>
+              <h2 className="mt-1 text-3xl font-black tracking-tight tabular-nums text-slate-950 sm:text-2xl">
+                {formatMoney(payslip.net_salary)}
               </h2>
-              <p className="text-[11px] text-success-100 mt-1">
-                Tổng thu nhập − Tổng khấu trừ + Điều chỉnh &amp; hoàn trả
-              </p>
             </div>
 
-            <div className="text-right">
-              <div className="inline-flex items-center gap-1.5 bg-success-500/30 text-success-100 text-xs font-bold px-3 py-1.5 rounded-xl border border-success-400/40">
-                <CheckCircle2 className="w-4 h-4 text-success-300" />
+            <div className="text-left sm:text-right">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-success-800">
+                <CheckCircle2 className="w-4 h-4 text-success-600" />
                 <span>{payslip.payment_status}</span>
               </div>
               {payslip.payment_date && (
-                <p className="text-[11px] text-success-200 mt-1">Ngày chuyển: {formatDate(payslip.payment_date)}</p>
+                <p className="mt-1 text-[11px] text-slate-500">Ngày chuyển: {formatDate(payslip.payment_date)}</p>
               )}
             </div>
           </div>

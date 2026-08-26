@@ -37,23 +37,6 @@ export function useUpdateProfileRole() {
   });
 }
 
-export function useUpdateProfileAccess() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ profileId, isActive }: { profileId: string; isActive: boolean }) => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ is_active: isActive })
-        .eq('id', profileId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => refreshQueries(queryClient, [['profiles']]),
-  });
-}
-
 export function useReviewEmployeeOnboarding() {
   const queryClient = useQueryClient();
   return useMutation({

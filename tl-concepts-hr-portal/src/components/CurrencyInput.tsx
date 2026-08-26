@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from 'react';
+import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 
 type CurrencyInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> & {
   value: number | string | null | undefined;
@@ -13,10 +14,11 @@ function normalizeCurrency(value: number | string | null | undefined) {
 // Currency is entered as whole VND. The component exposes unformatted digits
 // so callers keep storing numeric values, while the person typing sees groups.
 export function CurrencyInput({ value, onValueChange, inputMode = 'numeric', ...props }: CurrencyInputProps) {
+  const { isMoneyHidden } = useMoneyVisibility();
   return (
     <input
       {...props}
-      type="text"
+      type={isMoneyHidden ? 'password' : 'text'}
       inputMode={inputMode}
       value={normalizeCurrency(value)}
       onChange={(event) => onValueChange(event.target.value.replace(/\D/g, ''))}

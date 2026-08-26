@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
+import { MoneyVisibilityToggle, useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useContracts, useSalaryHistory, useContractLegalWarnings } from '../hooks/useContracts';
 import { usePayrollRecords } from '../hooks/usePayroll';
-import { formatVND, formatDate } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
 import { ContractDocumentLink } from './ContractDocumentLink';
 import {
   FileCheck,
@@ -18,6 +19,7 @@ import {
 
 export const ContractSalaryView: React.FC = () => {
   const { setSelectedPayslipId, setActiveTab } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
   const employeeId = profile?.employeeId ?? undefined;
 
@@ -85,7 +87,7 @@ export const ContractSalaryView: React.FC = () => {
 
           <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/60">
             <span className="text-[11px] text-slate-400 font-medium block">Mức lương hiện tại</span>
-            <p className="text-lg font-black font-mono text-success-400 mt-1">{formatVND(employee.current_salary || 0)}</p>
+            <p className="mt-1 inline-flex items-center gap-1 text-lg font-black font-mono text-success-400">{formatMoney(employee.current_salary || 0)}<MoneyVisibilityToggle className="h-6 w-6" /></p>
             <p className="text-[10px] text-slate-400 mt-1">Lương Gross chính thức</p>
           </div>
 
@@ -166,7 +168,7 @@ export const ContractSalaryView: React.FC = () => {
                       <td className="py-3.5 px-3 text-slate-600">
                         {formatDate(ctr.start_date)} – {ctr.end_date ? formatDate(ctr.end_date) : 'Không thời hạn'}
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold text-slate-900">{formatVND(ctr.salary || 0)}</td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-slate-900">{formatMoney(ctr.salary || 0)}</td>
                       <td className="py-3.5 px-3">
                         <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border ${
                           ctr.status === 'Đang hiệu lực' ? 'bg-success-50 text-success-700 border-success-200' :
@@ -218,9 +220,9 @@ export const ContractSalaryView: React.FC = () => {
                     return (
                       <tr key={sal.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3.5 px-3 font-bold text-slate-900">{formatDate(sal.effective_date)}</td>
-                        <td className="py-3.5 px-3 font-mono text-slate-500">{sal.old_salary ? formatVND(sal.old_salary) : 'Ban đầu'}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-success-800">{formatVND(sal.new_salary)}</td>
-                        <td className="py-3.5 px-3 font-mono font-bold text-success-600">{diff > 0 ? `+${formatVND(diff)}` : formatVND(diff)}</td>
+                        <td className="py-3.5 px-3 font-mono text-slate-500">{sal.old_salary ? formatMoney(sal.old_salary) : 'Ban đầu'}</td>
+                        <td className="py-3.5 px-3 font-mono font-bold text-success-800">{formatMoney(sal.new_salary)}</td>
+                        <td className="py-3.5 px-3 font-mono font-bold text-success-600">{diff > 0 && '+'}{formatMoney(diff)}</td>
                         <td className="py-3.5 px-3 font-semibold text-slate-800">{sal.change_type}</td>
                         <td className="py-3.5 px-3 text-slate-600 max-w-xs">{sal.reason}</td>
                         <td className="py-3.5 px-3 text-slate-500 font-medium">{sal.approved_by}</td>
@@ -265,15 +267,15 @@ export const ContractSalaryView: React.FC = () => {
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Lương Gross:</span>
-                      <span className="font-mono text-slate-800 font-medium">{formatVND(ps.gross_income)}</span>
+                      <span className="font-mono text-slate-800 font-medium">{formatMoney(ps.gross_income)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">BHXH/BHYT/Thuế:</span>
-                      <span className="font-mono text-rose-700">-{formatVND(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}</span>
+                      <span className="font-mono text-rose-700">-{formatMoney(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}</span>
                     </div>
                     <div className="flex justify-between pt-1 border-t border-slate-200 font-bold">
                       <span className="text-slate-900">THỰC LĨNH (NET):</span>
-                      <span className="font-mono text-success-700 text-sm">{formatVND(ps.net_salary)}</span>
+                      <span className="font-mono text-success-700 text-sm">{formatMoney(ps.net_salary)}</span>
                     </div>
                   </div>
                   <button

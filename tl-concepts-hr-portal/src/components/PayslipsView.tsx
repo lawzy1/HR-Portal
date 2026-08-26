@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
+import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { usePayrollRecords } from '../hooks/usePayroll';
-import { formatVND, formatDate } from '../utils/formatters';
+import { formatDate } from '../utils/formatters';
 import {
   Receipt,
   ArrowUpRight,
@@ -12,6 +13,7 @@ import {
 
 export const PayslipsView: React.FC = () => {
   const { setSelectedPayslipId } = useHR();
+  const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
   const employeeId = profile?.employeeId ?? undefined;
 
@@ -62,19 +64,19 @@ export const PayslipsView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-success-900 to-teal-950 text-white p-5 rounded-2xl shadow-md space-y-1">
           <span className="text-[11px] uppercase font-bold text-success-300 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET {selectedYear})</span>
-          <p className="text-2xl font-black font-mono text-white">{formatVND(totalNetAnnual)}</p>
+          <p className="text-2xl font-black tabular-nums text-white">{formatMoney(totalNetAnnual)}</p>
           <p className="text-[10px] text-success-200">Đã chuyển khoản trực tiếp qua Ngân hàng</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">TỔNG THU NHẬP (GROSS {selectedYear})</span>
-          <p className="text-2xl font-black font-mono text-slate-900">{formatVND(totalGrossAnnual)}</p>
+          <p className="text-2xl font-black tabular-nums text-slate-900">{formatMoney(totalGrossAnnual)}</p>
           <p className="text-[10px] text-slate-400">Bao gồm Lương cơ bản, KPI, OT & Các khoản Phụ cấp</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-[11px] uppercase font-bold text-rose-600 tracking-wider">TỔNG THUẾ & BẢO HIỂM ĐÃ ĐÓNG</span>
-          <p className="text-2xl font-black font-mono text-rose-700">-{formatVND(totalTaxInsuranceAnnual)}</p>
+          <p className="text-2xl font-black tabular-nums text-rose-700">-{formatMoney(totalTaxInsuranceAnnual)}</p>
           <p className="text-[10px] text-slate-400">BHXH, BHYT, BHTN & Thuế TNCN</p>
         </div>
       </div>
@@ -117,18 +119,18 @@ export const PayslipsView: React.FC = () => {
                 <div className="p-5 space-y-3.5 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <span className="text-slate-500">Lương cơ bản ({ps.actual_work_days}/{ps.standard_work_days} công):</span>
-                    <strong className="font-mono text-slate-800">{formatVND(ps.base_salary)}</strong>
+                    <strong className="tabular-nums text-slate-800">{formatMoney(ps.base_salary)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <span className="text-slate-500">Lương KPI & OT tăng ca:</span>
-                    <strong className="font-mono text-success-700">+{formatVND(ps.kpi_bonus + ps.ot_pay)}</strong>
+                    <strong className="tabular-nums text-success-700">+{formatMoney(ps.kpi_bonus + ps.ot_pay)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                     <span className="text-slate-500">Tổng khấu trừ Bảo hiểm & Thuế:</span>
-                    <strong className="font-mono text-rose-700">
-                      -{formatVND(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}
+                    <strong className="tabular-nums text-rose-700">
+                      -{formatMoney(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}
                     </strong>
                   </div>
 
@@ -136,7 +138,7 @@ export const PayslipsView: React.FC = () => {
                   <div className="bg-success-50 p-3.5 rounded-xl border border-success-200 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-success-800">THỰC LĨNH (NET)</span>
-                      <p className="text-lg font-black font-mono text-success-800 mt-0.5">{formatVND(ps.net_salary)}</p>
+                      <p className="mt-0.5 text-lg font-black tabular-nums text-success-800">{formatMoney(ps.net_salary)}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-slate-500 font-medium block">Ngày chuyển lương</span>
@@ -151,7 +153,7 @@ export const PayslipsView: React.FC = () => {
                     onClick={() => setSelectedPayslipId(ps.id)}
                     className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-colors cursor-pointer shadow-xs"
                   >
-                    <span>Xem & In phiếu lương chi tiết</span>
+                    <span>Xem phiếu lương chi tiết</span>
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
                 </div>

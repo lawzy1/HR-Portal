@@ -2,7 +2,7 @@
 
 **Ngày cập nhật:** 2026-08-26  
 **Mục đích:** bàn giao đầy đủ business context, trạng thái production và các việc còn lại cho một account Codex khác tiếp tục phân tích/code.  
-**Nguồn ưu tiên:** file này → `AGENTS.md` → `docs/phase10-business-acceptance.md` → migration tương ứng. `codebase.md` hữu ích cho kiến trúc cũ nhưng **chưa được cập nhật Phase 8–10**, nên không được coi là snapshot hiện hành cho RBAC/payroll.
+**Nguồn ưu tiên:** file này → `AGENTS.md` → `docs/phase10-business-acceptance.md` → migration tương ứng. `codebase.md` là snapshot kiến trúc bổ trợ; khi có khác biệt, ưu tiên migration và các quy tắc trong tài liệu này.
 
 ---
 
@@ -124,7 +124,7 @@ draft / rejected → pending_approval → published
 
 ### Phase 8–10 không được bỏ qua
 
-`AGENTS.md` cũ ghi “2 roles admin/employee”; thông tin này không còn đúng. Phase 8 đã thêm `hr` và toàn bộ policy/workflow liên quan. `codebase.md` cũng chưa phản ánh Phase 8–10; khi sửa RLS, payroll, contract hoặc KPI phải đọc migrations 8–10 trước.
+`AGENTS.md` cũ ghi “2 roles admin/employee”; thông tin này không còn đúng. Phase 8 đã thêm `hr` và toàn bộ policy/workflow liên quan. `codebase.md` đã được cập nhật để phản ánh snapshot hiện hành, nhưng khi sửa RLS, payroll, contract hoặc KPI vẫn phải đọc migrations 8–10 trước.
 
 ---
 
@@ -199,7 +199,7 @@ taxable_income = workday_salary + kpi_bonus
 
 | Module | UI/hook chính | DB/function quan trọng |
 |---|---|---|
-| Auth/RBAC | `AuthContext.tsx`, `AdminAccountManagementView.tsx` | `profiles`, `is_admin`, `is_hr_accounting`, `is_backoffice` |
+| Auth/RBAC | `AuthContext.tsx`, `LoginPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`, `AdminProfileView.tsx`, `AdminAccountManagementView.tsx` | `profiles`, `is_admin`, `is_hr_accounting`, `is_backoffice`, Supabase Auth recovery |
 | Employees | `AdminEmployeeListView.tsx`, `EditProfileModal.tsx`, `useEmployees.ts` | `employees`, sensitive info, relatives |
 | Contracts | `AdminContractSalaryView.tsx`, `ContractEditorModal.tsx`, `useContracts.ts` | `contracts`, `salary_history`, legal warning RPC, approval guards |
 | Leave | `AdminLeaveManagementView.tsx`, `useLeave.ts`, `workDays.ts` | leave tables, accrual functions, holidays |
@@ -234,8 +234,10 @@ UAT scenarios đã viết đầy đủ tại `docs/phase10-business-acceptance.m
 6. **U07:** company leave default + employee override.
 7. **U08:** Team Leader QC optional vs employee rate 0.
 8. **U09:** Storage cannot overwrite/delete pending/published contract/payslip paths.
+9. **U11:** User/HR/Admin đổi mật khẩu của chính mình; sai mật khẩu hiện tại hoặc dữ liệu không hợp lệ bị chặn.
+10. **U12/U13:** forgot-password gửi thông báo chung; link hợp lệ đặt lại được mật khẩu, link hết hạn/đã dùng hoặc thiếu recovery session bị chặn.
 
-Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions của U04/U05/U07/U08 chỉ nên test sau deployment frontend do business thực hiện.
+Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions của U04/U05/U07/U08/U11/U12/U13 chỉ nên test sau deployment frontend do business thực hiện.
 
 ---
 
@@ -245,6 +247,7 @@ Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions c
 
 - Chạy và ghi nhận UAT 3 vai trò + payroll import/publish/PDF bằng dữ liệu test.
 - Xác nhận business xem số net preview/PDF đúng F01 trong UI sau frontend deploy.
+- Bắt buộc chặn import khi không đọc được kỳ từ tiêu đề bảng lương. Hiện parser còn fallback về tháng/năm đang chọn trên UI đối với paste/CSV hoặc workbook thiếu tiêu đề, không đúng quy tắc F07 “Portal luôn lấy kỳ từ tiêu đề”.
 - Nếu cần gửi payslip email: provision email provider secrets và test recipient; không dùng payroll thật để test.
 
 ### P1 — đã quyết định hoãn hoặc cần hardening
@@ -252,7 +255,7 @@ Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions c
 - **Supabase Security Hardening:** Advisors hiện vẫn báo các warning legacy, gồm SECURITY DEFINER functions callable (cần triage từng function, không revoke mù), leaked password protection đang disabled, RLS `auth.*` initialization-plan performance warnings, và multiple permissive policies. Đây là một workstream riêng.
 - **KPI immutability:** chưa khóa `kpi_job_items`/`kpi_adjustments` sau khi tổng KPI tháng submit/publish. Bắt buộc làm trước khi KPI trở thành nguồn tự động tính lương hoặc nhiều người cùng nhập KPI.
 - **Contract allowance/WFH:** chưa cấu trúc hóa prorate phụ cấp/WFH trong phụ lục; hiện phụ cấp là tổng số.
-- Update `codebase.md` và `AGENTS.md` để phản ánh 3 roles/Phase 8–10, tránh account mới tin nhầm snapshot cũ.
+- Cập nhật tài liệu onboarding khi có thay đổi role/workflow; snapshot hiện tại đã phản ánh 3 roles/Phase 8–10.
 
 ### P2 / quality improvements
 
@@ -278,7 +281,7 @@ Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions c
 
 ## 11. Prompt gợi ý để bàn giao cho Codex account khác
 
-> Bạn đang tiếp quản TL Concepts HR Portal. Trước khi thay đổi bất kỳ code/DB nào, hãy đọc `docs/codex-handoff-2026-08-26.md`, `AGENTS.md`, `docs/phase10-business-acceptance.md`, và migrations Phase 8–10. Không tin phần RBAC/payroll trong `codebase.md` vì nó cũ hơn Phase 8. Dự án React/Vite + Supabase, không có backend riêng; RLS/trigger là security boundary. Production đã apply migration `20260825153557` và deploy `process-payslip-outbox` v2, frontend Phase 10 chưa deploy. Hãy bắt đầu bằng review worktree/migration history, sau đó đề xuất hoặc thực hiện đúng backlog được user chọn. Không dùng dữ liệu payroll thật để UAT, không reset password hay đổi role user thật khi chưa có xác nhận.
+> Bạn đang tiếp quản TL Concepts HR Portal. Trước khi thay đổi bất kỳ code/DB nào, hãy đọc `docs/codex-handoff-2026-08-26.md`, `AGENTS.md`, `docs/phase10-business-acceptance.md`, và migrations Phase 8–10. `codebase.md` là snapshot bổ trợ; khi có khác biệt, ưu tiên migration và handoff này. Dự án React/Vite + Supabase, không có backend riêng; RLS/trigger là security boundary. Production đã apply migration `20260825153557` và deploy `process-payslip-outbox` v2, frontend Phase 10 chưa deploy. Hãy bắt đầu bằng review worktree/migration history, sau đó đề xuất hoặc thực hiện đúng backlog được user chọn. Không dùng dữ liệu payroll thật để UAT, không reset password hay đổi role user thật khi chưa có xác nhận.
 
 ---
 

@@ -145,6 +145,8 @@ Expected:
 - Dữ liệu mẫu cho ra `18.204.202` từ `18.800.000 - 799.250 + 203.452`.
 - Không cho lưu nếu trùng MSNV hoặc không tìm thấy nhân viên.
 
+**Điều kiện bắt buộc F07:** nếu không đọc được tháng/năm từ tiêu đề bảng lương thì phải dừng import và yêu cầu bổ sung tiêu đề; không dùng tháng/năm đang chọn trên giao diện làm giá trị thay thế.
+
 ### U05 — Admin duyệt và tự tạo PDF
 
 1. Đăng nhập Admin.
@@ -183,6 +185,8 @@ Expected:
 - Quỹ chưa tùy chỉnh đi theo 14 rồi 13.5.
 - Nhân viên được đặt riêng 15 vẫn giữ 15.
 - HR/User không sửa được cấu hình công ty.
+
+Lưu ý khi đối soát: `Hạn mức năm` là entitlement cả năm; `Tổng quỹ` trên bảng hiện là số phép đã tích lũy đến thời điểm xem theo chính sách accrual (có thể nhỏ hơn hạn mức). Cần xác nhận lại nhãn UI và việc có trừ `Đang chờ duyệt` khỏi `Khả dụng còn lại` trước khi chốt UAT.
 
 ### U08 — QC commission tùy chọn
 

@@ -30,6 +30,7 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 - `company_settings.kpi_rate_per_day` không còn được dùng ở đâu (cột mồ côi).
 
 **Gap đã biết, chưa fix (xem thảo luận 2026-08-25):**
+- Bảng quỹ phép đang hiển thị `total_accumulated` (phép đã tích lũy đến thời điểm hiện tại), không phải toàn bộ `annual_entitlement`; tên “Tổng quỹ” dễ gây hiểu nhầm. `remaining_days` trong Phase 10 hiện chưa trừ `pending_days`, nên cần chốt lại cách hiển thị/khóa số ngày khi có đơn chờ duyệt.
 - Export Excel bảng KPI (`AdminKpiOtView.handleDownloadExcel`) chưa có cột "Phân loại" (New Render/Re Process).
 - Chưa có bảng xếp hạng/đánh giá hiệu suất riêng cho ban lãnh đạo (hiện chỉ có card tiến độ %/nhân viên, chưa xếp loại Xuất sắc/Đạt/Chưa đạt hay ranking toàn công ty).
 - `ImportKpiModal` (import Excel vào `kpi_monthly`) vẫn cho admin gõ tay `kpi_target`, chưa tự tính theo công thức chỉ tiêu×ngày công mới.

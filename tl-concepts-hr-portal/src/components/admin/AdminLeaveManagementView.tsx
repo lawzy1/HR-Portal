@@ -23,8 +23,12 @@ import {
   useAllWorkEvents,
   useUpdateWorkEvent,
   useUpdateLeaveEntitlement,
+  useUpdateLeaveExpiry,
+  useCreateLeaveRequest,
+  useCreateWorkEvent,
 } from '../../hooks/useLeave';
 import { formatDate } from '../../utils/formatters';
+import { ResourceCalendar } from './ResourceCalendar';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
   const { data: url } = useSignedImageUrl(path);
@@ -54,6 +58,9 @@ export const AdminLeaveManagementView: React.FC = () => {
   const updateWorkEvent = useUpdateWorkEvent();
   const addLeaveAdjustment = useAddLeaveAdjustment();
   const updateLeaveEntitlement = useUpdateLeaveEntitlement();
+  const updateLeaveExpiry = useUpdateLeaveExpiry();
+  const createLeaveRequest = useCreateLeaveRequest();
+  const createWorkEvent = useCreateWorkEvent();
   const addHoliday = useAddCompanyHoliday();
 
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -68,6 +75,8 @@ export const AdminLeaveManagementView: React.FC = () => {
   const [adjustmentAmount, setAdjustmentAmount] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [entitlementDrafts, setEntitlementDrafts] = useState<Record<string, string>>({});
+  const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
+  const [quickEntry, setQuickEntry] = useState({ employeeId: '', kind: 'leave', date: '', endDate: '', reason: '', minutes: 15 });
 
   const requests = allRequests || [];
   const departments = Array.from(new Set((employees || []).map((e) => e.department).filter(Boolean)));
@@ -202,6 +211,24 @@ export const AdminLeaveManagementView: React.FC = () => {
     }
   };
 
+  const handleQuickEntry = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!profile?.id || !quickEntry.employeeId || !quickEntry.date || !quickEntry.reason.trim()) return;
+    const employee = (employees || []).find((item) => item.id === quickEntry.employeeId);
+    if (!employee) return;
+    try {
+      if (quickEntry.kind === 'leave') {
+        const endDate = quickEntry.endDate || quickEntry.date;
+        const totalDays = Math.max(1, Math.round((new Date(`${endDate}T00:00:00`).getTime() - new Date(`${quickEntry.date}T00:00:00`).getTime()) / 86_400_000) + 1);
+        await createLeaveRequest.mutateAsync({ employeeId: employee.id, leaveType: 'Nghỉ phép năm', startDate: quickEntry.date, endDate, totalDays, halfDayOption: 'Cả ngày', reason: quickEntry.reason.trim(), status: 'Đã duyệt', approverId: profile.id });
+      } else {
+        await createWorkEvent.mutateAsync({ company_id: employee.company_id, employee_id: employee.id, event_type: quickEntry.kind === 'wfh' ? 'extra_wfh' : 'late_arrival', event_date: quickEntry.date, minutes: quickEntry.kind === 'late' ? quickEntry.minutes : null, reason: quickEntry.reason.trim(), status: 'Đã duyệt', approver_id: profile.id });
+      }
+      showToast('Đã ghi nhận hoạt động cho nhân viên.');
+      setQuickEntry({ employeeId: '', kind: 'leave', date: '', endDate: '', reason: '', minutes: 15 });
+    } catch (error) { showToast(await getUserFacingError(error, 'Không thể ghi nhận hoạt động.')); }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -212,6 +239,14 @@ export const AdminLeaveManagementView: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <form onSubmit={handleQuickEntry} className="rounded-2xl border border-primary-100 bg-primary-50/45 p-5 shadow-sm">
+        <div className="mb-4"><p className="text-xs font-bold uppercase tracking-wide text-primary-600">Ghi nhận trực tiếp</p><h2 className="mt-1 font-bold text-slate-900">Tạo nghỉ phép, WFH hoặc đi trễ cho nhân viên</h2></div>
+        <div className="grid gap-3 md:grid-cols-5"><select required value={quickEntry.employeeId} onChange={(e) => setQuickEntry({ ...quickEntry, employeeId: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Chọn nhân viên</option>{(employees || []).map((employee) => <option key={employee.id} value={employee.id}>{employee.full_name} · {employee.employee_code}</option>)}</select><select value={quickEntry.kind} onChange={(e) => setQuickEntry({ ...quickEntry, kind: e.target.value, endDate: '' })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="leave">Nghỉ phép</option><option value="wfh">WFH</option><option value="late">Đi trễ</option></select><input required type="date" value={quickEntry.date} onChange={(e) => setQuickEntry({ ...quickEntry, date: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />{quickEntry.kind === 'leave' ? <input type="date" value={quickEntry.endDate} min={quickEntry.date} onChange={(e) => setQuickEntry({ ...quickEntry, endDate: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /> : <input type="number" min="1" value={quickEntry.minutes} disabled={quickEntry.kind !== 'late'} onChange={(e) => setQuickEntry({ ...quickEntry, minutes: Number(e.target.value) })} placeholder="Phút đi trễ" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm disabled:opacity-45" />}<input required value={quickEntry.reason} onChange={(e) => setQuickEntry({ ...quickEntry, reason: e.target.value })} placeholder="Lý do / ghi chú" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /></div>
+        <button disabled={!isAdmin || createLeaveRequest.isPending || createWorkEvent.isPending} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-primary-700 disabled:opacity-50"><Plus className="h-4 w-4" /> Ghi nhận đã duyệt</button>
+      </form>
+
+      <ResourceCalendar employees={(employees || []).map((employee) => ({ id: employee.id, full_name: employee.full_name, employee_code: employee.employee_code }))} leaveRequests={requests} workEvents={workEvents} />
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="border-b border-slate-100 pb-3">
@@ -442,6 +477,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                 <th className="py-3 px-4">Mã & Nhân viên</th>
                 <th className="py-3 px-4">Phòng ban</th>
                 <th className="py-3 px-4">Hạn mức năm</th>
+                <th className="py-3 px-4">Hạn dùng quỹ phép</th>
                 <th className="py-3 px-4">Tổng quỹ</th>
                 <th className="py-3 px-4">Đã sử dụng</th>
                 <th className="py-3 px-4">Đang chờ duyệt</th>
@@ -484,6 +520,12 @@ export const AdminLeaveManagementView: React.FC = () => {
                       >
                         <Save className="w-3.5 h-3.5" /> Lưu
                       </button>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-1.5">
+                      <input type="date" value={expiryDrafts[bal.id] ?? bal.expiry_date ?? ''} onChange={(e) => setExpiryDrafts((drafts) => ({ ...drafts, [bal.id]: e.target.value }))} className="rounded-lg border border-slate-300 bg-white p-1.5 text-xs" />
+                      <button type="button" onClick={() => void updateLeaveExpiry.mutateAsync({ balanceId: bal.id, expiryDate: expiryDrafts[bal.id] ?? bal.expiry_date ?? '' }).then(() => { setExpiryDrafts((drafts) => { const next = { ...drafts }; delete next[bal.id]; return next; }); showToast('Đã cập nhật hạn dùng quỹ phép.'); }).catch(async (error) => showToast(await getUserFacingError(error, 'Không thể cập nhật hạn dùng.')))} disabled={!expiryDrafts[bal.id] || updateLeaveExpiry.isPending} className="rounded-lg bg-primary-600 px-2 py-1.5 text-[11px] font-bold text-white disabled:bg-slate-100 disabled:text-slate-400"><Save className="h-3.5 w-3.5" /></button>
                     </div>
                   </td>
                   <td className="py-3 px-4 font-semibold">{bal.total_accumulated} ngày</td>

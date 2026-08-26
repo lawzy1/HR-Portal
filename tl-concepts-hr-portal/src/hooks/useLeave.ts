@@ -171,6 +171,23 @@ export function useUpdateLeaveEntitlement() {
   });
 }
 
+export function useUpdateLeaveExpiry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ balanceId, expiryDate }: { balanceId: string; expiryDate: string }) => {
+      const { data, error } = await supabase
+        .from('leave_balances')
+        .update({ expiry_date: expiryDate })
+        .eq('id', balanceId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => refreshQueries(queryClient, [['leave_balances']]),
+  });
+}
+
 export function useWorkEvents(employeeId: string | undefined) {
   return useQuery({
     queryKey: ['work_events', employeeId],
@@ -233,6 +250,8 @@ interface CreateLeaveRequestInput {
   totalDays: number;
   halfDayOption: string;
   reason: string;
+  status?: 'Chờ duyệt' | 'Đã duyệt';
+  approverId?: string;
 }
 
 export function useCreateLeaveRequest() {
@@ -257,6 +276,8 @@ export function useCreateLeaveRequest() {
           total_days: input.totalDays,
           half_day_option: input.halfDayOption,
           reason: input.reason,
+          status: input.status,
+          approver_id: input.approverId,
         })
         .select()
         .single();

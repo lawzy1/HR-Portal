@@ -83,7 +83,7 @@ Không có automated test suite. Kiểm tra tiêu chuẩn hiện tại là `type
 | Vai trò DB | Phạm vi |
 |---|---|
 | `employee` (User) | Xem dữ liệu của chính mình và chỉ thấy item `published`; chỉ được tạo yêu cầu nghỉ phép, OT, work-event của chính mình. Mọi yêu cầu phải bắt đầu `Chờ duyệt`; không tự approve/chỉnh chi trả OT. |
-| `hr` (HR/Kế toán) | Xem/sửa dữ liệu toàn công ty phục vụ HR/payroll/KPI/hợp đồng; tạo nháp và gửi duyệt các workflow đó. Được xem nhưng không tạo/sửa/duyệt yêu cầu phép, OT, work-event; không reset password, không quản lý account/role, không final approve/publish. |
+| `hr` (HR/Kế toán) | Xem/sửa dữ liệu toàn công ty phục vụ HR/payroll/KPI/hợp đồng; tạo nháp và gửi duyệt các workflow đó. Được xem nhưng không tạo/sửa/duyệt yêu cầu phép, OT, work-event; được tự đổi mật khẩu của mình nhưng không reset/đổi mật khẩu tài khoản khác, không quản lý account/role, không final approve/publish. |
 | `admin` | Toàn quyền account/role/dữ liệu; duyệt/từ chối yêu cầu phép, OT, work-event và final approval/publish. |
 
 ### Approval state áp dụng cho payroll, contracts, `kpi_monthly`
@@ -224,7 +224,7 @@ taxable_income = workday_salary + kpi_bonus
 
 ### Chưa chạy UAT end-to-end — không được tự đánh dấu pass
 
-UAT scenarios đã viết đầy đủ tại `docs/phase10-business-acceptance.md`, U01–U10. Cần tạo/sao lưu dữ liệu test và chạy:
+UAT scenarios đã viết đầy đủ tại `docs/phase10-business-acceptance.md`, U01–U13. Cần tạo/sao lưu dữ liệu test và chạy:
 
 1. **U01/U02:** employee A không đọc được employee B, draft/pending payroll vô hình với User.
 2. **U03/U10:** HR có CRUD nghiệp vụ nhưng không role/account management hoặc final approval; Admin có quyền đó.
@@ -269,7 +269,7 @@ Frontend Phase 10 source chưa lên production, vì vậy UI-specific portions c
 
 - `supabase/config.toml` dùng Postgres major 17; `site_url` là `https://hr-portal-tl.vercel.app`.
 - Public signup đang `false`, invitation-first onboarding là intended flow.
-- Auth redirect allow-list có production `/auth/activate` và local `http://127.0.0.1:3000/auth/activate`.
+- Auth redirect allow-list có `/auth/activate` và `/auth/reset-password` cho production, custom domain portal và local `http://127.0.0.1:3000`.
 - `process-payslip-outbox` verify JWT enabled và tự kiểm tra actor là active Admin.
 - Không đưa service-role key, Resend key, SMTP credentials vào frontend hoặc git.
 - New public schema table/function cần explicit `GRANT`; RLS một mình không bảo đảm Data API access.

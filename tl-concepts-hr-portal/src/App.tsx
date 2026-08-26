@@ -6,6 +6,8 @@ import { HRProvider, useHR } from './context/HRContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { AdminSidebar } from './components/admin/AdminSidebar';
@@ -100,6 +102,8 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/activate" element={<ActivateAccountPage />} />
             <Route
               path="/*"

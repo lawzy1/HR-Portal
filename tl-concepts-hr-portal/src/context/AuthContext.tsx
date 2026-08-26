@@ -19,6 +19,7 @@ interface AuthContextType {
   profile: AuthProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -125,6 +126,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error?.message ?? null };
   };
 
+  const requestPasswordReset = async (email: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const redirectTo = `${window.location.origin}/auth/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
+    return { error: error?.message ?? null };
+  };
+
   // Password changes are deliberately scoped to the currently authenticated
   // user. Re-authentication prevents a stale/unattended session from being
   // used to change the account password without knowing the current password.
@@ -158,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, changePassword, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ session, profile, loading, signIn, requestPasswordReset, changePassword, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

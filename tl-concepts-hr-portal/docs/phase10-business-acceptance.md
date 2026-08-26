@@ -89,6 +89,7 @@ Phiếu mẫu ghi Tháng 8/2026 nhưng các ô tiền lại liên kết tab Bả
 - Một file payroll test có ít nhất hai nhân viên.
 - Một hợp đồng nháp có file đính kèm.
 - Một Team Leader có `QC commission rate > 0` và một nhân viên thường có rate bằng 0.
+- Một hộp thư test có thể nhận email Supabase Auth để kiểm tra quên mật khẩu.
 
 Không dùng tài khoản hoặc payroll thật nếu chưa sao lưu dữ liệu test.
 
@@ -119,11 +120,12 @@ Expected: User không thấy phiếu ở cả trạng thái `draft` và `pending
 2. Xem và chỉnh sửa hồ sơ nhân viên.
 3. Import payroll, KPI, hợp đồng/phụ lục; xem các yêu cầu phép, OT và work-event.
 4. Gửi payroll/KPI/hợp đồng cho Admin duyệt.
-5. Thử đổi role, khóa tài khoản, reset mật khẩu hoặc bấm final approval.
+5. Mở `Hồ sơ tài khoản` và đổi mật khẩu của chính tài khoản HR; sau đó thử đổi role, khóa tài khoản hoặc reset mật khẩu cho User.
 
 Expected:
 
 - Bước 2–4 thành công; HR chỉ xem yêu cầu phép, OT và work-event, không tạo/sửa/duyệt các yêu cầu này.
+- HR được tự đổi mật khẩu của chính mình; không được reset/đổi mật khẩu cho tài khoản khác.
 - Không có màn hình quản lý tài khoản/phân quyền.
 - Không thể final approve bằng UI hoặc gọi trực tiếp RPC.
 - Sau khi gửi duyệt, HR không sửa/ghi đè kỳ payroll hoặc file hợp đồng đang chờ duyệt.
@@ -212,6 +214,51 @@ Expected:
 
 - Quyền mới có hiệu lực sau phiên đăng nhập/token được làm mới.
 - HR không xem hoặc gọi được chức năng đổi role/khóa tài khoản.
+
+### U11 — Đổi mật khẩu khi đã đăng nhập
+
+1. Lặp lại với một User, một HR/Kế toán và Admin.
+2. Mở `Hồ sơ cá nhân` (User) hoặc `Hồ sơ tài khoản` (HR/Admin).
+3. Nhập sai mật khẩu hiện tại và thử lưu.
+4. Nhập đúng mật khẩu hiện tại, mật khẩu mới tối thiểu 8 ký tự và xác nhận khớp.
+5. Đăng xuất rồi đăng nhập lại bằng mật khẩu mới; thử lại mật khẩu cũ.
+
+Expected:
+
+- Sai mật khẩu hiện tại, mật khẩu mới dưới 8 ký tự, xác nhận không khớp hoặc mật khẩu mới trùng mật khẩu cũ đều bị chặn; mật khẩu cũ vẫn giữ nguyên.
+- Trường hợp hợp lệ báo thành công và vẫn ở đúng vai trò trước khi đăng xuất.
+- Sau khi đăng xuất, mật khẩu mới đăng nhập được; mật khẩu cũ không đăng nhập được.
+- Không có trường nhập `user_id`; thao tác chỉ cập nhật tài khoản đang đăng nhập.
+
+### U12 — Quên mật khẩu từ màn hình Login
+
+1. Đăng xuất hoàn toàn, mở `/login` và bấm `Quên mật khẩu?`.
+2. Nhập email của một tài khoản test và bấm `Gửi liên kết đặt lại`.
+3. Mở email Supabase, bấm liên kết trong email.
+4. Kiểm tra trang `/auth/reset-password`, nhập mật khẩu mới và xác nhận.
+5. Bấm về đăng nhập, đăng nhập bằng mật khẩu mới.
+
+Expected:
+
+- Màn hình gửi email không tiết lộ email có tồn tại trong hệ thống hay không.
+- Link mở đúng trang đặt lại mật khẩu trên cùng domain đang dùng; không bị 404.
+- Mật khẩu mới dưới 8 ký tự hoặc xác nhận không khớp bị chặn.
+- Cập nhật thành công, recovery session bị đóng và người dùng phải đăng nhập lại bằng mật khẩu mới.
+- Mật khẩu cũ không còn đăng nhập được.
+
+### U13 — Email reset lỗi, link hết hạn hoặc đã sử dụng
+
+1. Tại `/auth/forgot-password`, nhập email không tồn tại.
+2. Nhập email sai định dạng hoặc để trống.
+3. Dùng lại link reset sau khi đã đổi mật khẩu thành công, hoặc mở link đã hết hạn.
+4. Thử mở trực tiếp `/auth/reset-password` khi không có recovery session.
+
+Expected:
+
+- Email sai định dạng/để trống bị chặn tại form.
+- Email không tồn tại vẫn nhận thông báo chung, không làm lộ thông tin tài khoản.
+- Link đã dùng/hết hạn hiển thị hướng dẫn yêu cầu link mới và không đổi được mật khẩu.
+- Trang reset không có session hợp lệ không cho cập nhật mật khẩu.
 
 ## 4. Technical debt đã hoãn
 

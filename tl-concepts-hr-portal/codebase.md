@@ -8,6 +8,7 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 
 **Đã hoàn thiện & apply vào DB thật, verify qua UI/RLS:**
 - Auth 3 role (`admin`/`hr`/`employee`), multi-tenant RLS qua `company_id`. HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role hoặc final approve; Admin là role duy nhất làm các thao tác này.
+- Auth self-service: User/HR/Admin đều có thể xem hồ sơ tài khoản và đổi mật khẩu của chính mình; màn Login có luồng Quên mật khẩu gửi email reset qua Supabase Auth.
 - Hồ sơ nhân viên đầy đủ (thông tin chung, CCCD/MST/BHXH, ngân hàng, người thân, upload ảnh) + **chỉ tiêu KPI theo level/ngày riêng từng người** (mới).
 - Hợp đồng lao động + lịch sử tăng lương + **phụ lục hợp đồng** (mới) + cảnh báo pháp lý Điều 20 BLLĐ 2019.
 - Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ; range ngày lễ được tách thành từng ngày để dùng trong công thức ngày công.
@@ -42,6 +43,14 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 ## Lịch sử thay đổi
 
+### 2026-08-26 — Quên mật khẩu và hồ sơ tài khoản backoffice
+
+- Thêm `ForgotPasswordPage` và `ResetPasswordPage`: gửi email reset với redirect URL theo origin hiện tại, cập nhật mật khẩu qua Supabase Auth rồi đóng recovery session trước khi đăng nhập lại.
+- Thêm `requestPasswordReset` vào `AuthContext`; luồng đổi mật khẩu khi đã đăng nhập vẫn yêu cầu xác thực lại mật khẩu hiện tại và chỉ tác động lên session hiện tại.
+- Admin/HR có menu `Hồ sơ tài khoản`; User dùng khối bảo mật trên `Hồ sơ cá nhân`. Bổ sung redirect URLs cho local, Vercel và `portal.tlconceptsltd.com` trong `supabase/config.toml`.
+
+**Lưu ý triển khai:** sau khi deploy frontend, phải thêm các URL `/auth/reset-password` tương ứng vào Supabase Dashboard → Authentication → URL Configuration nếu project production chưa nạp `supabase/config.toml`.
+
 ### 2026-08-26 — Kỳ đánh giá KPI theo ngày hiện tại và mở rộng lịch năm
 
 - `AdminKpiOtView` mặc định chọn tháng/năm hiện tại theo đồng hồ hệ thống thay vì giá trị hardcode.
@@ -63,7 +72,7 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 - `create-employee` kiểm tra caller có profile `admin` đang active ngay sau khi xác thực JWT và **trước** `inviteUserByEmail`.
 - User hoặc HR/Kế toán gọi trực tiếp endpoint sẽ nhận `403`; không tạo Auth user và không gửi email. Đây là backend boundary bắt buộc, không dựa vào việc UI có ẩn nút mời nhân viên.
-- Business RBAC đã được đồng bộ trong `AGENTS.md`: User chỉ xem dữ liệu của mình; HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role, reset password hay final approval; Admin có các quyền đó.
+- Business RBAC đã được đồng bộ trong `AGENTS.md`: User chỉ xem dữ liệu của mình; HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role, không reset/đổi mật khẩu tài khoản khác, và không final approval; mọi role đều có thể tự đổi mật khẩu của chính mình.
 
 ### 2026-08-25 — Xóa vĩnh viễn nhân viên đã nghỉ việc
 

@@ -292,14 +292,14 @@ export const AdminLeaveManagementView: React.FC = () => {
                 {isAdmin ? <div className="flex items-center space-x-2 shrink-0">
                   <button
                     onClick={() => setPendingAction({ requestId: req.id, employeeId: req.employee_id, action: 'Đã duyệt', employeeName: req.employees?.full_name || '' })}
-                    className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold shadow-md shadow-success-600/20 flex items-center space-x-1 transition-all cursor-pointer"
+                    className="inline-flex h-9 w-28 items-center justify-center gap-1 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold shadow-md shadow-success-600/20 transition-all cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Duyệt đơn</span>
                   </button>
                   <button
                     onClick={() => setPendingAction({ requestId: req.id, employeeId: req.employee_id, action: 'Từ chối', employeeName: req.employees?.full_name || '' })}
-                    className="px-3.5 py-2 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="inline-flex h-9 w-28 items-center justify-center gap-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
                     <XCircle className="w-4 h-4" />
                     <span>Từ chối</span>

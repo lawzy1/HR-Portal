@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { ArrowRight, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const loginSchema = z.object({
@@ -68,6 +68,11 @@ export const LoginPage: React.FC = () => {
                     <PasswordToggle show={showPassword} toggle={() => setShowPassword((value) => !value)} />
                   </span>
                 </Field>
+                <div className="flex justify-end -mt-1">
+                  <Link to="/auth/forgot-password" className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 hover:underline">
+                    Quên mật khẩu?
+                  </Link>
+                </div>
                 <SubmitButton loading={loginForm.formState.isSubmitting}>Đăng nhập</SubmitButton>
             </form>
 

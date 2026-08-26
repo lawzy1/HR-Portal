@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
@@ -62,27 +62,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30);
+  const profileRequestId = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!isMounted) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        const nextProfile = await fetchProfile(data.session.user.id);
-        setProfile(nextProfile);
-        if (nextProfile) setSessionTimeoutMinutes(await fetchSessionTimeout(nextProfile.companyId));
-      }
-      setLoading(false);
-    });
+    const syncAuthState = async (nextSession: Session | null) => {
+      const requestId = ++profileRequestId.current;
+      setLoading(true);
+      setSession(nextSession);
+      setProfile(null);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      if (!isMounted) return;
-      setSession(newSession);
-      const nextProfile = newSession?.user ? await fetchProfile(newSession.user.id) : null;
+      if (!nextSession?.user) {
+        if (isMounted && requestId === profileRequestId.current) {
+          setSessionTimeoutMinutes(30);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const nextProfile = await fetchProfile(nextSession.user.id);
+      const nextSessionTimeoutMinutes = nextProfile
+        ? await fetchSessionTimeout(nextProfile.companyId)
+        : 30;
+
+      if (!isMounted || requestId !== profileRequestId.current) return;
       setProfile(nextProfile);
-      if (nextProfile) setSessionTimeoutMinutes(await fetchSessionTimeout(nextProfile.companyId));
+      setSessionTimeoutMinutes(nextSessionTimeoutMinutes);
+      setLoading(false);
+    };
+
+    void supabase.auth.getSession().then(({ data }) => syncAuthState(data.session));
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      void syncAuthState(newSession);
     });
 
     return () => {

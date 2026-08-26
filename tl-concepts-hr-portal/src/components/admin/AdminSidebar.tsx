@@ -9,6 +9,7 @@ import {
   BellRing,
   FileBarChart,
   ShieldCheck,
+  UserCircle,
   ChevronRight
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
@@ -30,6 +31,11 @@ export const AdminSidebar: React.FC = () => {
       id: 'admin-dashboard',
       label: 'Tổng quan HR',
       icon: <LayoutDashboard className="w-5 h-5" />,
+    },
+    {
+      id: 'admin-profile',
+      label: 'Hồ sơ tài khoản',
+      icon: <UserCircle className="w-5 h-5" />,
     },
     {
       id: 'admin-employees',

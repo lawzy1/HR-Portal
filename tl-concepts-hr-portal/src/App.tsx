@@ -21,6 +21,7 @@ import { KpiRewardsView } from './components/KpiRewardsView';
 
 // Admin Views
 import { AdminDashboardView } from './components/admin/AdminDashboardView';
+import { AdminProfileView } from './components/admin/AdminProfileView';
 import { AdminEmployeeListView } from './components/admin/AdminEmployeeListView';
 import { AdminContractSalaryView } from './components/admin/AdminContractSalaryView';
 import { AdminLeaveManagementView } from './components/admin/AdminLeaveManagementView';
@@ -57,6 +58,7 @@ function MainContent() {
         {isBackoffice ? (
           <>
             {adminTab === 'admin-dashboard' && <AdminDashboardView />}
+            {adminTab === 'admin-profile' && <AdminProfileView />}
             {adminTab === 'admin-employees' && <AdminEmployeeListView />}
             {adminTab === 'admin-contracts' && <AdminContractSalaryView />}
             {adminTab === 'admin-leaves' && <AdminLeaveManagementView />}

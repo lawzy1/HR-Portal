@@ -10,8 +10,8 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 - Auth 3 role (`admin`/`hr`/`employee`), multi-tenant RLS qua `company_id`. HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role hoặc final approve; Admin là role duy nhất làm các thao tác này.
 - Hồ sơ nhân viên đầy đủ (thông tin chung, CCCD/MST/BHXH, ngân hàng, người thân, upload ảnh) + **chỉ tiêu KPI theo level/ngày riêng từng người** (mới).
 - Hợp đồng lao động + lịch sử tăng lương + **phụ lục hợp đồng** (mới) + cảnh báo pháp lý Điều 20 BLLĐ 2019.
-- Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ.
-- KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công chuẩn (đã trừ lễ/Tết)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT.
+- Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ; range ngày lễ được tách thành từng ngày để dùng trong công thức ngày công.
+- KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công cá nhân (đã trừ lễ/Tết và phép đã duyệt)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT.
 - Payroll: import/paste phiếu lương, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
 - User chỉ tự tạo request nghỉ phép, OT, WFH thêm/đi trễ của chính mình; tất cả bắt đầu `Chờ duyệt` và chỉ Admin được duyệt/từ chối. HR/Kế toán chỉ xem các request này.
 
@@ -41,6 +41,17 @@ Cập nhật lần cuối: **2026-08-26**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-08-26 — Kỳ đánh giá KPI theo ngày hiện tại và mở rộng lịch năm
+
+- `AdminKpiOtView` mặc định chọn tháng/năm hiện tại theo đồng hồ hệ thống thay vì giá trị hardcode.
+- Bộ chọn năm KPI có năm trước để xem lịch sử, năm hiện tại và 10 năm tiếp theo; `KpiRewardsView` dùng cùng phạm vi để User xem dữ liệu tương lai.
+
+### 2026-08-26 — Liên kết phép đã duyệt với ngày công KPI
+
+- `workDays.ts` có hàm tính số ngày phép theo đúng lịch 5,5 ngày/tuần, loại trừ Chủ Nhật/ngày lễ và hỗ trợ request kéo dài qua tháng.
+- `AdminKpiOtView` trừ phép đã duyệt theo từng nhân viên khi hiển thị ngày công và tạo `kpi_monthly.kpi_target`; `KpiRewardsView` hiển thị cùng kết quả cho User.
+- `NewLeaveModal` dùng chung công thức để số ngày ghi vào đơn phép khớp với ngày công KPI/quỹ phép. Đơn `Chờ duyệt`/`Từ chối` không ảnh hưởng KPI.
 
 ### 2026-08-26 — User gửi request, Admin duyệt phép/OT/work-event
 

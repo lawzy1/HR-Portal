@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useKpiJobItems, useKpiMonthly } from '../hooks/useKpi';
-import { useCompanyHolidays } from '../hooks/useLeave';
+import { useCompanyHolidays, useLeaveRequests } from '../hooks/useLeave';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
-import { getMonthWorkDays } from '../utils/workDays';
+import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../utils/workDays';
 import { formatVND } from '../utils/formatters';
 import {
   Award,
@@ -35,11 +35,16 @@ export const KpiRewardsView: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 12 }, (_, index) => currentYear - 1 + index);
+  }, []);
 
   const { data: employee } = useEmployee(employeeId);
   const { data: jobs } = useKpiJobItems(employeeId, selectedMonth, selectedYear);
   const { data: kpiMonthly } = useKpiMonthly(employeeId, selectedMonth, selectedYear);
   const { data: holidays } = useCompanyHolidays();
+  const { data: leaveRequests } = useLeaveRequests(employeeId);
 
   const kpiTargetPerDay = employee?.kpi_target_per_day ?? 0;
 
@@ -48,9 +53,19 @@ export const KpiRewardsView: React.FC = () => {
     [holidays, selectedMonth, selectedYear]
   );
 
-  const workDaysInfo = useMemo(() => {
+  const baseWorkDaysInfo = useMemo(() => {
     return getMonthWorkDays(selectedMonth, selectedYear, holidayDatesInMonth);
   }, [selectedMonth, selectedYear, holidayDatesInMonth]);
+
+  const approvedLeaveDays = useMemo(
+    () => getApprovedLeaveDaysInMonth(leaveRequests || [], selectedMonth, selectedYear, holidayDatesInMonth),
+    [holidayDatesInMonth, leaveRequests, selectedMonth, selectedYear],
+  );
+
+  const workDaysInfo = useMemo(() => ({
+    ...baseWorkDaysInfo,
+    standardWorkDays: Number(Math.max(0, baseWorkDaysInfo.standardWorkDays - approvedLeaveDays).toFixed(1)),
+  }), [approvedLeaveDays, baseWorkDaysInfo]);
 
   const dynamicKpiTarget = Number((kpiTargetPerDay * workDaysInfo.standardWorkDays).toFixed(1));
 
@@ -135,7 +150,7 @@ export const KpiRewardsView: React.FC = () => {
             onChange={(e) => setSelectedYear(Number(e.target.value))}
             className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-success-500 cursor-pointer"
           >
-            {[selectedYear - 1, selectedYear, selectedYear + 1].map((y) => (
+            {yearOptions.map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
@@ -177,6 +192,10 @@ export const KpiRewardsView: React.FC = () => {
           <div className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
             <span className="text-[11px] text-slate-400 block">Nghỉ Lễ/Tết</span>
             <p className="text-base font-bold text-rose-300 font-mono mt-0.5">-{workDaysInfo.holidaysDeducted} <span className="text-xs font-normal text-slate-500">công</span></p>
+          </div>
+          <div className="bg-amber-950/70 p-3 rounded-xl border border-amber-700/50">
+            <span className="text-[11px] text-amber-300 block">Phép đã duyệt</span>
+            <p className="text-base font-bold text-amber-300 font-mono mt-0.5">-{approvedLeaveDays} <span className="text-xs font-normal text-amber-400">công</span></p>
           </div>
           <div className="bg-success-950/80 p-3 rounded-xl border border-success-600/40">
             <span className="text-[11px] text-success-300 font-bold block">Tổng Ngày Công Chuẩn</span>
@@ -413,7 +432,7 @@ export const KpiRewardsView: React.FC = () => {
           <div>
             <h4 className="text-xs font-bold text-slate-900">Tình trạng hoàn thành chỉ tiêu tháng</h4>
             <p className="text-[11px] text-slate-500">
-              Chỉ tiêu: <b>{dynamicKpiTarget} view</b> ({workDaysInfo.standardWorkDays} ngày công × {kpiTargetPerDay} view/công) | Đã đạt <b>{totalConvertedKpi} điểm</b> ({completionPercentage}%)
+              Chỉ tiêu: <b>{dynamicKpiTarget} view</b> ({workDaysInfo.standardWorkDays} ngày công sau khi trừ {approvedLeaveDays} phép đã duyệt × {kpiTargetPerDay} view/công) | Đã đạt <b>{totalConvertedKpi} điểm</b> ({completionPercentage}%)
             </p>
           </div>
         </div>

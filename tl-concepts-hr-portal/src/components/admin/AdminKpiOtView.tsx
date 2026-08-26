@@ -32,8 +32,8 @@ import {
 } from '../../hooks/useKpi';
 import { useAllOtRecords, useCreateOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
-import { useCompanyHolidays } from '../../hooks/useLeave';
-import { getMonthWorkDays } from '../../utils/workDays';
+import { useAllLeaveRequests, useCompanyHolidays } from '../../hooks/useLeave';
+import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../../utils/workDays';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 
 const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
@@ -80,10 +80,15 @@ export const AdminKpiOtView: React.FC = () => {
   const { data: employees } = useEmployees();
   const { data: companySettings } = useCompanySettings();
   const { data: holidays } = useCompanyHolidays();
+  const { data: allLeaveRequests } = useAllLeaveRequests();
   const employeeList = useMemo(() => employees || [], [employees]);
 
-  const [selectedMonth, setSelectedMonth] = useState<number>(7);
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 12 }, (_, index) => currentYear - 1 + index);
+  }, []);
 
   const holidayDatesInMonth = useMemo(
     () => (holidays || []).filter((h) => h.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).map((h) => h.date),
@@ -96,10 +101,27 @@ export const AdminKpiOtView: React.FC = () => {
     return getMonthWorkDays(selectedMonth, selectedYear, holidayDatesInMonth);
   }, [selectedMonth, selectedYear, holidayDatesInMonth]);
 
+  const approvedLeaveDaysByEmployee = useMemo(() => {
+    const daysByEmployee = new Map<string, number>();
+    (allLeaveRequests || [])
+      .filter((request) => request.status === 'Đã duyệt')
+      .forEach((request) => {
+        const leaveDays = getApprovedLeaveDaysInMonth([request], selectedMonth, selectedYear, holidayDatesInMonth);
+        if (leaveDays > 0) {
+          daysByEmployee.set(request.employee_id, (daysByEmployee.get(request.employee_id) || 0) + leaveDays);
+        }
+      });
+    return daysByEmployee;
+  }, [allLeaveRequests, holidayDatesInMonth, selectedMonth, selectedYear]);
+
+  const getEmployeeWorkDays = (employeeId: string) => Number(
+    Math.max(0, monthWorkInfo.standardWorkDays - (approvedLeaveDaysByEmployee.get(employeeId) || 0)).toFixed(1),
+  );
+
   // Mỗi nhân viên có chỉ tiêu KPI/ngày riêng (Hồ sơ nhân viên) — quy đổi ra
   // KPI chuẩn tháng = chỉ tiêu/ngày × ngày công chuẩn của tháng đó.
   const getEmployeeKpiTarget = (emp: DbEmployeeRow) =>
-    Number(((emp.kpi_target_per_day || 0) * monthWorkInfo.standardWorkDays).toFixed(1));
+    Number(((emp.kpi_target_per_day || 0) * getEmployeeWorkDays(emp.id)).toFixed(1));
 
   const { data: currentMonthJobsData } = useAllKpiJobItems(selectedMonth, selectedYear);
   const currentMonthJobs = useMemo(() => currentMonthJobsData || [], [currentMonthJobsData]);
@@ -432,7 +454,7 @@ export const AdminKpiOtView: React.FC = () => {
         // No real "benefit" data source in this phase — left at 0 for admin to fill in
         // manually, rather than fabricating a plausible-looking number.
         benefit_amount: 0,
-        notes: `Tính từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${monthWorkInfo.standardWorkDays} công = ${target} view; commission ${commissionRate.toLocaleString('vi-VN')} VNĐ/view; bù đảm bảo thu nhập ${guaranteedIncomeTopup.toLocaleString('vi-VN')} VNĐ. QC commission được HR nhập khi có số liệu QC thực tế.`,
+        notes: `Tính từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${getEmployeeWorkDays(emp.id)} công (đã trừ ${approvedLeaveDaysByEmployee.get(emp.id) || 0} ngày phép đã duyệt) = ${target} view; commission ${commissionRate.toLocaleString('vi-VN')} VNĐ/view; bù đảm bảo thu nhập ${guaranteedIncomeTopup.toLocaleString('vi-VN')} VNĐ. QC commission được HR nhập khi có số liệu QC thực tế.`,
       });
     }));
 
@@ -633,8 +655,9 @@ export const AdminKpiOtView: React.FC = () => {
               onChange={e => setSelectedYear(Number(e.target.value))}
               className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
             >
-              <option value={2026}>Năm 2026</option>
-              <option value={2025}>Năm 2025</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>Năm {year}</option>
+              ))}
             </select>
           </div>
 
@@ -659,7 +682,7 @@ export const AdminKpiOtView: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-0.5">
-                Chu kỳ từ ngày <strong>01/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> đến <strong>{monthWorkInfo.lastDayOfMonth}/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> ({monthWorkInfo.totalCalendarDays} ngày dương lịch) — chỉ tiêu KPI theo từng nhân viên xem ở bảng bên dưới.
+                Chu kỳ từ ngày <strong>01/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> đến <strong>{monthWorkInfo.lastDayOfMonth}/{selectedMonth < 10 ? '0' + selectedMonth : selectedMonth}</strong> ({monthWorkInfo.totalCalendarDays} ngày dương lịch) — ngày phép đã duyệt được trừ riêng theo từng nhân viên ở bảng bên dưới.
               </p>
             </div>
           </div>
@@ -703,7 +726,7 @@ export const AdminKpiOtView: React.FC = () => {
             <p className="text-lg font-black text-success-300 font-mono mt-0.5">
               {monthWorkInfo.standardWorkDays} <span className="text-xs font-semibold text-success-400">công</span>
             </p>
-            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth} (đã trừ lễ/Tết)</span>
+            <span className="text-[10px] text-success-400 font-medium">Quy chuẩn tháng {selectedMonth} (đã trừ lễ/Tết, chưa trừ phép cá nhân)</span>
           </div>
         </div>
       </div>
@@ -720,7 +743,7 @@ export const AdminKpiOtView: React.FC = () => {
                 KPI tiêu chuẩn tháng {selectedMonth < 10 ? '0' + selectedMonth : selectedMonth} cho từng nhân viên
               </h2>
               <p className="text-xs text-slate-500">
-                Chỉ tiêu KPI tháng = (Chỉ tiêu x view/ngày) × ({monthWorkInfo.standardWorkDays} ngày công tháng {selectedMonth}). Thay đổi chỉ tiêu & level vị trí được quản lý tập trung trong Hồ sơ nhân viên / Hợp đồng.
+                Chỉ tiêu KPI tháng = Chỉ tiêu x view/ngày × ngày công cá nhân (quy chuẩn tháng trừ ngày phép đã duyệt). Thay đổi chỉ tiêu & level vị trí được quản lý tập trung trong Hồ sơ nhân viên / Hợp đồng.
               </p>
             </div>
           </div>
@@ -785,10 +808,15 @@ export const AdminKpiOtView: React.FC = () => {
                   <td className="py-3 px-3 text-center font-bold text-slate-800 border-r border-slate-200">
                     {emp.kpi_target_per_day != null ? `${emp.kpi_target_per_day} view/ngày` : '—'}
                   </td>
-                  <td className="py-3 px-3 text-center text-slate-600 border-r border-slate-200">{monthWorkInfo.standardWorkDays} công</td>
+                  <td className="py-3 px-3 text-center text-slate-600 border-r border-slate-200">
+                    <span>{getEmployeeWorkDays(emp.id)} công</span>
+                    {(approvedLeaveDaysByEmployee.get(emp.id) || 0) > 0 && (
+                      <span className="block text-[10px] text-amber-600">− {approvedLeaveDaysByEmployee.get(emp.id)} phép</span>
+                    )}
+                  </td>
                   <td className="py-3 px-3 text-center">
                     <span className="text-base font-black text-success-700 font-mono">{getEmployeeKpiTarget(emp)}</span>
-                    <span className="text-[10px] text-slate-400 block">{emp.kpi_target_per_day || 0} view/ngày × {monthWorkInfo.standardWorkDays} công</span>
+                    <span className="text-[10px] text-slate-400 block">{emp.kpi_target_per_day || 0} view/ngày × {getEmployeeWorkDays(emp.id)} công</span>
                   </td>
                 </tr>
               ))}
@@ -1203,7 +1231,8 @@ export const AdminKpiOtView: React.FC = () => {
                     />
                   </div>
                   <span className="text-[10px] text-slate-400">
-                    Chỉ tiêu: {emp.kpi_target_per_day || 0} × {monthWorkInfo.standardWorkDays} công
+                    Chỉ tiêu: {emp.kpi_target_per_day || 0} × {getEmployeeWorkDays(emp.id)} công
+                    {(approvedLeaveDaysByEmployee.get(emp.id) || 0) > 0 && ` (đã trừ ${approvedLeaveDaysByEmployee.get(emp.id)} phép)`}
                   </span>
                 </div>
 

@@ -27,6 +27,7 @@ export type TabType = 'dashboard' | 'profile' | 'contracts' | 'payslips' | 'leav
 
 export type AdminTabType = 
   | 'admin-dashboard' 
+  | 'admin-profile'
   | 'admin-employees' 
   | 'admin-contracts' 
   | 'admin-leaves' 

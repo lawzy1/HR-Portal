@@ -5,6 +5,7 @@ import { useCreateContract, useUpdateContract } from '../../hooks/useContracts';
 import type { DbEmployee } from '../../hooks/useEmployees';
 import { calculateFileSha256, useFileUpload } from '../../hooks/useFileUpload';
 import { useHR } from '../../context/HRContext';
+import { CurrencyInput } from '../CurrencyInput';
 
 const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn', 'Phụ lục hợp đồng'];
 const STATUSES = ['Đang hiệu lực', 'Sắp hết hạn', 'Hết hạn', 'Đã gia hạn'];
@@ -180,14 +181,15 @@ export const ContractEditorModal: React.FC<{
         </div>
 
         <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="text-xs font-semibold text-slate-700">Mã hợp đồng
+          <p className="sm:col-span-2 -mb-1 text-[11px] text-slate-500"><span className="text-rose-600">*</span> Trường bắt buộc</p>
+          <label className="text-xs font-semibold text-slate-700">Mã hợp đồng <span className="text-rose-600">*</span>
             <input required value={form.contract_code} onChange={e => set('contract_code', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
-          <label className="text-xs font-semibold text-slate-700">Loại HĐ
-            <select value={form.type} onChange={e => set('type', e.target.value)} className={`${inputClass} mt-1`}>{TYPES.map(value => <option key={value}>{value}</option>)}</select>
+          <label className="text-xs font-semibold text-slate-700">Loại HĐ <span className="text-rose-600">*</span>
+            <select required value={form.type} onChange={e => set('type', e.target.value)} className={`${inputClass} mt-1`}>{TYPES.map(value => <option key={value}>{value}</option>)}</select>
           </label>
           {form.type === 'Phụ lục hợp đồng' && (
-            <label className="text-xs font-semibold text-slate-700">Phụ lục của hợp đồng gốc
+            <label className="text-xs font-semibold text-slate-700">Phụ lục của hợp đồng gốc <span className="text-rose-600">*</span>
               <select required value={form.parent_contract_id} onChange={e => set('parent_contract_id', e.target.value)} className={`${inputClass} mt-1`}>
                 <option value="">-- Chọn hợp đồng gốc --</option>
                 {baseContracts.map(c => <option key={c.id} value={c.id}>{c.contract_code} ({c.type})</option>)}
@@ -196,7 +198,7 @@ export const ContractEditorModal: React.FC<{
           )}
           {form.type === 'Phụ lục hợp đồng' && (
             <fieldset className="sm:col-span-2 rounded-xl border border-primary-200 bg-primary-50/50 p-3">
-              <legend className="px-1 text-xs font-bold text-primary-800">Nội dung phụ lục điều chỉnh</legend>
+              <legend className="px-1 text-xs font-bold text-primary-800">Nội dung phụ lục điều chỉnh <span className="text-rose-600">*</span></legend>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {ADJUSTMENT_CATEGORIES.map(([value, label]) => (
                   <label key={value} className="flex items-center gap-2 text-xs font-medium text-slate-700">
@@ -219,7 +221,7 @@ export const ContractEditorModal: React.FC<{
           <label className="text-xs font-semibold text-slate-700">Ngày ký
             <input type="date" value={form.signed_date} onChange={e => set('signed_date', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
-          <label className="text-xs font-semibold text-slate-700">Thời hạn hợp đồng — bắt đầu
+          <label className="text-xs font-semibold text-slate-700">Thời hạn hợp đồng — bắt đầu <span className="text-rose-600">*</span>
             <input required type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Thời hạn hợp đồng — kết thúc
@@ -232,28 +234,28 @@ export const ContractEditorModal: React.FC<{
             <input value={form.level_title} onChange={e => set('level_title', e.target.value)} className={`${inputClass} mt-1`} placeholder="L3 3D Artist" />
           </label>
           <label className="text-xs font-semibold text-slate-700">Mức lương
-            <input type="number" min="0" value={form.salary} onChange={e => set('salary', e.target.value)} className={`${inputClass} mt-1`} />
+            <CurrencyInput value={form.salary} onValueChange={value => set('salary', value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">KPI/tháng
             <input type="number" min="0" step="0.1" value={form.kpi_target_month} onChange={e => set('kpi_target_month', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Phụ cấp
-            <input type="number" min="0" value={form.allowance_amount} onChange={e => set('allowance_amount', e.target.value)} placeholder="0" className={`${inputClass} mt-1`} />
+            <CurrencyInput value={form.allowance_amount} onValueChange={value => set('allowance_amount', value)} placeholder="0" className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Phụ cấp điện thoại
-            <input type="number" min="0" value={form.phone_allowance} onChange={e => set('phone_allowance', e.target.value)} className={`${inputClass} mt-1`} />
+            <CurrencyInput value={form.phone_allowance} onValueChange={value => set('phone_allowance', value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Phụ cấp ăn trưa
-            <input type="number" min="0" value={form.lunch_allowance} onChange={e => set('lunch_allowance', e.target.value)} className={`${inputClass} mt-1`} />
+            <CurrencyInput value={form.lunch_allowance} onValueChange={value => set('lunch_allowance', value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Commission / KPI view
-            <input type="number" min="0" value={form.commission_rate_per_view} onChange={e => set('commission_rate_per_view', e.target.value)} className={`${inputClass} mt-1`} placeholder="VNĐ / view" />
+            <CurrencyInput value={form.commission_rate_per_view} onValueChange={value => set('commission_rate_per_view', value)} className={`${inputClass} mt-1`} placeholder="VNĐ / view" />
           </label>
           <label className="text-xs font-semibold text-slate-700">QC commission / view
-            <input type="number" min="0" value={form.qc_commission_rate_per_view} onChange={e => set('qc_commission_rate_per_view', e.target.value)} className={`${inputClass} mt-1`} placeholder="VNĐ / QC view" />
+            <CurrencyInput value={form.qc_commission_rate_per_view} onValueChange={value => set('qc_commission_rate_per_view', value)} className={`${inputClass} mt-1`} placeholder="VNĐ / QC view" />
           </label>
           <label className="text-xs font-semibold text-slate-700">Mức đảm bảo thu nhập
-            <input type="number" min="0" value={form.guaranteed_income} onChange={e => set('guaranteed_income', e.target.value)} className={`${inputClass} mt-1`} placeholder="0 nếu không áp dụng" />
+            <CurrencyInput value={form.guaranteed_income} onValueChange={value => set('guaranteed_income', value)} className={`${inputClass} mt-1`} placeholder="0 nếu không áp dụng" />
           </label>
           <label className="text-xs font-semibold text-slate-700">Địa điểm làm việc
             <input value={form.work_location} onChange={e => set('work_location', e.target.value)} className={`${inputClass} mt-1`} placeholder="Văn phòng / địa điểm thỏa thuận" />

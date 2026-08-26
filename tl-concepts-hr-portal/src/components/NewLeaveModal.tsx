@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLeaveBalance, useCompanyHolidays, useCreateLeaveRequest, useCreateWorkEvent } from '../hooks/useLeave';
 import { useCreateOtRecord } from '../hooks/useOt';
 import { LeaveType, HalfDayOption } from '../types';
+import { getLeaveDaysForRange } from '../utils/workDays';
 import { X, Calendar, Clock, AlertCircle, Send, Loader2 } from 'lucide-react';
 
 export const NewLeaveModal: React.FC = () => {
@@ -39,19 +40,11 @@ export const NewLeaveModal: React.FC = () => {
 
   const calculateDays = () => {
     if (!startDate || !endDate) return 1;
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T00:00:00`);
-    if (end < start) return 0;
     const holidayDates = new Set((holidays || []).map((holiday) => holiday.date));
-    if (halfDayOption !== 'Cả ngày' && startDate === endDate) {
-      return start.getDay() !== 0 && start.getDay() !== 6 && !holidayDates.has(startDate) ? 0.5 : 0;
-    }
-    let days = 0;
-    for (const date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-      const iso = date.toISOString().slice(0, 10);
-      if (date.getDay() !== 0 && date.getDay() !== 6 && !holidayDates.has(iso)) days++;
-    }
-    return days;
+    return getLeaveDaysForRange(
+      { start_date: startDate, end_date: endDate, half_day_option: halfDayOption },
+      Array.from(holidayDates),
+    );
   };
 
   const totalDays = calculateDays();

@@ -23,6 +23,83 @@ export interface MonthWorkDaysInfo {
   standardWorkDays: number;  // (fullWeekdaysCount * 1.0) + (saturdaysCount * 0.5) - holidaysDeducted
 }
 
+export interface LeaveRequestDateRange {
+  start_date: string;
+  end_date: string;
+  half_day_option?: string | null;
+  status?: string | null;
+}
+
+const parseIsoDateUtc = (date: string) => new Date(`${date}T00:00:00Z`);
+
+const getLeaveDaysBetween = (
+  request: LeaveRequestDateRange,
+  rangeStart: Date,
+  rangeEnd: Date,
+  holidaySet: Set<string>,
+): number => {
+  const start = parseIsoDateUtc(request.start_date);
+  const end = parseIsoDateUtc(request.end_date);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+
+  const cursor = new Date(Math.max(start.getTime(), rangeStart.getTime()));
+  const boundedEnd = new Date(Math.min(end.getTime(), rangeEnd.getTime()));
+  let leaveDays = 0;
+
+  while (cursor <= boundedEnd) {
+    const iso = cursor.toISOString().slice(0, 10);
+    const dayOfWeek = cursor.getUTCDay();
+    const dayWeight = dayOfWeek >= 1 && dayOfWeek <= 5 ? 1 : dayOfWeek === 6 ? 0.5 : 0;
+
+    if (!holidaySet.has(iso) && dayWeight > 0) {
+      const isSingleDayHalfLeave =
+        request.start_date === request.end_date && request.half_day_option && request.half_day_option !== 'Cả ngày';
+      leaveDays += isSingleDayHalfLeave ? 0.5 : dayWeight;
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return leaveDays;
+};
+
+/** Returns the work-day amount represented by a leave request across its full range. */
+export function getLeaveDaysForRange(request: LeaveRequestDateRange, holidayDates: string[] = []): number {
+  const start = parseIsoDateUtc(request.start_date);
+  const end = parseIsoDateUtc(request.end_date);
+  return Number(getLeaveDaysBetween(request, start, end, new Set(holidayDates)).toFixed(1));
+}
+
+/**
+ * Returns the leave days from one request that fall inside a month.
+ * Weekdays count as 1.0, Saturday as 0.5, Sunday and company holidays as 0.
+ */
+export function getLeaveDaysInMonth(
+  request: LeaveRequestDateRange,
+  month: number,
+  year: number,
+  holidayDates: string[] = [],
+): number {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const lastDay = new Date(Date.UTC(year, month, 0));
+  return Number(getLeaveDaysBetween(request, firstDay, lastDay, new Set(holidayDates)).toFixed(1));
+}
+
+/**
+ * Sums approved leave requests for one employee/month without counting
+ * pending or rejected requests in the KPI target.
+ */
+export function getApprovedLeaveDaysInMonth(
+  requests: LeaveRequestDateRange[],
+  month: number,
+  year: number,
+  holidayDates: string[] = [],
+): number {
+  const total = requests
+    .filter((request) => !request.status || request.status === 'Đã duyệt')
+    .reduce((sum, request) => sum + getLeaveDaysInMonth(request, month, year, holidayDates), 0);
+  return Number(total.toFixed(1));
+}
+
 /**
  * Calculates the exact standard work days in a month based on the 5.5 days/week
  * rule from day 1 to the last day of the month, minus any company holidays that

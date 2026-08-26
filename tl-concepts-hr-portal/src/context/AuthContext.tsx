@@ -19,6 +19,7 @@ interface AuthContextType {
   profile: AuthProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -124,6 +125,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error?.message ?? null };
   };
 
+  // Password changes are deliberately scoped to the currently authenticated
+  // user. Re-authentication prevents a stale/unattended session from being
+  // used to change the account password without knowing the current password.
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    const { data: currentSession } = await supabase.auth.getSession();
+    const email = currentSession.session?.user.email?.trim().toLowerCase();
+    if (!email) return { error: 'Không xác định được email của tài khoản hiện tại.' };
+
+    const { error: reauthenticationError } = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
+    if (reauthenticationError) {
+      return { error: 'Mật khẩu hiện tại không đúng hoặc phiên đăng nhập đã hết hạn.' };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error: error?.message ?? null };
+  };
+
   const refreshProfile = async () => {
     const { data } = await supabase.auth.getSession();
     const nextProfile = data.session?.user ? await fetchProfile(data.session.user.id) : null;
@@ -137,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ session, profile, loading, signIn, changePassword, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

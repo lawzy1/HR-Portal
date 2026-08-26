@@ -76,8 +76,23 @@ export function useCompanyHolidays() {
 export function useAddCompanyHoliday() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ companyId, date, name }: { companyId: string; date: string; name: string }) => {
-      const { data, error } = await supabase.from('company_holidays').insert({ company_id: companyId, date, name }).select().single();
+    mutationFn: async ({ companyId, startDate, endDate, name }: { companyId: string; startDate: string; endDate: string; name: string }) => {
+      const dates: string[] = [];
+      const cursor = new Date(`${startDate}T00:00:00Z`);
+      const lastDate = new Date(`${endDate}T00:00:00Z`);
+
+      while (cursor <= lastDate) {
+        dates.push(cursor.toISOString().slice(0, 10));
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+
+      const { data, error } = await supabase
+        .from('company_holidays')
+        .upsert(dates.map((date) => ({ company_id: companyId, date, name })), {
+          onConflict: 'company_id,date',
+          ignoreDuplicates: true,
+        })
+        .select();
       if (error) throw error;
       return data;
     },

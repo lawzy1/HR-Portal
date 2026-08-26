@@ -12,6 +12,7 @@ import {
 } from '../hooks/useEmployees';
 import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
 import { useRequestOwnProfileChange } from '../hooks/useProfileChangeRequest';
+import { CurrencyInput } from './CurrencyInput';
 import {
   X,
   User,
@@ -577,20 +578,20 @@ export const EditProfileModal: React.FC = () => {
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Performance commission:</label>
                       <div className="flex items-center gap-2">
-                        <input type="number" min="0" value={performanceCommissionRate} onChange={(e) => setPerformanceCommissionRate(Number(e.target.value))} className={inputClass} />
+                        <CurrencyInput value={performanceCommissionRate} onValueChange={(value) => setPerformanceCommissionRate(Number(value || 0))} className={inputClass} />
                         <span className="text-[11px] text-slate-500 whitespace-nowrap">VNĐ / view</span>
                       </div>
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">QC commission:</label>
                       <div className="flex items-center gap-2">
-                        <input type="number" min="0" value={qcCommissionRate} onChange={(e) => setQcCommissionRate(Number(e.target.value))} className={inputClass} />
+                        <CurrencyInput value={qcCommissionRate} onValueChange={(value) => setQcCommissionRate(Number(value || 0))} className={inputClass} />
                         <span className="text-[11px] text-slate-500 whitespace-nowrap">VNĐ / QC view</span>
                       </div>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block font-bold text-slate-700 mb-1">Mức đảm bảo thu nhập (nếu áp dụng):</label>
-                      <input type="number" min="0" value={guaranteedIncomeAmount} onChange={(e) => setGuaranteedIncomeAmount(Number(e.target.value))} className={inputClass} />
+                      <CurrencyInput value={guaranteedIncomeAmount} onValueChange={(value) => setGuaranteedIncomeAmount(Number(value || 0))} className={inputClass} />
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-500">
@@ -630,7 +631,7 @@ export const EditProfileModal: React.FC = () => {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <LockableField label="Mức lương cơ bản (VND)" locked={!isAdmin}>
-                  <input type="number" step="500000" value={currentSalary} onChange={(e) => setCurrentSalary(Number(e.target.value))} disabled={!isAdmin} className={`${inputClass} font-bold text-success-700`} />
+                  <CurrencyInput value={currentSalary} onValueChange={(value) => setCurrentSalary(Number(value || 0))} disabled={!isAdmin} className={`${inputClass} font-bold text-success-700`} />
                 </LockableField>
                 <LockableField label="Ngày review lương gần nhất" locked={!isAdmin}>
                   <input type="date" value={lastSalaryReviewDate} onChange={(e) => setLastSalaryReviewDate(e.target.value)} disabled={!isAdmin} className={inputClass} />

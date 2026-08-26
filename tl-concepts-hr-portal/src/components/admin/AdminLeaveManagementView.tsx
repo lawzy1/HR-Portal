@@ -6,6 +6,7 @@ import {
   Search,
   Calendar,
   Plus,
+  Save,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useAuth } from '../../context/AuthContext';
@@ -34,7 +35,7 @@ const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
 };
 
 type PendingAction = { requestId: string; employeeId: string; action: 'Đã duyệt' | 'Từ chối'; employeeName: string };
-type AdjustmentTarget = { employeeId: string; companyId: string; employeeName: string };
+type AdjustmentTarget = { employeeId: string; companyId: string; employeeName: string; direction: 'add' | 'subtract' };
 
 export const AdminLeaveManagementView: React.FC = () => {
   const { showToast } = useHR();
@@ -59,11 +60,13 @@ export const AdminLeaveManagementView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [approverComment, setApproverComment] = useState<string>('');
-  const [newHolidayDate, setNewHolidayDate] = useState('');
+  const [newHolidayStartDate, setNewHolidayStartDate] = useState('');
+  const [newHolidayEndDate, setNewHolidayEndDate] = useState('');
   const [newHolidayName, setNewHolidayName] = useState('');
   const [adjustmentTarget, setAdjustmentTarget] = useState<AdjustmentTarget | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState(0);
   const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [entitlementDrafts, setEntitlementDrafts] = useState<Record<string, string>>({});
 
   const requests = allRequests || [];
   const departments = Array.from(new Set((employees || []).map((e) => e.department).filter(Boolean)));
@@ -108,11 +111,38 @@ export const AdminLeaveManagementView: React.FC = () => {
   };
 
   const handleAddHoliday = async () => {
-    if (!newHolidayDate || !newHolidayName.trim() || !profile?.companyId) return;
-    await addHoliday.mutateAsync({ companyId: profile.companyId, date: newHolidayDate, name: newHolidayName });
-    showToast('Đã thêm ngày nghỉ lễ công ty.');
-    setNewHolidayDate('');
-    setNewHolidayName('');
+    if (!profile?.companyId) return;
+    if (!newHolidayStartDate || !newHolidayEndDate) {
+      showToast('Vui lòng chọn đủ ngày bắt đầu và ngày kết thúc.');
+      return;
+    }
+    if (newHolidayEndDate < newHolidayStartDate) {
+      showToast('Ngày kết thúc không được trước ngày bắt đầu.');
+      return;
+    }
+    if (!newHolidayName.trim()) {
+      showToast('Vui lòng nhập tên ngày nghỉ.');
+      return;
+    }
+
+    try {
+      const createdHolidays = await addHoliday.mutateAsync({
+        companyId: profile.companyId,
+        startDate: newHolidayStartDate,
+        endDate: newHolidayEndDate,
+        name: newHolidayName.trim(),
+      });
+      showToast(
+        createdHolidays.length > 0
+          ? `Đã thêm ${createdHolidays.length} ngày nghỉ lễ công ty.`
+          : 'Các ngày trong khoảng này đã có trong lịch nghỉ lễ.',
+      );
+      setNewHolidayStartDate('');
+      setNewHolidayEndDate('');
+      setNewHolidayName('');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể thêm lịch nghỉ lễ.');
+    }
   };
 
   const handleWorkEventStatus = async (id: string, status: 'Đã duyệt' | 'Từ chối') => {
@@ -121,19 +151,54 @@ export const AdminLeaveManagementView: React.FC = () => {
   };
 
   const handleAddAdjustment = async () => {
-    if (!adjustmentTarget || !profile?.id || !adjustmentAmount || !adjustmentReason.trim()) return;
+    if (!adjustmentTarget || !profile?.id || adjustmentAmount <= 0 || !adjustmentReason.trim()) return;
+    const amount = adjustmentTarget.direction === 'add' ? adjustmentAmount : -adjustmentAmount;
     await addLeaveAdjustment.mutateAsync({
       company_id: adjustmentTarget.companyId,
       employee_id: adjustmentTarget.employeeId,
       year,
-      amount: adjustmentAmount,
+      amount,
       reason: adjustmentReason.trim(),
       created_by: profile.id,
     });
-    showToast(`Đã điều chỉnh ${adjustmentAmount > 0 ? '+' : ''}${adjustmentAmount} ngày phép cho ${adjustmentTarget.employeeName}.`);
+    showToast(`Đã ${adjustmentTarget.direction === 'add' ? 'thêm' : 'trừ'} ${adjustmentAmount} ngày phép cho ${adjustmentTarget.employeeName}.`);
     setAdjustmentTarget(null);
     setAdjustmentAmount(0);
     setAdjustmentReason('');
+  };
+
+  const handleSaveEntitlement = async (employeeId: string, balanceId: string, currentEntitlement: number) => {
+    const rawValue = entitlementDrafts[balanceId];
+    if (rawValue === undefined) return;
+    if (rawValue.trim() === '') {
+      showToast('Hạn mức phép năm phải là một số không âm.');
+      return;
+    }
+    const entitlement = Number(rawValue);
+    if (!Number.isFinite(entitlement) || entitlement < 0) {
+      showToast('Hạn mức phép năm phải là một số không âm.');
+      return;
+    }
+    if (entitlement === currentEntitlement) {
+      setEntitlementDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[balanceId];
+        return next;
+      });
+      return;
+    }
+
+    try {
+      await updateLeaveEntitlement.mutateAsync({ employeeId, year, entitlement });
+      setEntitlementDrafts((drafts) => {
+        const next = { ...drafts };
+        delete next[balanceId];
+        return next;
+      });
+      showToast('Đã lưu hạn mức phép năm.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Không thể lưu hạn mức phép năm.');
+    }
   };
 
   return (
@@ -315,23 +380,27 @@ export const AdminLeaveManagementView: React.FC = () => {
           </div>
           <div>
             <h2 className="font-bold text-slate-900 text-base">Lịch nghỉ Lễ & Chế độ Công ty</h2>
-            <p className="text-xs text-slate-500">Tự quản lý — thay cho danh sách cứng của bản demo</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-end gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">Ngày</label>
-            <input type="date" value={newHolidayDate} onChange={(e) => setNewHolidayDate(e.target.value)} className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">Từ ngày</label>
+            <input type="date" value={newHolidayStartDate} onChange={(e) => setNewHolidayStartDate(e.target.value)} className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">Đến ngày</label>
+            <input type="date" min={newHolidayStartDate || undefined} value={newHolidayEndDate} onChange={(e) => setNewHolidayEndDate(e.target.value)} className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className="block text-[11px] font-bold text-slate-600 mb-1">Tên ngày nghỉ</label>
             <input type="text" value={newHolidayName} onChange={(e) => setNewHolidayName(e.target.value)} placeholder="VD: Tết Dương Lịch" className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
           </div>
-          <button onClick={handleAddHoliday} className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+          <button onClick={handleAddHoliday} disabled={addHoliday.isPending} className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
             <Plus className="w-3.5 h-3.5" />
-            <span>Thêm</span>
+            <span>{addHoliday.isPending ? 'Đang thêm...' : 'Thêm'}</span>
           </button>
+          <p className="basis-full text-[10px] text-slate-500">Nếu chỉ nghỉ một ngày, chọn cùng một ngày ở cả hai ô.</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -391,37 +460,70 @@ export const AdminLeaveManagementView: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">{bal.employees?.department}</td>
                   <td className="py-3 px-4">
-                    <input
-                      key={`${bal.id}-${bal.annual_entitlement}`}
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      defaultValue={bal.annual_entitlement}
-                      onBlur={(e) => {
-                        const entitlement = Number(e.target.value);
-                        if (Number.isFinite(entitlement) && entitlement >= 0 && entitlement !== bal.annual_entitlement) {
-                          updateLeaveEntitlement.mutate({ employeeId: bal.employee_id, year, entitlement });
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={entitlementDrafts[bal.id] ?? String(bal.annual_entitlement)}
+                        onChange={(e) => setEntitlementDrafts((drafts) => ({ ...drafts, [bal.id]: e.target.value }))}
+                        className="w-20 p-1.5 bg-white border border-slate-300 rounded-lg font-bold"
+                        aria-label={`Hạn mức phép năm của ${bal.employees?.full_name || 'nhân viên'}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEntitlement(bal.employee_id, bal.id, bal.annual_entitlement)}
+                        disabled={
+                          updateLeaveEntitlement.isPending ||
+                          entitlementDrafts[bal.id] === undefined ||
+                          entitlementDrafts[bal.id].trim() === '' ||
+                          Number(entitlementDrafts[bal.id]) === bal.annual_entitlement
                         }
-                      }}
-                      className="w-20 p-1.5 bg-white border border-slate-300 rounded-lg font-bold"
-                      aria-label={`Hạn mức phép năm của ${bal.employees?.full_name || 'nhân viên'}`}
-                    />
+                        className="inline-flex items-center gap-1 px-2 py-1.5 bg-primary-600 text-white rounded-lg text-[11px] font-bold hover:bg-primary-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <Save className="w-3.5 h-3.5" /> Lưu
+                      </button>
+                    </div>
                   </td>
                   <td className="py-3 px-4 font-semibold">{bal.total_accumulated} ngày</td>
                   <td className="py-3 px-4 text-success-600 font-bold">{bal.used_days} ngày</td>
                   <td className="py-3 px-4 text-amber-600 font-bold">{bal.pending_days} ngày</td>
                   <td className="py-3 px-4 font-extrabold text-primary-700 text-sm">{bal.remaining_days} ngày</td>
                   <td className="py-3 px-4">
-                    <button
-                      onClick={() => setAdjustmentTarget({
-                        employeeId: bal.employee_id,
-                        companyId: bal.company_id,
-                        employeeName: bal.employees?.full_name || '',
-                      })}
-                      className="px-2.5 py-1 bg-primary-50 text-primary-700 rounded-lg font-bold cursor-pointer"
-                    >
-                      +/- ngày
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdjustmentAmount(0);
+                          setAdjustmentReason('');
+                          setAdjustmentTarget({
+                            employeeId: bal.employee_id,
+                            companyId: bal.company_id,
+                            employeeName: bal.employees?.full_name || '',
+                            direction: 'add',
+                          });
+                        }}
+                        className="px-2.5 py-1 bg-success-50 text-success-700 rounded-lg font-bold hover:bg-success-100 cursor-pointer"
+                      >
+                        + ngày
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdjustmentAmount(0);
+                          setAdjustmentReason('');
+                          setAdjustmentTarget({
+                            employeeId: bal.employee_id,
+                            companyId: bal.company_id,
+                            employeeName: bal.employees?.full_name || '',
+                            direction: 'subtract',
+                          });
+                        }}
+                        className="px-2.5 py-1 bg-rose-50 text-rose-700 rounded-lg font-bold hover:bg-rose-100 cursor-pointer"
+                      >
+                        − ngày
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -456,10 +558,12 @@ export const AdminLeaveManagementView: React.FC = () => {
       {adjustmentTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-slate-900">Điều chỉnh phép: {adjustmentTarget.employeeName}</h3>
+            <h3 className="text-lg font-bold text-slate-900">
+              {adjustmentTarget.direction === 'add' ? 'Thêm ngày phép' : 'Trừ ngày phép'}: {adjustmentTarget.employeeName}
+            </h3>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Số ngày (+ thưởng, - thu hồi)</label>
-              <input type="number" step="0.5" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(Number(e.target.value))} className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs" />
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Số ngày cần {adjustmentTarget.direction === 'add' ? 'thêm' : 'trừ'}</label>
+              <input type="number" min="0.5" step="0.5" value={adjustmentAmount || ''} onChange={(e) => setAdjustmentAmount(Number(e.target.value))} className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Lý do bắt buộc</label>
@@ -467,7 +571,9 @@ export const AdminLeaveManagementView: React.FC = () => {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setAdjustmentTarget(null)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer">Hủy</button>
-              <button onClick={handleAddAdjustment} disabled={addLeaveAdjustment.isPending || !adjustmentAmount || !adjustmentReason.trim()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 cursor-pointer">Lưu điều chỉnh</button>
+              <button onClick={handleAddAdjustment} disabled={addLeaveAdjustment.isPending || adjustmentAmount <= 0 || !adjustmentReason.trim()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 cursor-pointer">
+                {adjustmentTarget.direction === 'add' ? 'Lưu thêm ngày' : 'Lưu trừ ngày'}
+              </button>
             </div>
           </div>
         </div>

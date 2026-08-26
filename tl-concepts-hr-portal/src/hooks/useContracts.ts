@@ -129,7 +129,8 @@ export function useContractLegalWarnings(employeeId: string | undefined) {
         p_employee_id: employeeId!,
       });
       if (error) throw error;
-      return data as ContractLegalWarning[];
+      // A single fixed-term contract is routine and does not need an in-app warning.
+      return (data as ContractLegalWarning[]).filter((warning) => warning.severity === 'high');
     },
     enabled: !!employeeId,
   });

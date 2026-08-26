@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { VneidGuideModal } from './VneidGuideModal';
 import { VNEID_SAMPLE_IMAGE } from '../constants/vneidSample';
+import { AccountSecurityCard } from './AccountSecurityCard';
 
 const DocPhoto: React.FC<{ path: string | null | undefined; alt: string; label: string; onView: (src: string, title: string) => void }> = ({
   path,
@@ -367,6 +368,8 @@ export const ProfileView: React.FC = () => {
           )}
         </div>
       </div>
+
+      <AccountSecurityCard />
 
       {selectedImage && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">

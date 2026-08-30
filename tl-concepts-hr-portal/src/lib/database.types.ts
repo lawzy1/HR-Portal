@@ -1629,6 +1629,7 @@ export type Database = {
     }
     Functions: {
       approve_contract: { Args: { p_contract_id: string }; Returns: string }
+      activate_own_backoffice_account: { Args: never; Returns: undefined }
       approve_kpi_month: {
         Args: { p_month: number; p_year: number }
         Returns: number

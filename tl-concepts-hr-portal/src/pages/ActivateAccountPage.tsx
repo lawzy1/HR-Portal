@@ -16,7 +16,7 @@ export const ActivateAccountPage: React.FC = () => {
   const [isCheckingInvitation, setIsCheckingInvitation] = useState(true);
 
   useEffect(() => {
-    if (!session || profile?.onboardingStatus !== 'invited') {
+    if (!session || !profile?.employeeId || profile.onboardingStatus !== 'invited') {
       setIsCheckingInvitation(false);
       return;
     }
@@ -48,8 +48,13 @@ export const ActivateAccountPage: React.FC = () => {
     try {
       const { error: passwordError } = await supabase.auth.updateUser({ password });
       if (passwordError) throw passwordError;
-      const { error: onboardingError } = await supabase.rpc('start_own_onboarding');
-      if (onboardingError) throw onboardingError;
+      if (profile?.employeeId) {
+        const { error: onboardingError } = await supabase.rpc('start_own_onboarding');
+        if (onboardingError) throw onboardingError;
+      } else {
+        const { error: activationError } = await supabase.rpc('activate_own_backoffice_account');
+        if (activationError) throw activationError;
+      }
       await refreshProfile();
       navigate('/', { replace: true });
     } catch (caught) {
@@ -61,13 +66,15 @@ export const ActivateAccountPage: React.FC = () => {
 
   return (
     <ActivateFrame title="Thiết lập mật khẩu lần đầu">
-      <p className="text-sm leading-6 text-slate-600">Bạn đã xác nhận lời mời. Hãy đặt mật khẩu để tiếp tục hoàn thiện hồ sơ nhân viên.</p>
+      <p className="text-sm leading-6 text-slate-600">
+        Bạn đã xác nhận lời mời. Hãy đặt mật khẩu để {profile?.employeeId ? 'tiếp tục hoàn thiện hồ sơ nhân viên.' : 'kích hoạt tài khoản quản trị.'}
+      </p>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <PasswordField label="Mật khẩu mới" value={password} show={showPassword} onToggle={() => setShowPassword((value) => !value)} onChange={setPassword} />
         <PasswordField label="Xác nhận mật khẩu" value={confirmPassword} show={showPassword} onToggle={() => setShowPassword((value) => !value)} onChange={setConfirmPassword} />
         {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</p>}
         <button type="submit" disabled={isSaving || isCheckingInvitation || !!error} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#173f37] px-4 py-3 text-sm font-bold text-white hover:bg-[#0f302a] disabled:opacity-60">
-          {(isSaving || isCheckingInvitation) && <Loader2 className="h-4 w-4 animate-spin" />} {isCheckingInvitation ? 'Đang kiểm tra lời mời...' : 'Kích hoạt và điền hồ sơ'}
+          {(isSaving || isCheckingInvitation) && <Loader2 className="h-4 w-4 animate-spin" />} {isCheckingInvitation ? 'Đang kiểm tra lời mời...' : profile?.employeeId ? 'Kích hoạt và điền hồ sơ' : 'Kích hoạt tài khoản'}
         </button>
       </form>
     </ActivateFrame>

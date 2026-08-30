@@ -5,6 +5,13 @@ import { refreshQueries } from '../lib/queryRefresh';
 
 export type DbProfile = Tables<'profiles'>;
 
+type BackofficeRole = 'admin' | 'hr';
+
+interface CreateBackofficeAccountInput {
+  email: string;
+  role: BackofficeRole;
+}
+
 // Admin-only company-wide list (RLS enforces this server-side too) — every
 // profile joined with its employee record, for the role-assignment table.
 // Account and role management stays Admin-only. HR/Kế toán receives access
@@ -30,6 +37,24 @@ export function useUpdateProfileRole() {
       const { data, error } = await supabase.from('profiles').update({ role }).eq('id', profileId).select().single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      refreshQueries(queryClient, [['profiles']]);
+    },
+  });
+}
+
+// Creating privileged accounts always goes through a trusted Edge Function;
+// the browser never receives a service-role key or a way to insert profiles.
+export function useCreateBackofficeAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateBackofficeAccountInput) => {
+      const { data, error } = await supabase.functions.invoke<{ email: string; role: BackofficeRole }>('create-backoffice-account', {
+        body: input,
+      });
+      if (error) throw error;
+      return data!;
     },
     onSuccess: () => {
       refreshQueries(queryClient, [['profiles']]);

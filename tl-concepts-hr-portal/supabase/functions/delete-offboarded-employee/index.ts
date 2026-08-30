@@ -35,20 +35,29 @@ function errorResponse(request: Request, options: Parameters<typeof publicError>
 }
 
 async function removeEmployeeFiles(admin: ReturnType<typeof createClient>, companyId: string, employeeId: string) {
-  const folder = `${companyId}/${employeeId}`;
-
-  while (true) {
+  const removeFolder = async (folder: string): Promise<void> => {
     const { data: objects, error: listError } = await admin.storage.from("employee-documents").list(folder, { limit: 100 });
     if (listError) throw listError;
     if (!objects?.length) return;
 
-    const paths = objects.filter((object) => object.id).map((object) => `${folder}/${object.name}`);
+    const paths: string[] = [];
+    const nestedFolders: string[] = [];
+    for (const object of objects) {
+      const path = `${folder}/${object.name}`;
+      if (object.id) paths.push(path);
+      else nestedFolders.push(path);
+    }
     if (paths.length) {
       const { error: removeError } = await admin.storage.from("employee-documents").remove(paths);
       if (removeError) throw removeError;
     }
-    if (objects.length < 100) return;
-  }
+    for (const nestedFolder of nestedFolders) await removeFolder(nestedFolder);
+    // Storage.list has no cursor. Once a full page has been removed, read the
+    // same prefix again until the page is shorter than the limit.
+    if (objects.length === 100) await removeFolder(folder);
+  };
+
+  await removeFolder(`${companyId}/${employeeId}`);
 }
 
 Deno.serve(async (request) => {
@@ -86,8 +95,14 @@ Deno.serve(async (request) => {
     .eq("company_id", adminProfile.company_id)
     .maybeSingle();
   if (employeeError || !employee) {
+    if (!employeeError) {
+      // A browser can retain a selected row briefly after an administrator
+      // removes it directly in the database. Treat a repeat delete as a
+      // successful no-op so the client clears that stale row.
+      return jsonResponse(request, { deleted: true, alreadyDeleted: true }, 200);
+    }
     logInternalError("delete employee lookup failed", employeeError);
-    return errorResponse(request, { code: "NOT_FOUND", message: "Không tìm thấy nhân viên.", status: 404 });
+    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể kiểm tra hồ sơ nhân viên. Vui lòng thử lại sau.", status: 500 });
   }
   if (employee.status !== "Đã nghỉ việc") {
     return errorResponse(request, { code: "CONFLICT", message: "Chỉ có thể xóa vĩnh viễn nhân viên đã nghỉ việc.", status: 409 });
@@ -101,23 +116,14 @@ Deno.serve(async (request) => {
     logInternalError("delete employee profile lookup failed", profilesError);
     return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
   }
-  if (profileLinks?.some((profile) => profile.role === "admin")) {
-    return errorResponse(request, { code: "CONFLICT", message: "Không thể xóa nhân viên đang gắn với tài khoản Admin.", status: 409 });
-  }
-
+  let storageCleanupWarning = false;
   try {
     await removeEmployeeFiles(admin, adminProfile.company_id, employeeId);
   } catch (error) {
-    logInternalError("delete employee files failed", error);
-    return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
-  }
-
-  for (const profile of profileLinks || []) {
-    const { error } = await admin.auth.admin.deleteUser(profile.id);
-    if (error) {
-      logInternalError("delete employee auth user failed", error);
-      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
-    }
+    // Storage cleanup is best-effort. It must not leave a database employee
+    // row stuck in the UI when a stale/missing object causes Storage to fail.
+    storageCleanupWarning = true;
+    logInternalError("delete employee files failed; continuing with database delete", error);
   }
 
   const { error: deleteError } = await admin
@@ -131,5 +137,21 @@ Deno.serve(async (request) => {
     return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
   }
 
-  return jsonResponse(request, { deleted: true }, 200);
+  // Deleting an employee sets profiles.employee_id to NULL. Preserve a
+  // back-office account (Admin/HR) so an old staff profile can be removed
+  // from the employee list without also removing its management access.
+  for (const profile of profileLinks || []) {
+    if (profile.role === "admin" || profile.role === "hr") continue;
+    const { error } = await admin.auth.admin.deleteUser(profile.id);
+    if (error) {
+      logInternalError("delete employee auth user failed", error);
+      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
+    }
+  }
+
+  return jsonResponse(request, {
+    deleted: true,
+    accountPreserved: profileLinks?.some((profile) => profile.role === "admin" || profile.role === "hr") ?? false,
+    storageCleanupWarning,
+  }, 200);
 });

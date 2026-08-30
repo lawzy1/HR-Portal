@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -8,6 +8,9 @@ import {
   Phone,
   ShieldCheck,
   UserCircle,
+  UserPlus,
+  Send,
+  Loader2,
   WalletCards,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +19,9 @@ import { useEmployee } from '../../hooks/useEmployees';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 import { formatDate } from '../../utils/formatters';
 import { AccountSecurityCard } from '../AccountSecurityCard';
+import { useCreateBackofficeAccount } from '../../hooks/useProfiles';
+import { getUserFacingError } from '../../lib/userFacingError';
+import { useHR } from '../../context/HRContext';
 
 const roleLabels = {
   admin: 'Admin',
@@ -25,10 +31,27 @@ const roleLabels = {
 
 export const AdminProfileView: React.FC = () => {
   const { profile, session } = useAuth();
+  const { showToast } = useHR();
   const { formatMoney } = useMoneyVisibility();
   const { data: employee } = useEmployee(profile?.employeeId ?? undefined);
   const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
   const roleLabel = profile?.role ? roleLabels[profile.role] : 'Chưa xác định';
+  const createBackofficeAccount = useCreateBackofficeAccount();
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountRole, setAccountRole] = useState<'admin' | 'hr'>('admin');
+
+  const handleCreateAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const email = accountEmail.trim().toLowerCase();
+    if (!email) return;
+    try {
+      await createBackofficeAccount.mutateAsync({ email, role: accountRole });
+      setAccountEmail('');
+      showToast(`Đã gửi email kích hoạt tài khoản ${accountRole === 'admin' ? 'Admin' : 'HR / Kế toán'}.`);
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể tạo tài khoản. Vui lòng thử lại.'));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -90,6 +113,34 @@ export const AdminProfileView: React.FC = () => {
       </div>
 
       <AccountSecurityCard />
+
+      {profile?.role === 'admin' && (
+        <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
+            <span className="mt-0.5 rounded-xl bg-primary-50 p-2 text-primary-600"><UserPlus className="w-5 h-5" /></span>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Tạo tài khoản quản trị</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Tạo tài khoản Admin hoặc HR/Kế toán độc lập. Tài khoản này không có hồ sơ nhân viên, không xuất hiện trong danh sách nhân sự, KPI hay payroll.</p>
+            </div>
+          </div>
+          <form onSubmit={handleCreateAccount} className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_12rem_auto] md:items-end">
+            <label className="block text-xs font-semibold text-slate-700">
+              <span className="mb-1.5 block">Email đăng nhập</span>
+              <input type="email" required autoComplete="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} placeholder="admin@congty.com" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15" />
+            </label>
+            <label className="block text-xs font-semibold text-slate-700">
+              <span className="mb-1.5 block">Vai trò</span>
+              <select value={accountRole} onChange={(event) => setAccountRole(event.target.value as 'admin' | 'hr')} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
+                <option value="admin">Admin</option>
+                <option value="hr">HR / Kế toán</option>
+              </select>
+            </label>
+            <button type="submit" disabled={createBackofficeAccount.isPending} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-primary-600/20 hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60">
+              {createBackofficeAccount.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Gửi lời mời
+            </button>
+          </form>
+        </section>
+      )}
     </div>
   );
 };

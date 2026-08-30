@@ -44,6 +44,10 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }
 
+  if (profile && !profile.isActive && !profile.employeeId && profile.onboardingStatus === 'invited') {
+    return <Navigate to="/auth/activate" replace />;
+  }
+
   if (!profile || !profile.isActive) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">

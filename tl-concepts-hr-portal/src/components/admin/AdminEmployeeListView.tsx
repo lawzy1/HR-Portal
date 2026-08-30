@@ -699,11 +699,15 @@ export const AdminEmployeeListView: React.FC = () => {
         isConfirmDisabled={deleteConfirmationCode.trim() !== employeeToDelete?.employee_code}
         onConfirm={async () => {
           if (!employeeToDelete) return;
-          await deleteOffboardedEmployee.mutateAsync(employeeToDelete.id);
-          showToast(`Đã xóa vĩnh viễn ${employeeToDelete.full_name} khỏi hệ thống.`);
-          setSelectedEmployeeIdForAdmin('');
-          setEmployeeToDelete(null);
-          setDeleteConfirmationCode('');
+          try {
+            await deleteOffboardedEmployee.mutateAsync(employeeToDelete.id);
+            showToast(`Đã xóa vĩnh viễn ${employeeToDelete.full_name} khỏi hệ thống.`);
+            setSelectedEmployeeIdForAdmin('');
+            setEmployeeToDelete(null);
+            setDeleteConfirmationCode('');
+          } catch (error) {
+            showToast(await getUserFacingError(error, 'Không thể xóa nhân viên. Vui lòng thử lại sau.'));
+          }
         }}
       >
         <label htmlFor="permanent-delete-code" className="mb-2 block text-sm font-semibold text-slate-700">Nhập mã nhân viên để xác nhận</label>

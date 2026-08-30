@@ -14,6 +14,7 @@ type FunctionErrorBody = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   EMPLOYEE_EMAIL_EXISTS: 'Email này đã được đăng ký. Hãy dùng email khác hoặc gửi lại lời mời kích hoạt.',
+  ACCOUNT_EMAIL_EXISTS: 'Email này đã được đăng ký. Hãy dùng email khác.',
   EMPLOYEE_CODE_EXISTS: 'Mã nhân viên đã tồn tại. Vui lòng kiểm tra lại.',
   INVALID_EMAIL: 'Email không hợp lệ.',
   VALIDATION_ERROR: 'Vui lòng kiểm tra lại các thông tin bắt buộc.',

@@ -72,7 +72,7 @@ export const AdminLeaveManagementView: React.FC = () => {
   const [newHolidayEndDate, setNewHolidayEndDate] = useState('');
   const [newHolidayName, setNewHolidayName] = useState('');
   const [adjustmentTarget, setAdjustmentTarget] = useState<AdjustmentTarget | null>(null);
-  const [adjustmentAmount, setAdjustmentAmount] = useState(0);
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [adjustmentReason, setAdjustmentReason] = useState('');
   const [entitlementDrafts, setEntitlementDrafts] = useState<Record<string, string>>({});
   const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
@@ -161,8 +161,9 @@ export const AdminLeaveManagementView: React.FC = () => {
   };
 
   const handleAddAdjustment = async () => {
-    if (!adjustmentTarget || !profile?.id || adjustmentAmount <= 0 || !adjustmentReason.trim()) return;
-    const amount = adjustmentTarget.direction === 'add' ? adjustmentAmount : -adjustmentAmount;
+    const days = Number(adjustmentAmount);
+    if (!adjustmentTarget || !profile?.id || days <= 0 || !Number.isInteger(days * 2) || !adjustmentReason.trim()) return;
+    const amount = adjustmentTarget.direction === 'add' ? days : -days;
     await addLeaveAdjustment.mutateAsync({
       company_id: adjustmentTarget.companyId,
       employee_id: adjustmentTarget.employeeId,
@@ -171,9 +172,9 @@ export const AdminLeaveManagementView: React.FC = () => {
       reason: adjustmentReason.trim(),
       created_by: profile.id,
     });
-    showToast(`Đã ${adjustmentTarget.direction === 'add' ? 'thêm' : 'trừ'} ${adjustmentAmount} ngày phép cho ${adjustmentTarget.employeeName}.`);
+    showToast(`Đã ${adjustmentTarget.direction === 'add' ? 'thêm' : 'trừ'} ${days} ngày phép cho ${adjustmentTarget.employeeName}.`);
     setAdjustmentTarget(null);
-    setAdjustmentAmount(0);
+    setAdjustmentAmount('');
     setAdjustmentReason('');
   };
 
@@ -537,7 +538,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setAdjustmentAmount(0);
+                          setAdjustmentAmount('');
                           setAdjustmentReason('');
                           setAdjustmentTarget({
                             employeeId: bal.employee_id,
@@ -553,7 +554,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setAdjustmentAmount(0);
+                          setAdjustmentAmount('');
                           setAdjustmentReason('');
                           setAdjustmentTarget({
                             employeeId: bal.employee_id,
@@ -606,7 +607,24 @@ export const AdminLeaveManagementView: React.FC = () => {
             </h3>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Số ngày cần {adjustmentTarget.direction === 'add' ? 'thêm' : 'trừ'}</label>
-              <input type="number" min="0.5" step="0.5" value={adjustmentAmount || ''} onChange={(e) => setAdjustmentAmount(Number(e.target.value))} className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs" />
+              <div className="relative">
+                <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-black ${adjustmentTarget.direction === 'add' ? 'text-success-700' : 'text-rose-700'}`}>
+                  {adjustmentTarget.direction === 'add' ? '+' : '−'}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0.5"
+                  step="0.5"
+                  value={adjustmentAmount}
+                  onKeyDown={(event) => ['-', '+', 'e', 'E'].includes(event.key) && event.preventDefault()}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    if (!next.startsWith('-') && !next.startsWith('+')) setAdjustmentAmount(next);
+                  }}
+                  className="w-full rounded-xl border border-slate-300 bg-slate-50 py-2.5 pl-8 pr-3 text-xs"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Lý do bắt buộc</label>
@@ -614,7 +632,7 @@ export const AdminLeaveManagementView: React.FC = () => {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setAdjustmentTarget(null)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer">Hủy</button>
-              <button onClick={handleAddAdjustment} disabled={addLeaveAdjustment.isPending || adjustmentAmount <= 0 || !adjustmentReason.trim()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 cursor-pointer">
+              <button onClick={handleAddAdjustment} disabled={addLeaveAdjustment.isPending || Number(adjustmentAmount) <= 0 || !Number.isInteger(Number(adjustmentAmount) * 2) || !adjustmentReason.trim()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 cursor-pointer">
                 {adjustmentTarget.direction === 'add' ? 'Lưu thêm ngày' : 'Lưu trừ ngày'}
               </button>
             </div>

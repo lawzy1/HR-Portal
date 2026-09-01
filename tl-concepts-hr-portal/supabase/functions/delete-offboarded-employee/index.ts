@@ -126,6 +126,18 @@ Deno.serve(async (request) => {
     logInternalError("delete employee files failed; continuing with database delete", error);
   }
 
+  // Delete employee Auth accounts before the employee row. If the following
+  // database delete fails, the offboarded row remains available for a retry;
+  // doing this in reverse can leave an untraceable Auth user blocking re-invite.
+  for (const profile of profileLinks || []) {
+    if (profile.role === "admin" || profile.role === "hr") continue;
+    const { error } = await admin.auth.admin.deleteUser(profile.id);
+    if (error) {
+      logInternalError("delete employee auth user failed", error);
+      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
+    }
+  }
+
   const { error: deleteError } = await admin
     .from("employees")
     .delete()
@@ -135,18 +147,6 @@ Deno.serve(async (request) => {
   if (deleteError) {
     logInternalError("delete employee record failed", deleteError);
     return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
-  }
-
-  // Deleting an employee sets profiles.employee_id to NULL. Preserve a
-  // back-office account (Admin/HR) so an old staff profile can be removed
-  // from the employee list without also removing its management access.
-  for (const profile of profileLinks || []) {
-    if (profile.role === "admin" || profile.role === "hr") continue;
-    const { error } = await admin.auth.admin.deleteUser(profile.id);
-    if (error) {
-      logInternalError("delete employee auth user failed", error);
-      return errorResponse(request, { code: "INTERNAL_ERROR", message: "Chưa thể xóa nhân viên. Vui lòng thử lại sau.", status: 500 });
-    }
   }
 
   return jsonResponse(request, {

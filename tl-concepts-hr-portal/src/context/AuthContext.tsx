@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { supabase } from '../lib/supabaseClient';
-import { getUserFacingError } from '../lib/userFacingError';
+import { getUserFacingError, SESSION_EXPIRED_EVENT } from '../lib/userFacingError';
 
 export type AppRole = 'admin' | 'hr' | 'employee';
 
@@ -61,12 +64,21 @@ async function fetchSessionTimeout(companyId: string): Promise<number> {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const profileRequestId = useRef(0);
   const lastSessionUserId = useRef<string | null>(null);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut({ scope: 'local' });
+    queryClient.clear();
+  }, [queryClient]);
 
   useEffect(() => {
     let isMounted = true;
@@ -119,11 +131,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    const showSessionExpiredDialog = () => setSessionExpired(true);
+    window.addEventListener(SESSION_EXPIRED_EVENT, showSessionExpiredDialog);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, showSessionExpiredDialog);
+  }, []);
+
+  useEffect(() => {
     if (!session) return;
-    let timer = window.setTimeout(() => supabase.auth.signOut(), sessionTimeoutMinutes * 60_000);
+    let timer = window.setTimeout(() => void signOut(), sessionTimeoutMinutes * 60_000);
     const reset = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => supabase.auth.signOut(), sessionTimeoutMinutes * 60_000);
+      timer = window.setTimeout(() => void signOut(), sessionTimeoutMinutes * 60_000);
     };
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
     events.forEach((event) => window.addEventListener(event, reset, { passive: true }));
@@ -131,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.clearTimeout(timer);
       events.forEach((event) => window.removeEventListener(event, reset));
     };
-  }, [session, sessionTimeoutMinutes]);
+  }, [session, sessionTimeoutMinutes, signOut]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
@@ -173,13 +191,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (nextProfile) setSessionTimeoutMinutes(await fetchSessionTimeout(nextProfile.companyId));
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const handleExpiredSession = async () => {
+    setIsSigningOut(true);
+    await signOut();
+    setSessionExpired(false);
+    setIsSigningOut(false);
+    navigate('/login', { replace: true });
   };
 
   return (
     <AuthContext.Provider value={{ session, profile, loading, signIn, requestPasswordReset, changePassword, refreshProfile, signOut }}>
       {children}
+      <ConfirmationDialog
+        open={sessionExpired}
+        onOpenChange={setSessionExpired}
+        title="Phiên đăng nhập đã hết hạn"
+        description="Vui lòng đăng xuất và đăng nhập lại để tiếp tục sử dụng HR Portal."
+        confirmLabel="Đăng xuất & đăng nhập lại"
+        onConfirm={() => void handleExpiredSession()}
+        isPending={isSigningOut}
+        showCancel={false}
+      />
     </AuthContext.Provider>
   );
 };

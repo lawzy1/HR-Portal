@@ -1,6 +1,6 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-08-27**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
+Cập nhật lần cuối: **2026-09-01**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
@@ -43,6 +43,14 @@ Cập nhật lần cuối: **2026-08-27**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-09-01 — Rút gọn onboarding, quỹ phép theo HĐLĐ và KPI/ngày
+
+- Onboarding chỉ bắt buộc số điện thoại, ngày sinh và giới tính; họ tên được sửa, email giữ read-only. CCCD/ngân hàng/người thân là ba section tùy chọn, mặc định đóng và có thể bổ sung sau khi tài khoản được duyệt.
+- Migration local `20260901183000_onboarding_leave_contract_updates.sql` bỏ yêu cầu CCCD/người thân ở RPC, giữ validation bắt buộc ở backend và cho phép người đang onboarding sửa riêng họ tên.
+- Nhân viên tồn tại được giữ nguyên quỹ phép thành số dư nhập tay qua adjustment ledger. Nhân viên tạo mới sau migration bắt đầu 0 ngày và tích lũy 1 ngày tại ngày hiệu lực HĐLĐ chính thức, sau đó mỗi tháng thêm 1 ngày; hợp đồng thử việc/phụ lục không khởi tạo tích lũy.
+- Modal điều chỉnh phép chỉ nhận số dương theo bước 0,5 và tự hiển thị dấu cộng/trừ theo thao tác. Hợp đồng hiện hành có nút sửa cho Admin, chuyển về nháp để duyệt lại; KPI hợp đồng đổi thành `kpi_target_per_day` và đồng bộ về hồ sơ khi duyệt.
+- Verify local: `npm run lint` sạch error (8 warning cũ), `npm run typecheck` và `npm run build` thành công. Migration dry-run xác nhận chỉ có đúng file mới; **chưa apply production vì cần xác nhận riêng cho thao tác đổi schema/chuyển số dư hiện hữu**.
 
 ### 2026-08-27 — Admin ghi nhận trực tiếp thời gian làm việc và calendar nguồn lực
 

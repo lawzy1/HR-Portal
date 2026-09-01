@@ -32,6 +32,15 @@ const ERROR_MESSAGES: Record<string, string> = {
   '42501': 'Bạn không có quyền thực hiện thao tác này.',
 };
 
+export const SESSION_EXPIRED_EVENT = 'auth-session-expired';
+
+function messageForCode(code: string | null, fallback: string): string {
+  if (code === 'UNAUTHENTICATED' && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  }
+  return (code && ERROR_MESSAGES[code]) || fallback;
+}
+
 // Temporary compatibility for functions that have not yet been redeployed with
 // the structured error contract. These strings are never displayed verbatim.
 function legacyMessageToCode(message: string): string | null {
@@ -70,7 +79,7 @@ export async function getUserFacingError(
     try {
       const body = await error.context.json() as FunctionErrorBody;
       const code = readCode(body);
-      return (code && ERROR_MESSAGES[code]) || fallback;
+      return messageForCode(code, fallback);
     } catch {
       return fallback;
     }
@@ -81,5 +90,5 @@ export async function getUserFacingError(
   }
 
   const code = readErrorCode(error);
-  return (code && ERROR_MESSAGES[code]) || fallback;
+  return messageForCode(code, fallback);
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, FileImage, Loader2, LogOut, ShieldCheck, Upload } from 'lucide-react';
+import { CheckCircle2, ChevronDown, FileImage, Loader2, LogOut, ShieldCheck, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   useEmployee,
@@ -19,6 +19,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
   const { data: relatives } = useEmployeeRelatives(editableEmployeeId);
   const { uploadFile } = useFileUpload();
 
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('');
@@ -48,6 +49,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
 
   useEffect(() => {
     if (!employee) return;
+    setFullName(employee.full_name);
     setPhone(employee.phone || '');
     setDob(employee.dob || '');
     setGender(employee.gender || '');
@@ -91,8 +93,8 @@ export const EmployeeOnboardingPage: React.FC = () => {
     setError(null);
     setMessage(null);
 
-    if (!idCardNumber || (!frontFile && !sensitiveInfo?.id_card_front_url) || (!backFile && !sensitiveInfo?.id_card_back_url) || !emergencyName || !emergencyPhone) {
-      setError('Vui lòng hoàn thành CCCD, đủ hai ảnh và một người liên hệ khẩn cấp trước khi gửi HR duyệt.');
+    if (!phone.trim() || !dob || !gender) {
+      setError('Vui lòng nhập số điện thoại, ngày sinh và giới tính trước khi gửi HR duyệt.');
       return;
     }
 
@@ -114,6 +116,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
 
       const { error: submitError } = await supabase.rpc('save_and_submit_own_onboarding', {
         p_employee: {
+          full_name: fullName,
           avatar_url: avatarPath,
           phone,
           dob: dob || null,
@@ -136,13 +139,13 @@ export const EmployeeOnboardingPage: React.FC = () => {
           bank_account_holder: bankAccountHolder.toUpperCase(),
           bank_branch: bankBranch,
         },
-        p_relatives: [{
+        p_relatives: emergencyName.trim() ? [{
           full_name: emergencyName,
           relationship: emergencyRelationship,
           phone: emergencyPhone,
           address: emergencyAddress,
           is_emergency_contact: true,
-        }],
+        }] : [],
       });
       if (submitError) throw submitError;
       const { error: lifecycleError } = await supabase.rpc('mark_own_invitation_completed');
@@ -180,12 +183,12 @@ export const EmployeeOnboardingPage: React.FC = () => {
         <form onSubmit={save} className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm space-y-7">
           <Section title="1. Thông tin cá nhân">
             <div className="grid sm:grid-cols-2 gap-4">
-              <ReadOnly label="Họ và tên" value={employee.full_name} />
-              <ReadOnly label="Email mapping" value={employee.email || '—'} />
-              <Input label="Số điện thoại"><input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} /></Input>
-              <Input label="Ngày sinh"><input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} /></Input>
-              <Input label="Giới tính">
-                <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
+              <Input label="Họ và tên"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} /></Input>
+              <ReadOnly label="Email" value={employee.email || '—'} />
+              <Input label="Số điện thoại *"><input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} /></Input>
+              <Input label="Ngày sinh *"><input required type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} /></Input>
+              <Input label="Giới tính *">
+                <select required value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
                   <option value="">— Chọn —</option><option>Nam</option><option>Nữ</option><option>Khác</option>
                 </select>
               </Input>
@@ -200,22 +203,22 @@ export const EmployeeOnboardingPage: React.FC = () => {
             <FilePicker label="Ảnh đại diện" file={avatarFile} existingPath={employee.avatar_url} onChange={setAvatarFile} />
           </Section>
 
-          <Section title="2. CCCD, MST và BHXH">
+          <Section title="2. CCCD, MST và BHXH" collapsible>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Số CCCD *"><input value={idCardNumber} onChange={(e) => setIdCardNumber(e.target.value)} className={inputClass} required /></Input>
+              <Input label="Số CCCD"><input value={idCardNumber} onChange={(e) => setIdCardNumber(e.target.value)} className={inputClass} /></Input>
               <Input label="Ngày cấp"><input type="date" value={idCardIssueDate} onChange={(e) => setIdCardIssueDate(e.target.value)} className={inputClass} /></Input>
               <Input label="Nơi cấp"><input value={idCardIssuePlace} onChange={(e) => setIdCardIssuePlace(e.target.value)} className={inputClass} /></Input>
               <Input label="Mã số thuế"><input value={taxCode} onChange={(e) => setTaxCode(e.target.value)} className={inputClass} /></Input>
               <Input label="Mã số BHXH"><input value={socialInsuranceCode} onChange={(e) => setSocialInsuranceCode(e.target.value)} className={inputClass} /></Input>
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
-              <FilePicker label="CCCD mặt trước *" file={frontFile} existingPath={sensitiveInfo?.id_card_front_url} onChange={setFrontFile} />
-              <FilePicker label="CCCD mặt sau *" file={backFile} existingPath={sensitiveInfo?.id_card_back_url} onChange={setBackFile} />
+              <FilePicker label="CCCD mặt trước" file={frontFile} existingPath={sensitiveInfo?.id_card_front_url} onChange={setFrontFile} />
+              <FilePicker label="CCCD mặt sau" file={backFile} existingPath={sensitiveInfo?.id_card_back_url} onChange={setBackFile} />
               <FilePicker label="Ảnh cư trú VNeID" file={vneidFile} existingPath={sensitiveInfo?.vneid_residency_url} onChange={setVneidFile} />
             </div>
           </Section>
 
-          <Section title="3. Tài khoản nhận lương">
+          <Section title="3. Tài khoản nhận lương" collapsible>
             <div className="grid sm:grid-cols-2 gap-4">
               <Input label="Ngân hàng"><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass} /></Input>
               <Input label="Số tài khoản"><input value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} className={inputClass} /></Input>
@@ -224,11 +227,11 @@ export const EmployeeOnboardingPage: React.FC = () => {
             </div>
           </Section>
 
-          <Section title="4. Người thân / liên hệ khẩn cấp">
+          <Section title="4. Người thân / liên hệ khẩn cấp" collapsible>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Họ và tên *"><input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} className={inputClass} required /></Input>
+              <Input label="Họ và tên"><input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} className={inputClass} /></Input>
               <Input label="Mối quan hệ"><input value={emergencyRelationship} onChange={(e) => setEmergencyRelationship(e.target.value)} placeholder="Ví dụ: Mẹ" className={inputClass} /></Input>
-              <Input label="Số điện thoại *"><input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className={inputClass} required /></Input>
+              <Input label="Số điện thoại"><input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className={inputClass} /></Input>
               <Input label="Địa chỉ"><input value={emergencyAddress} onChange={(e) => setEmergencyAddress(e.target.value)} className={inputClass} /></Input>
             </div>
           </Section>
@@ -253,7 +256,14 @@ export const EmployeeOnboardingPage: React.FC = () => {
   );
 };
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+const Section: React.FC<{ title: string; children: React.ReactNode; collapsible?: boolean }> = ({ title, children, collapsible }) => collapsible ? (
+  <details className="group border-t border-slate-100 pt-5">
+    <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-black text-slate-900">
+      {title}<ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+    </summary>
+    <div className="mt-4 space-y-4">{children}</div>
+  </details>
+) : (
   <section className="space-y-4"><h2 className="text-sm font-black text-slate-900">{title}</h2>{children}</section>
 );
 

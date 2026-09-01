@@ -66,7 +66,7 @@ export const ContractEditorModal: React.FC<{
       end_date: contract?.end_date || '',
       position: contract?.position || employee.job_title || '',
       salary: contract?.salary?.toString() || employee.current_salary?.toString() || '',
-      kpi_target_month: contract?.kpi_target_month?.toString() || '',
+      kpi_target_month: contract?.kpi_target_month?.toString() || employee.kpi_target_per_day?.toString() || '',
       allowance_amount: contract?.allowance_amount?.toString() || '',
       phone_allowance: contract?.phone_allowance?.toString() || '',
       lunch_allowance: contract?.lunch_allowance?.toString() || '',
@@ -124,6 +124,8 @@ export const ContractEditorModal: React.FC<{
         end_date: form.type === 'HĐ không xác định thời hạn' ? null : form.end_date || null,
         position: form.position.trim() || null,
         salary: form.salary ? Number(form.salary) : null,
+        // ponytail: retain the legacy DB key until all deployed clients use the
+        // daily name; the value and UI are already daily KPI.
         kpi_target_month: form.kpi_target_month ? Number(form.kpi_target_month) : null,
         allowance_amount: form.allowance_amount ? Number(form.allowance_amount) : 0,
         phone_allowance: form.phone_allowance ? Number(form.phone_allowance) : 0,
@@ -141,8 +143,8 @@ export const ContractEditorModal: React.FC<{
         document_path: documentPath,
         document_name: documentName,
         document_sha256: documentSha256,
-        // A rejected contract becomes a fresh draft when edited. Pending and
-        // published contracts are read-only in the parent view.
+        // Published current contracts may be revised by Admin, then go through
+        // the same approval flow again before the changes are applied.
         publish_status: 'draft',
         approval_requested_at: null,
         approval_requested_by: null,
@@ -161,7 +163,7 @@ export const ContractEditorModal: React.FC<{
         });
       }
 
-      showToast(contract ? 'Đã cập nhật hợp đồng nháp.' : 'Đã tạo hợp đồng nháp. Hãy gửi Admin duyệt trước khi áp dụng.');
+      showToast(contract?.publish_status === 'published' ? 'Đã chuyển hợp đồng hiện tại về nháp để duyệt lại.' : contract ? 'Đã cập nhật hợp đồng nháp.' : 'Đã tạo hợp đồng nháp. Hãy gửi Admin duyệt trước khi áp dụng.');
       onClose();
     } catch (error) {
       showToast(await getUserFacingError(error, 'Không thể lưu hợp đồng. Vui lòng thử lại.'));
@@ -237,7 +239,7 @@ export const ContractEditorModal: React.FC<{
           <label className="text-xs font-semibold text-slate-700">Mức lương
             <CurrencyInput value={form.salary} onValueChange={value => set('salary', value)} className={`${inputClass} mt-1`} />
           </label>
-          <label className="text-xs font-semibold text-slate-700">KPI/tháng
+          <label className="text-xs font-semibold text-slate-700">KPI/ngày (view/ngày)
             <input type="number" min="0" step="0.1" value={form.kpi_target_month} onChange={e => set('kpi_target_month', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Phụ cấp

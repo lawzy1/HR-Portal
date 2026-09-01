@@ -536,15 +536,15 @@ const ContractCard: React.FC<{
         }`}>
           {contract.status}
         </span>
+        {(contract.publish_status === 'draft' || contract.publish_status === 'rejected' || (isAdmin && contract.publish_status === 'published' && contract.status === 'Đang hiệu lực')) && (
+          <button onClick={onEdit} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        )}
         {(contract.publish_status === 'draft' || contract.publish_status === 'rejected') && (
-          <>
-            <button onClick={onEdit} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
             <button onClick={onSubmit} className="p-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 cursor-pointer" title="Gửi Admin duyệt">
               <Send className="w-3.5 h-3.5" />
             </button>
-          </>
         )}
         {isAdmin && contract.publish_status === 'pending_approval' && (
           <>
@@ -564,7 +564,7 @@ const ContractCard: React.FC<{
       <p>Ngày ký: <b>{contract.signed_date || '—'}</b> • Thời hạn: <b>{contract.start_date}</b> đến <b>{contract.end_date || 'Không xác định'}</b></p>
       <p>Mức lương HĐ: <b className="text-success-700">{formatMoney(contract.salary || 0)}</b>
         {contract.allowance_amount > 0 && <> • Phụ cấp: <b className="text-success-700">{formatMoney(contract.allowance_amount)}</b></>}
-        {contract.kpi_target_month != null && <> • KPI/tháng: <b className="text-primary-700">{contract.kpi_target_month}</b></>}
+        {contract.kpi_target_month != null && <> • KPI/ngày: <b className="text-primary-700">{contract.kpi_target_month} view/ngày</b></>}
       </p>
       {(contract.level_title || contract.commission_rate_per_view > 0 || contract.qc_commission_rate_per_view > 0) && (
         <p>

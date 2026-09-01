@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -189,14 +189,50 @@ export type Database = {
           },
         ]
       }
+      company_workday_overrides: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          month: number
+          standard_work_days: number
+          year: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          month: number
+          standard_work_days: number
+          year: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          standard_work_days?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_workday_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           adjustment_categories: string[]
+          allowance_amount: number
           approval_requested_at: string | null
           approval_requested_by: string | null
           approved_at: string | null
           approved_by: string | null
-          allowance_amount: number
+          commission_rate_per_view: number
           company_id: string
           contract_code: string
           created_at: string
@@ -205,17 +241,16 @@ export type Database = {
           document_sha256: string | null
           employee_id: string
           end_date: string | null
-          id: string
-          kpi_target_month: number | null
-          commission_rate_per_view: number
           guaranteed_income: number
+          id: string
+          kpi_target_per_day: number | null
           level_title: string | null
           lunch_allowance: number
           note: string | null
           parent_contract_id: string | null
+          phone_allowance: number
           position: string | null
           publish_status: string
-          phone_allowance: number
           qc_commission_rate_per_view: number
           rejection_reason: string | null
           salary: number | null
@@ -228,11 +263,12 @@ export type Database = {
         }
         Insert: {
           adjustment_categories?: string[]
+          allowance_amount?: number
           approval_requested_at?: string | null
           approval_requested_by?: string | null
           approved_at?: string | null
           approved_by?: string | null
-          allowance_amount?: number
+          commission_rate_per_view?: number
           company_id: string
           contract_code: string
           created_at?: string
@@ -241,17 +277,16 @@ export type Database = {
           document_sha256?: string | null
           employee_id: string
           end_date?: string | null
-          id?: string
-          kpi_target_month?: number | null
-          commission_rate_per_view?: number
           guaranteed_income?: number
+          id?: string
+          kpi_target_per_day?: number | null
           level_title?: string | null
           lunch_allowance?: number
           note?: string | null
           parent_contract_id?: string | null
+          phone_allowance?: number
           position?: string | null
           publish_status?: string
-          phone_allowance?: number
           qc_commission_rate_per_view?: number
           rejection_reason?: string | null
           salary?: number | null
@@ -264,11 +299,12 @@ export type Database = {
         }
         Update: {
           adjustment_categories?: string[]
+          allowance_amount?: number
           approval_requested_at?: string | null
           approval_requested_by?: string | null
           approved_at?: string | null
           approved_by?: string | null
-          allowance_amount?: number
+          commission_rate_per_view?: number
           company_id?: string
           contract_code?: string
           created_at?: string
@@ -277,17 +313,16 @@ export type Database = {
           document_sha256?: string | null
           employee_id?: string
           end_date?: string | null
-          id?: string
-          kpi_target_month?: number | null
-          commission_rate_per_view?: number
           guaranteed_income?: number
+          id?: string
+          kpi_target_per_day?: number | null
           level_title?: string | null
           lunch_allowance?: number
           note?: string | null
           parent_contract_id?: string | null
+          phone_allowance?: number
           position?: string | null
           publish_status?: string
-          phone_allowance?: number
           qc_commission_rate_per_view?: number
           rejection_reason?: string | null
           salary?: number | null
@@ -409,6 +444,84 @@ export type Database = {
           {
             foreignKeyName: "employee_invitations_invited_by_fkey"
             columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_invitations_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_profile_change_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          message: string
+          notification_error: string | null
+          notification_sent_at: string | null
+          requested_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          message: string
+          notification_error?: string | null
+          notification_sent_at?: string | null
+          requested_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          message?: string
+          notification_error?: string | null
+          notification_sent_at?: string | null
+          requested_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_profile_change_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profile_change_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profile_change_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profile_change_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -570,9 +683,10 @@ export type Database = {
           kpi_level: string | null
           kpi_target_per_day: number | null
           last_salary_review_date: string | null
+          leave_accrual_mode: string
           marital_status: string | null
-          permanent_address: string | null
           performance_commission_rate: number
+          permanent_address: string | null
           phone: string | null
           qc_commission_rate: number
           start_date: string | null
@@ -598,9 +712,10 @@ export type Database = {
           kpi_level?: string | null
           kpi_target_per_day?: number | null
           last_salary_review_date?: string | null
+          leave_accrual_mode?: string
           marital_status?: string | null
-          permanent_address?: string | null
           performance_commission_rate?: number
+          permanent_address?: string | null
           phone?: string | null
           qc_commission_rate?: number
           start_date?: string | null
@@ -626,9 +741,10 @@ export type Database = {
           kpi_level?: string | null
           kpi_target_per_day?: number | null
           last_salary_review_date?: string | null
+          leave_accrual_mode?: string
           marital_status?: string | null
-          permanent_address?: string | null
           performance_commission_rate?: number
+          permanent_address?: string | null
           phone?: string | null
           qc_commission_rate?: number
           start_date?: string | null
@@ -771,11 +887,12 @@ export type Database = {
           approved_by: string | null
           benefit_amount: number | null
           bonus_amount: number | null
-          company_id: string
           commission_rate_snapshot: number
+          company_id: string
           completion_percentage: number | null
           created_at: string
           employee_id: string
+          guaranteed_income_topup: number
           id: string
           kpi_converted_views: number | null
           kpi_target: number | null
@@ -788,9 +905,8 @@ export type Database = {
           qc_commission_amount: number
           qc_rate_snapshot: number
           qc_views: number
-          rendered_views_actual: number | null
           rejection_reason: string | null
-          guaranteed_income_topup: number
+          rendered_views_actual: number | null
           year: number
         }
         Insert: {
@@ -800,11 +916,12 @@ export type Database = {
           approved_by?: string | null
           benefit_amount?: number | null
           bonus_amount?: number | null
-          company_id: string
           commission_rate_snapshot?: number
+          company_id: string
           completion_percentage?: number | null
           created_at?: string
           employee_id: string
+          guaranteed_income_topup?: number
           id?: string
           kpi_converted_views?: number | null
           kpi_target?: number | null
@@ -817,9 +934,8 @@ export type Database = {
           qc_commission_amount?: number
           qc_rate_snapshot?: number
           qc_views?: number
-          rendered_views_actual?: number | null
           rejection_reason?: string | null
-          guaranteed_income_topup?: number
+          rendered_views_actual?: number | null
           year: number
         }
         Update: {
@@ -829,11 +945,12 @@ export type Database = {
           approved_by?: string | null
           benefit_amount?: number | null
           bonus_amount?: number | null
-          company_id?: string
           commission_rate_snapshot?: number
+          company_id?: string
           completion_percentage?: number | null
           created_at?: string
           employee_id?: string
+          guaranteed_income_topup?: number
           id?: string
           kpi_converted_views?: number | null
           kpi_target?: number | null
@@ -846,9 +963,8 @@ export type Database = {
           qc_commission_amount?: number
           qc_rate_snapshot?: number
           qc_views?: number
-          rendered_views_actual?: number | null
           rejection_reason?: string | null
-          guaranteed_income_topup?: number
+          rendered_views_actual?: number | null
           year?: number
         }
         Relationships: [
@@ -1064,76 +1180,6 @@ export type Database = {
           },
         ]
       }
-      ot_records: {
-        Row: {
-          amount: number | null
-          approver_id: string | null
-          company_id: string
-          created_at: string
-          date: string
-          employee_id: string
-          hours: number
-          id: string
-          ot_percentage: number | null
-          pay_type: string | null
-          reason: string | null
-          status: string
-          views_render_count: number | null
-        }
-        Insert: {
-          amount?: number | null
-          approver_id?: string | null
-          company_id: string
-          created_at?: string
-          date: string
-          employee_id: string
-          hours: number
-          id?: string
-          ot_percentage?: number | null
-          pay_type?: string | null
-          reason?: string | null
-          status?: string
-          views_render_count?: number | null
-        }
-        Update: {
-          amount?: number | null
-          approver_id?: string | null
-          company_id?: string
-          created_at?: string
-          date?: string
-          employee_id?: string
-          hours?: number
-          id?: string
-          ot_percentage?: number | null
-          pay_type?: string | null
-          reason?: string | null
-          status?: string
-          views_render_count?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ot_records_approver_id_fkey"
-            columns: ["approver_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ot_records_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ot_records_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notification_outbox: {
         Row: {
           attempts: number
@@ -1206,37 +1252,72 @@ export type Database = {
           },
         ]
       }
-      company_workday_overrides: {
+      ot_records: {
         Row: {
+          amount: number | null
+          approver_id: string | null
           company_id: string
           created_at: string
+          date: string
+          employee_id: string
+          hours: number
           id: string
-          month: number
-          standard_work_days: number
-          year: number
+          ot_percentage: number | null
+          pay_type: string | null
+          reason: string | null
+          status: string
+          views_render_count: number | null
         }
         Insert: {
+          amount?: number | null
+          approver_id?: string | null
           company_id: string
           created_at?: string
+          date: string
+          employee_id: string
+          hours: number
           id?: string
-          month: number
-          standard_work_days: number
-          year: number
+          ot_percentage?: number | null
+          pay_type?: string | null
+          reason?: string | null
+          status?: string
+          views_render_count?: number | null
         }
         Update: {
+          amount?: number | null
+          approver_id?: string | null
           company_id?: string
           created_at?: string
+          date?: string
+          employee_id?: string
+          hours?: number
           id?: string
-          month?: number
-          standard_work_days?: number
-          year?: number
+          ot_percentage?: number | null
+          pay_type?: string | null
+          reason?: string | null
+          status?: string
+          views_render_count?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "company_workday_overrides_company_id_fkey"
+            foreignKeyName: "ot_records_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ot_records_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ot_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -1258,15 +1339,15 @@ export type Database = {
           business_trip_refund: number
           company_id: string
           created_at: string
-          employee_id: string
           dependents_count: number
+          employee_id: string
           family_deduction: number
           gross_income: number
+          holiday_bonus_amount: number
           id: string
           import_source_name: string | null
           kpi_bonus: number
           lunch_allowance: number
-          holiday_bonus_amount: number
           month: number
           net_salary: number
           note: string | null
@@ -1291,8 +1372,8 @@ export type Database = {
           standard_work_days: number
           tax_exempt_income: number
           taxable_income: number
-          total_adjustments: number
-          total_deductions: number
+          total_adjustments: number | null
+          total_deductions: number | null
           welfare_refund: number
           workday_salary: number
           year: number
@@ -1313,15 +1394,15 @@ export type Database = {
           business_trip_refund?: number
           company_id: string
           created_at?: string
-          employee_id: string
           dependents_count?: number
+          employee_id: string
           family_deduction?: number
           gross_income?: number
+          holiday_bonus_amount?: number
           id?: string
           import_source_name?: string | null
           kpi_bonus?: number
           lunch_allowance?: number
-          holiday_bonus_amount?: number
           month: number
           net_salary?: number
           note?: string | null
@@ -1346,6 +1427,8 @@ export type Database = {
           standard_work_days?: number
           tax_exempt_income?: number
           taxable_income?: number
+          total_adjustments?: number | null
+          total_deductions?: number | null
           welfare_refund?: number
           workday_salary?: number
           year: number
@@ -1366,15 +1449,15 @@ export type Database = {
           business_trip_refund?: number
           company_id?: string
           created_at?: string
-          employee_id?: string
           dependents_count?: number
+          employee_id?: string
           family_deduction?: number
           gross_income?: number
+          holiday_bonus_amount?: number
           id?: string
           import_source_name?: string | null
           kpi_bonus?: number
           lunch_allowance?: number
-          holiday_bonus_amount?: number
           month?: number
           net_salary?: number
           note?: string | null
@@ -1399,6 +1482,8 @@ export type Database = {
           standard_work_days?: number
           tax_exempt_income?: number
           taxable_income?: number
+          total_adjustments?: number | null
+          total_deductions?: number | null
           welfare_refund?: number
           workday_salary?: number
           year?: number
@@ -1628,9 +1713,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_contract: { Args: { p_contract_id: string }; Returns: string }
       activate_own_backoffice_account: { Args: never; Returns: undefined }
+      approve_contract: { Args: { p_contract_id: string }; Returns: string }
       approve_kpi_month: {
+        Args: { p_month: number; p_year: number }
+        Returns: number
+      }
+      approve_payroll_month: {
         Args: { p_month: number; p_year: number }
         Returns: number
       }
@@ -1670,9 +1759,10 @@ export type Database = {
           kpi_level: string | null
           kpi_target_per_day: number | null
           last_salary_review_date: string | null
+          leave_accrual_mode: string
           marital_status: string | null
-          permanent_address: string | null
           performance_commission_rate: number
+          permanent_address: string | null
           phone: string | null
           qc_commission_rate: number
           start_date: string | null
@@ -1690,12 +1780,9 @@ export type Database = {
       current_company_id: { Args: never; Returns: string }
       current_employee_id: { Args: never; Returns: string }
       current_onboarding_employee_id: { Args: never; Returns: string }
-      approve_payroll_month: {
-        Args: { p_month: number; p_year: number }
-        Returns: number
-      }
-      is_backoffice: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_backoffice: { Args: never; Returns: boolean }
+      is_employee: { Args: never; Returns: boolean }
       is_hr_accounting: { Args: never; Returns: boolean }
       mark_own_invitation_completed: { Args: never; Returns: undefined }
       mark_own_invitation_opened: { Args: never; Returns: undefined }
@@ -1710,10 +1797,6 @@ export type Database = {
       }
       refresh_leave_accrual: {
         Args: { p_employee_id: string; p_year: number }
-        Returns: undefined
-      }
-      review_employee_onboarding: {
-        Args: { p_decision: string; p_note?: string; p_profile_id: string }
         Returns: undefined
       }
       reject_contract: {
@@ -1732,6 +1815,10 @@ export type Database = {
         Args: { p_payroll_id: string }
         Returns: string
       }
+      review_employee_onboarding: {
+        Args: { p_decision: string; p_note?: string; p_profile_id: string }
+        Returns: undefined
+      }
       save_and_submit_own_onboarding: {
         Args: { p_employee: Json; p_relatives: Json; p_sensitive: Json }
         Returns: undefined
@@ -1742,14 +1829,14 @@ export type Database = {
         Args: { p_month: number; p_year: number }
         Returns: number
       }
+      submit_own_onboarding: { Args: never; Returns: undefined }
       submit_payroll_month: {
         Args: { p_month: number; p_year: number }
         Returns: number
       }
-      submit_own_onboarding: { Args: never; Returns: undefined }
     }
     Enums: {
-      user_role: "admin" | "hr" | "employee"
+      user_role: "admin" | "employee" | "hr"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1877,7 +1964,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      user_role: ["admin", "hr", "employee"],
+      user_role: ["admin", "employee", "hr"],
     },
   },
 } as const

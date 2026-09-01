@@ -47,10 +47,11 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 ### 2026-09-01 — Rút gọn onboarding, quỹ phép theo HĐLĐ và KPI/ngày
 
 - Onboarding chỉ bắt buộc số điện thoại, ngày sinh và giới tính; họ tên được sửa, email giữ read-only. CCCD/ngân hàng/người thân là ba section tùy chọn, mặc định đóng và có thể bổ sung sau khi tài khoản được duyệt.
-- Migration local `20260901183000_onboarding_leave_contract_updates.sql` bỏ yêu cầu CCCD/người thân ở RPC, giữ validation bắt buộc ở backend và cho phép người đang onboarding sửa riêng họ tên.
+- Migration production `20260901183000_onboarding_leave_contract_updates.sql` bỏ yêu cầu CCCD/người thân ở RPC, giữ validation bắt buộc ở backend và cho phép người đang onboarding sửa riêng họ tên.
 - Nhân viên tồn tại được giữ nguyên quỹ phép thành số dư nhập tay qua adjustment ledger. Nhân viên tạo mới sau migration bắt đầu 0 ngày và tích lũy 1 ngày tại ngày hiệu lực HĐLĐ chính thức, sau đó mỗi tháng thêm 1 ngày; hợp đồng thử việc/phụ lục không khởi tạo tích lũy.
-- Modal điều chỉnh phép chỉ nhận số dương theo bước 0,5 và tự hiển thị dấu cộng/trừ theo thao tác. Hợp đồng hiện hành có nút sửa cho Admin, chuyển về nháp để duyệt lại; KPI hợp đồng đổi thành `kpi_target_per_day` và đồng bộ về hồ sơ khi duyệt.
-- Verify local: `npm run lint` sạch error (8 warning cũ), `npm run typecheck` và `npm run build` thành công. Migration dry-run xác nhận chỉ có đúng file mới; **chưa apply production vì cần xác nhận riêng cho thao tác đổi schema/chuyển số dư hiện hữu**.
+- Modal điều chỉnh phép chỉ nhận số dương theo bước 0,5 và tự hiển thị dấu cộng/trừ theo thao tác. Hợp đồng hiện hành có nút sửa cho Admin, chuyển về nháp để duyệt lại; KPI hợp đồng hiển thị/tính theo ngày và đồng bộ về `employees.kpi_target_per_day` khi duyệt.
+- Migration production `20260901190000_restore_contract_kpi_client_compatibility.sql` giữ khóa DB legacy `contracts.kpi_target_month` để frontend đang deploy không lỗi trước lần phát hành kế tiếp; giá trị này được hiểu thống nhất là KPI/ngày.
+- Verify: hai migration đã đồng bộ local/production; types được regenerate từ DB thật; `npm run lint` sạch error (8 warning cũ), `npm run typecheck`, `npm run build` và `supabase db lint --linked` thành công.
 
 ### 2026-08-27 — Admin ghi nhận trực tiếp thời gian làm việc và calendar nguồn lực
 

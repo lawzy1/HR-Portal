@@ -243,7 +243,7 @@ export type Database = {
           end_date: string | null
           guaranteed_income: number
           id: string
-          kpi_target_per_day: number | null
+          kpi_target_month: number | null
           level_title: string | null
           lunch_allowance: number
           note: string | null
@@ -279,7 +279,7 @@ export type Database = {
           end_date?: string | null
           guaranteed_income?: number
           id?: string
-          kpi_target_per_day?: number | null
+          kpi_target_month?: number | null
           level_title?: string | null
           lunch_allowance?: number
           note?: string | null
@@ -315,7 +315,7 @@ export type Database = {
           end_date?: string | null
           guaranteed_income?: number
           id?: string
-          kpi_target_per_day?: number | null
+          kpi_target_month?: number | null
           level_title?: string | null
           lunch_allowance?: number
           note?: string | null

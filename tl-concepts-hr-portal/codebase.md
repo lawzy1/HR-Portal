@@ -1,6 +1,6 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-09-01**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
+Cập nhật lần cuối: **2026-09-02**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
@@ -30,7 +30,7 @@ Cập nhật lần cuối: **2026-09-01**. File này tóm tắt trạng thái re
 - `company_settings.kpi_rate_per_day` không còn được dùng ở đâu (cột mồ côi).
 
 **Gap đã biết, chưa fix (xem thảo luận 2026-08-25):**
-- Bảng quỹ phép đang hiển thị `total_accumulated` (phép đã tích lũy đến thời điểm hiện tại), không phải toàn bộ `annual_entitlement`; tên “Tổng quỹ” dễ gây hiểu nhầm. `remaining_days` trong Phase 10 hiện chưa trừ `pending_days`, nên cần chốt lại cách hiển thị/khóa số ngày khi có đơn chờ duyệt.
+- Bảng quỹ phép đang hiển thị `total_accumulated` (phép đã tích lũy đến thời điểm hiện tại), không phải toàn bộ `annual_entitlement`; tên “Tổng quỹ” dễ gây hiểu nhầm. Đã chốt `remaining_days` phải là số khả dụng `max(total_accumulated - used_days - pending_days, 0)` và backend phải chặn đơn phép năm vượt số này; chưa apply migration.
 - Export Excel bảng KPI (`AdminKpiOtView.handleDownloadExcel`) chưa có cột "Phân loại" (New Render/Re Process).
 - Chưa có bảng xếp hạng/đánh giá hiệu suất riêng cho ban lãnh đạo (hiện chỉ có card tiến độ %/nhân viên, chưa xếp loại Xuất sắc/Đạt/Chưa đạt hay ranking toàn công ty).
 - `ImportKpiModal` (import Excel vào `kpi_monthly`) vẫn cho admin gõ tay `kpi_target`, chưa tự tính theo công thức chỉ tiêu×ngày công mới.
@@ -43,6 +43,11 @@ Cập nhật lần cuối: **2026-09-01**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-09-02 — Chặn onboarding ghi đè dữ liệu khi tải lỗi
+
+- Form onboarding chỉ hydrate một lần sau khi hồ sơ nhân viên, thông tin nhạy cảm và người thân đều tải thành công. Nếu một query lỗi, form bị chặn và chỉ cho thử tải lại hoặc đăng xuất, tránh gửi state rỗng làm mất dữ liệu tùy chọn đã lưu.
+- Verify: `npm run lint` và `npm run typecheck` sạch error (8 warning cũ); production build thành công.
 
 ### 2026-09-01 — Rút gọn onboarding, quỹ phép theo HĐLĐ và KPI/ngày
 

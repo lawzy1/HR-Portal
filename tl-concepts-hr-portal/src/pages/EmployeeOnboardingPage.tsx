@@ -14,9 +14,12 @@ export const EmployeeOnboardingPage: React.FC = () => {
   const { profile, signOut, refreshProfile } = useAuth();
   const employeeId = profile?.employeeId ?? undefined;
   const editableEmployeeId = profile && ['in_progress', 'needs_changes'].includes(profile.onboardingStatus) ? employeeId : undefined;
-  const { data: employee } = useEmployee(editableEmployeeId);
-  const { data: sensitiveInfo } = useEmployeeSensitiveInfo(editableEmployeeId);
-  const { data: relatives } = useEmployeeRelatives(editableEmployeeId);
+  const employeeQuery = useEmployee(editableEmployeeId);
+  const sensitiveInfoQuery = useEmployeeSensitiveInfo(editableEmployeeId);
+  const relativesQuery = useEmployeeRelatives(editableEmployeeId);
+  const employee = employeeQuery.data;
+  const sensitiveInfo = sensitiveInfoQuery.data;
+  const relatives = relativesQuery.data;
   const { uploadFile } = useFileUpload();
 
   const [fullName, setFullName] = useState('');
@@ -44,11 +47,13 @@ export const EmployeeOnboardingPage: React.FC = () => {
   const [backFile, setBackFile] = useState<File | null>(null);
   const [vneidFile, setVneidFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!employee) return;
+    if (isHydrated || !employee || !sensitiveInfoQuery.isSuccess || !relativesQuery.isSuccess) return;
+
     setFullName(employee.full_name);
     setPhone(employee.phone || '');
     setDob(employee.dob || '');
@@ -56,35 +61,44 @@ export const EmployeeOnboardingPage: React.FC = () => {
     setMaritalStatus(employee.marital_status || '');
     setPermanentAddress(employee.permanent_address || '');
     setTemporaryAddress(employee.temporary_address || '');
-  }, [employee]);
+    setIdCardNumber(sensitiveInfo?.id_card_number || '');
+    setIdCardIssueDate(sensitiveInfo?.id_card_issue_date || '');
+    setIdCardIssuePlace(sensitiveInfo?.id_card_issue_place || '');
+    setTaxCode(sensitiveInfo?.tax_code || '');
+    setSocialInsuranceCode(sensitiveInfo?.social_insurance_code || '');
+    setBankName(sensitiveInfo?.bank_name || '');
+    setBankAccountNumber(sensitiveInfo?.bank_account_number || '');
+    setBankAccountHolder(sensitiveInfo?.bank_account_holder || '');
+    setBankBranch(sensitiveInfo?.bank_branch || '');
 
-  useEffect(() => {
-    if (!sensitiveInfo) return;
-    setIdCardNumber(sensitiveInfo.id_card_number || '');
-    setIdCardIssueDate(sensitiveInfo.id_card_issue_date || '');
-    setIdCardIssuePlace(sensitiveInfo.id_card_issue_place || '');
-    setTaxCode(sensitiveInfo.tax_code || '');
-    setSocialInsuranceCode(sensitiveInfo.social_insurance_code || '');
-    setBankName(sensitiveInfo.bank_name || '');
-    setBankAccountNumber(sensitiveInfo.bank_account_number || '');
-    setBankAccountHolder(sensitiveInfo.bank_account_holder || '');
-    setBankBranch(sensitiveInfo.bank_branch || '');
-  }, [sensitiveInfo]);
-
-  useEffect(() => {
     const emergency = relatives?.find((relative) => relative.is_emergency_contact) ?? relatives?.[0];
-    if (!emergency) return;
-    setEmergencyName(emergency.full_name);
-    setEmergencyRelationship(emergency.relationship || '');
-    setEmergencyPhone(emergency.phone || '');
-    setEmergencyAddress(emergency.address || '');
-  }, [relatives]);
+    setEmergencyName(emergency?.full_name || '');
+    setEmergencyRelationship(emergency?.relationship || '');
+    setEmergencyPhone(emergency?.phone || '');
+    setEmergencyAddress(emergency?.address || '');
+    setIsHydrated(true);
+  }, [employee, isHydrated, relatives, relativesQuery.isSuccess, sensitiveInfo, sensitiveInfoQuery.isSuccess]);
 
   if (profile?.onboardingStatus === 'submitted') {
     return <OnboardingStatus title="Hồ sơ đã gửi" description="HR đang kiểm tra thông tin và minh chứng của bạn. Toàn bộ HR Portal sẽ mở ngay sau khi hồ sơ được duyệt." onSignOut={signOut} />;
   }
 
-  if (!employee || !employeeId || !profile) {
+  if (employeeQuery.isError || sensitiveInfoQuery.isError || relativesQuery.isError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+        <section className="max-w-md rounded-2xl bg-white p-7 text-center shadow-xl">
+          <h1 className="text-xl font-black text-slate-900">Không thể tải đầy đủ hồ sơ</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Hệ thống đã chặn gửi hồ sơ để dữ liệu cũ không bị ghi đè. Vui lòng tải lại trước khi tiếp tục.</p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button type="button" onClick={() => void Promise.all([employeeQuery.refetch(), sensitiveInfoQuery.refetch(), relativesQuery.refetch()])} className="rounded-xl bg-[#173f37] px-4 py-2.5 text-sm font-bold text-white">Thử lại</button>
+            <button type="button" onClick={() => void signOut()} className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700">Đăng xuất</button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!isHydrated || !employee || !employeeId || !profile) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Đang tải hồ sơ đăng ký...</div>;
   }
 

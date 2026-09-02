@@ -404,6 +404,21 @@ export const AdminKpiOtView: React.FC = () => {
     setIsWorkdayEditorOpen(true);
   };
 
+  const handleResetWorkdayToCalendar = async () => {
+    if (!profile?.companyId || hasPendingKpi || hasPublishedKpi) return;
+    try {
+      await upsertWorkdayOverride.mutateAsync({
+        company_id: profile.companyId,
+        month: selectedMonth,
+        year: selectedYear,
+        standard_work_days: monthWorkInfo.standardWorkDays,
+      });
+      showToast('Đã đặt lại ngày công chuẩn theo lịch (đã trừ lễ/Tết hiện tại). Hãy tạo lại bản nháp KPI để cập nhật chỉ tiêu và thưởng.');
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể đặt lại ngày công chuẩn. Vui lòng thử lại.'));
+    }
+  };
+
   const handleSaveWorkdayOverride = async () => {
     if (!profile?.companyId) return;
     if (!Number.isFinite(editedStandardWorkDays) || editedStandardWorkDays <= 0 || editedStandardWorkDays > 31) {
@@ -721,6 +736,17 @@ export const AdminKpiOtView: React.FC = () => {
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-500/20 text-primary-200 border border-primary-400/30">
                     Đã điều chỉnh
                   </span>
+                )}
+                {workdayOverride && workdayOverride.standard_work_days !== monthWorkInfo.standardWorkDays && (
+                  <button
+                    type="button"
+                    onClick={handleResetWorkdayToCalendar}
+                    disabled={hasPendingKpi || hasPublishedKpi}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-200 border border-rose-400/30 hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+                    title={`Điều chỉnh đang lưu (${workdayOverride.standard_work_days} công) không khớp lịch hiện tại (${monthWorkInfo.standardWorkDays} công, đã trừ lễ/Tết). Bấm để đặt lại theo lịch.`}
+                  >
+                    ⚠ Lệch lịch — đặt lại {monthWorkInfo.standardWorkDays} công
+                  </button>
                 )}
                 <button
                   type="button"

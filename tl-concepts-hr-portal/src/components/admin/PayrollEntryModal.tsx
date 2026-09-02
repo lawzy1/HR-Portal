@@ -12,6 +12,7 @@ import { useOtRecords } from '../../hooks/useOt';
 import { useUpsertPayrollRecord, type DbPayrollRecord } from '../../hooks/usePayroll';
 import type { TablesInsert } from '../../lib/database.types';
 import { CurrencyInput } from '../CurrencyInput';
+import { SearchableSelect } from '../ui/SearchableSelect';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../../utils/workDays';
 
 type PayrollFormState = {
@@ -421,10 +422,12 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <label className="block space-y-1 md:col-span-2">
                 <span className="text-xs font-semibold text-slate-700">Nhân viên *</span>
-                <select required value={form.employeeId} onChange={(event) => updateField('employeeId', event.target.value)} className={inputClass}>
-                  <option value="">Chọn nhân viên</option>
-                  {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.full_name} ({employee.employee_code})</option>)}
-                </select>
+                <SearchableSelect
+                  value={form.employeeId}
+                  onChange={(value) => updateField('employeeId', value)}
+                  placeholder="Chọn nhân viên"
+                  options={employees.map((employee) => ({ value: employee.id, label: `${employee.full_name} (${employee.employee_code})` }))}
+                />
               </label>
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-slate-700">Tháng *</span>

@@ -5,6 +5,7 @@ import { useEmployees } from '../hooks/useEmployees';
 import { useUpsertKpiMonthly } from '../hooks/useKpi';
 import { getUserFacingError } from '../lib/userFacingError';
 import { X, FileSpreadsheet, Check, AlertCircle, Link, Loader2 } from 'lucide-react';
+import { ModalPanel } from './ui/ModalPanel';
 
 interface ParsedKpiRow {
   month: number;
@@ -134,9 +135,7 @@ export const ImportKpiModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-
+    <ModalPanel size="lg" padded={false}>
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-success-600 rounded-lg text-white">
@@ -227,7 +226,6 @@ export const ImportKpiModal: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </ModalPanel>
   );
 };

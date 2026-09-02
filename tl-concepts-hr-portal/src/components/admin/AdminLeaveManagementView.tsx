@@ -29,6 +29,8 @@ import {
 } from '../../hooks/useLeave';
 import { formatDate } from '../../utils/formatters';
 import { ResourceCalendar } from './ResourceCalendar';
+import { SearchableSelect } from '../ui/SearchableSelect';
+import { ModalPanel } from '../ui/ModalPanel';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
   const { data: url } = useSignedImageUrl(path);
@@ -243,7 +245,7 @@ export const AdminLeaveManagementView: React.FC = () => {
 
       <form onSubmit={handleQuickEntry} className="rounded-2xl border border-primary-100 bg-primary-50/45 p-5 shadow-sm">
         <div className="mb-4"><p className="text-xs font-bold uppercase tracking-wide text-primary-600">Ghi nhận trực tiếp</p><h2 className="mt-1 font-bold text-slate-900">Tạo nghỉ phép, WFH hoặc đi trễ cho nhân viên</h2></div>
-        <div className="grid gap-3 md:grid-cols-5"><select required value={quickEntry.employeeId} onChange={(e) => setQuickEntry({ ...quickEntry, employeeId: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Chọn nhân viên</option>{(employees || []).map((employee) => <option key={employee.id} value={employee.id}>{employee.full_name} · {employee.employee_code}</option>)}</select><select value={quickEntry.kind} onChange={(e) => setQuickEntry({ ...quickEntry, kind: e.target.value, endDate: '' })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="leave">Nghỉ phép</option><option value="wfh">WFH</option><option value="late">Đi trễ</option></select><input required type="date" value={quickEntry.date} onChange={(e) => setQuickEntry({ ...quickEntry, date: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />{quickEntry.kind === 'leave' ? <input type="date" value={quickEntry.endDate} min={quickEntry.date} onChange={(e) => setQuickEntry({ ...quickEntry, endDate: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /> : <input type="number" min="1" value={quickEntry.minutes} disabled={quickEntry.kind !== 'late'} onChange={(e) => setQuickEntry({ ...quickEntry, minutes: Number(e.target.value) })} placeholder="Phút đi trễ" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm disabled:opacity-45" />}<input required value={quickEntry.reason} onChange={(e) => setQuickEntry({ ...quickEntry, reason: e.target.value })} placeholder="Lý do / ghi chú" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /></div>
+        <div className="grid gap-3 md:grid-cols-5"><SearchableSelect value={quickEntry.employeeId} onChange={(value) => setQuickEntry({ ...quickEntry, employeeId: value })} placeholder="Chọn nhân viên" options={(employees || []).map((employee) => ({ value: employee.id, label: `${employee.full_name} · ${employee.employee_code}` }))} /><select value={quickEntry.kind} onChange={(e) => setQuickEntry({ ...quickEntry, kind: e.target.value, endDate: '' })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="leave">Nghỉ phép</option><option value="wfh">WFH</option><option value="late">Đi trễ</option></select><input required type="date" value={quickEntry.date} onChange={(e) => setQuickEntry({ ...quickEntry, date: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />{quickEntry.kind === 'leave' ? <input type="date" value={quickEntry.endDate} min={quickEntry.date} onChange={(e) => setQuickEntry({ ...quickEntry, endDate: e.target.value })} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /> : <input type="number" min="1" value={quickEntry.minutes} disabled={quickEntry.kind !== 'late'} onChange={(e) => setQuickEntry({ ...quickEntry, minutes: Number(e.target.value) })} placeholder="Phút đi trễ" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm disabled:opacity-45" />}<input required value={quickEntry.reason} onChange={(e) => setQuickEntry({ ...quickEntry, reason: e.target.value })} placeholder="Lý do / ghi chú" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /></div>
         <button disabled={!isAdmin || createLeaveRequest.isPending || createWorkEvent.isPending} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-primary-700 disabled:opacity-50"><Plus className="h-4 w-4" /> Ghi nhận đã duyệt</button>
       </form>
 
@@ -578,8 +580,7 @@ export const AdminLeaveManagementView: React.FC = () => {
 
       {/* Approval comment modal */}
       {pendingAction && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <ModalPanel size="md">
             <h3 className="text-lg font-bold text-slate-900">Xác nhận {pendingAction.action} đơn nghỉ của {pendingAction.employeeName}</h3>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Ghi chú / Nhận xét của Admin (Không bắt buộc):</label>
@@ -595,13 +596,11 @@ export const AdminLeaveManagementView: React.FC = () => {
                 Xác nhận {pendingAction.action}
               </button>
             </div>
-          </div>
-        </div>
+        </ModalPanel>
       )}
 
       {adjustmentTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <ModalPanel size="lg">
             <h3 className="text-lg font-bold text-slate-900">
               {adjustmentTarget.direction === 'add' ? 'Thêm ngày phép' : 'Trừ ngày phép'}: {adjustmentTarget.employeeName}
             </h3>
@@ -636,8 +635,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                 {adjustmentTarget.direction === 'add' ? 'Lưu thêm ngày' : 'Lưu trừ ngày'}
               </button>
             </div>
-          </div>
-        </div>
+        </ModalPanel>
       )}
     </div>
   );

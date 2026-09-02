@@ -39,6 +39,8 @@ import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { useAllLeaveRequests, useCompanyHolidays } from '../../hooks/useLeave';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../../utils/workDays';
 import { ConfirmationDialog } from '../ConfirmationDialog';
+import { SearchableSelect } from '../ui/SearchableSelect';
+import { ModalPanel } from '../ui/ModalPanel';
 
 const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
   { value: 'new_render', label: 'New Render' },
@@ -1236,9 +1238,6 @@ export const AdminKpiOtView: React.FC = () => {
             const totalKpi = empJobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
             const target = getEmployeeKpiTarget(emp);
             const pct = target ? Math.min(150, Math.round((totalKpi / target) * 100)) : 0;
-            const estimatedBonus = companySettings
-              ? Math.max(companySettings.kpi_bonus_min, Math.round(totalKpi * companySettings.kpi_bonus_per_point))
-              : 0;
 
             const sumViews = (jobs: KpiJobRow[]) => jobs.reduce((a, c) => a + (c.views_count || 0), 0);
             const sumKpi = (jobs: KpiJobRow[]) => jobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
@@ -1290,7 +1289,6 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                   <span>Tổng: <b>{totalViews} views</b></span>
-                  <span className="font-bold text-success-700">{formatMoney(estimatedBonus)}</span>
                 </div>
               </div>
             );
@@ -1416,8 +1414,7 @@ export const AdminKpiOtView: React.FC = () => {
 
       {/* Modal Add / Edit KPI Job Item */}
       {isNewJobModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <ModalPanel size="xl">
             <h3 className="text-lg font-bold text-slate-900">
               {editingJob ? 'Cập nhật chi tiết Bài / Dự án KPI' : 'Nhập liệu Bài / Dự án KPI mới'}
             </h3>
@@ -1454,17 +1451,11 @@ export const AdminKpiOtView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Assignee (Người thực hiện) *:</label>
-                  <select
+                  <SearchableSelect
                     value={jobEmployeeId}
-                    onChange={e => setJobEmployeeId(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                    required
-                  >
-                    <option value="">-- Chọn nhân viên --</option>
-                    {employeeList.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code})</option>
-                    ))}
-                  </select>
+                    onChange={setJobEmployeeId}
+                    options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code})` }))}
+                  />
                 </div>
 
                 <div>
@@ -1575,14 +1566,12 @@ export const AdminKpiOtView: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </ModalPanel>
       )}
 
       {/* Modal Add OT (Admin Direct Creation) */}
       {isNewOtModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <ModalPanel size="xl">
             <h3 className="text-lg font-bold text-slate-900">
               Tạo mới giờ OT cho Nhân viên
             </h3>
@@ -1590,17 +1579,11 @@ export const AdminKpiOtView: React.FC = () => {
             <form onSubmit={handleAddOtSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Nhân viên *:</label>
-                <select
+                <SearchableSelect
                   value={otEmpId}
-                  onChange={e => setOtEmpId(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                  required
-                >
-                  <option value="">-- Chọn nhân viên --</option>
-                  {employeeList.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_code}) - {emp.job_title}</option>
-                  ))}
-                </select>
+                  onChange={setOtEmpId}
+                  options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code}) - ${emp.job_title}` }))}
+                />
               </div>
 
               <div>
@@ -1729,8 +1712,7 @@ export const AdminKpiOtView: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </ModalPanel>
       )}
 
       <ConfirmationDialog

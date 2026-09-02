@@ -12,6 +12,7 @@ import { ContractDocumentLink } from '../ContractDocumentLink';
 import { ContractEditorModal } from './ContractEditorModal';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { getContractLifecycleStatus, latestContractsByEmployee } from '../../utils/contracts';
+import { SearchableSelect } from '../ui/SearchableSelect';
 
 export const AdminContractSalaryView: React.FC = () => {
   const { profile } = useAuth();
@@ -110,17 +111,12 @@ export const AdminContractSalaryView: React.FC = () => {
           </button>
           <div className="flex items-center space-x-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
           <span className="text-xs font-bold text-slate-500 uppercase px-1">Chọn nhân viên:</span>
-          <select
+          <SearchableSelect
+            className="min-w-[220px]"
             value={selectedId}
-            onChange={(e) => setSelectedEmployeeIdForAdmin(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
-          >
-            {allEmployees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.employee_code} - {emp.full_name} ({emp.department})
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedEmployeeIdForAdmin}
+            options={allEmployees.map((emp) => ({ value: emp.id, label: `${emp.employee_code} - ${emp.full_name} (${emp.department})` }))}
+          />
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { LeaveType, HalfDayOption } from '../types';
 import { getLeaveDaysForRange } from '../utils/workDays';
 import { getUserFacingError } from '../lib/userFacingError';
 import { X, Calendar, Clock, AlertCircle, Send, Loader2 } from 'lucide-react';
+import { ModalPanel } from './ui/ModalPanel';
 
 export const NewLeaveModal: React.FC = () => {
   const { isNewLeaveModalOpen, setIsNewLeaveModalOpen, showToast } = useHR();
@@ -110,9 +111,7 @@ export const NewLeaveModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
-
+    <ModalPanel size="lg" padded={false}>
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-success-600 rounded-lg text-white">
@@ -257,7 +256,6 @@ export const NewLeaveModal: React.FC = () => {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalPanel>
   );
 };

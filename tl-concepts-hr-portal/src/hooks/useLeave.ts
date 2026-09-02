@@ -128,7 +128,11 @@ export function useAllLeaveBalances(year: number) {
         .select('*, employees(full_name, employee_code, department, avatar_url)')
         .eq('year', year);
       if (error) throw error;
-      return data;
+      return (data || []).sort((a, b) =>
+        (a.employees?.employee_code || '').localeCompare(b.employees?.employee_code || '', 'vi', { numeric: true, sensitivity: 'base' })
+        || (a.employees?.full_name || '').localeCompare(b.employees?.full_name || '', 'vi', { sensitivity: 'base' })
+        || a.employee_id.localeCompare(b.employee_id)
+      );
     },
   });
 }

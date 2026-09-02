@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { FileUp, X } from 'lucide-react';
+import { FileUp, Trash2, X } from 'lucide-react';
 import type { DbContract } from '../../hooks/useContracts';
-import { useCreateContract, useUpdateContract } from '../../hooks/useContracts';
+import { useCreateContract, useDeleteContract, useUpdateContract } from '../../hooks/useContracts';
 import type { DbEmployee } from '../../hooks/useEmployees';
 import { calculateFileSha256, useFileUpload } from '../../hooks/useFileUpload';
 import { useHR } from '../../context/HRContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { CurrencyInput } from '../CurrencyInput';
+import { MoneyVisibilityToggle } from '../../context/MoneyVisibilityContext';
+import { ConfirmationDialog } from '../ConfirmationDialog';
 
 const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn', 'Phụ lục hợp đồng'];
 const STATUSES = ['Đang hiệu lực', 'Sắp hết hạn', 'Hết hạn', 'Đã gia hạn'];
@@ -31,8 +33,10 @@ export const ContractEditorModal: React.FC<{
   const { showToast } = useHR();
   const createContract = useCreateContract();
   const updateContract = useUpdateContract();
+  const deleteContract = useDeleteContract();
   const { uploadFile, isUploading } = useFileUpload();
   const [file, setFile] = useState<File | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     contract_code: '',
     type: TYPES[1],
@@ -170,7 +174,19 @@ export const ContractEditorModal: React.FC<{
     }
   };
 
-  const isSaving = createContract.isPending || updateContract.isPending || isUploading;
+  const handleDelete = async () => {
+    if (!contract) return;
+    try {
+      await deleteContract.mutateAsync(contract.id);
+      showToast(`Đã xóa hợp đồng ${contract.contract_code}.`);
+      setIsDeleteOpen(false);
+      onClose();
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể xóa hợp đồng. Vui lòng thử lại.'));
+    }
+  };
+
+  const isSaving = createContract.isPending || updateContract.isPending || deleteContract.isPending || isUploading;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -184,7 +200,19 @@ export const ContractEditorModal: React.FC<{
         </div>
 
         <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <p className="sm:col-span-2 -mb-1 text-[11px] text-slate-500"><span className="text-rose-600">*</span> Trường bắt buộc</p>
+          <div className="sm:col-span-2 -mb-1 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-slate-500"><span className="text-rose-600">*</span> Trường bắt buộc</p>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-600">
+                Ẩn/hiện lương <MoneyVisibilityToggle />
+              </span>
+              {contract && (
+                <button type="button" onClick={() => setIsDeleteOpen(true)} disabled={isSaving} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Trash2 className="h-3.5 w-3.5" /> Xóa hợp đồng
+                </button>
+              )}
+            </div>
+          </div>
           <label className="text-xs font-semibold text-slate-700">Mã hợp đồng <span className="text-rose-600">*</span>
             <input required value={form.contract_code} onChange={e => set('contract_code', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
@@ -288,6 +316,17 @@ export const ContractEditorModal: React.FC<{
           </button>
         </div>
       </form>
+
+      <ConfirmationDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Xóa hợp đồng?"
+        description={`Hợp đồng ${contract?.contract_code || ''} sẽ bị xóa vĩnh viễn. Các phụ lục liên kết sẽ được giữ lại và tách khỏi hợp đồng gốc.`}
+        confirmLabel="Xóa hợp đồng"
+        onConfirm={() => void handleDelete()}
+        isPending={deleteContract.isPending}
+        variant="danger"
+      />
     </div>
   );
 };

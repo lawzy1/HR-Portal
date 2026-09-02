@@ -44,6 +44,18 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 ## Lịch sử thay đổi
 
+### 2026-09-02 — Căn layout payroll, dropdown và sửa retry email
+
+- Card tổng hợp payroll tách label/value thành hai dòng và căn giữa số tiền; toàn bộ native dropdown dùng một chevron thống nhất, cách lề phải 12px và chừa khoảng cho nội dung.
+- Migration production `20260902050000_fix_payslip_notification_retry.sql` bỏ cập nhật trạng thái thừa trên phiếu lương đã khóa khi gửi lại email. RPC chỉ requeue outbox; worker tiếp tục ghi kết quả PDF/email, nên lỗi nhà cung cấp không rollback việc phê duyệt/phát hành.
+- Verify: `npm run lint`, `npm run typecheck` sạch error (8 warning cũ); production build và Supabase migration dry-run/push thành công.
+
+### 2026-09-02 — Ổn định bảng quỹ phép và thao tác hợp đồng
+
+- Bảng quỹ phép toàn công ty sắp xếp cố định theo mã nhân viên, rồi tên và ID để thứ tự không đổi sau mỗi lần refetch.
+- Modal sửa hợp đồng có nút ẩn/hiện toàn bộ trường tiền và nút xóa ở hàng đầu; xóa qua Supabase API, kiểm tra đúng bản ghi được xóa, làm mới cache và yêu cầu xác nhận nguy hiểm trước khi thực hiện.
+- Verify: `npm run lint`, `npm run typecheck` sạch error (8 warning cũ); production build thành công.
+
 ### 2026-09-02 — Chặn onboarding ghi đè dữ liệu khi tải lỗi
 
 - Form onboarding chỉ hydrate một lần sau khi hồ sơ nhân viên, thông tin nhạy cảm và người thân đều tải thành công. Nếu một query lỗi, form bị chặn và chỉ cho thử tải lại hoặc đăng xuất, tránh gửi state rỗng làm mất dữ liệu tùy chọn đã lưu.

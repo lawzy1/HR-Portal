@@ -865,7 +865,7 @@ const Metric: React.FC<{ label: string; value: number; tone?: 'rose' | 'primary'
   const valueClass = tone === 'rose' ? 'text-rose-600' : tone === 'primary' ? 'text-primary-600' : tone === 'success' ? 'text-white' : 'text-slate-900';
   const cardClass = tone === 'success' ? 'border-success-700 bg-success-800' : 'border-slate-200 bg-white';
   const labelClass = tone === 'success' ? 'text-success-100' : 'text-slate-500';
-  return <div className={`rounded-2xl border p-5 shadow-sm ${cardClass}`}><span className={`text-[10px] font-bold uppercase tracking-wide ${labelClass}`}>{label}</span><div className={`mt-2 inline-flex items-center gap-1 text-2xl font-black ${valueClass}`}>{formatMoney(value)}{showToggle && <MoneyVisibilityToggle className="h-6 w-6" />}</div></div>;
+  return <div className={`rounded-2xl border p-5 shadow-sm ${cardClass}`}><span className={`block text-[10px] font-bold uppercase tracking-wide ${labelClass}`}>{label}</span><div className={`mt-3 flex items-center justify-center gap-1 text-2xl font-black ${valueClass}`}>{formatMoney(value)}{showToggle && <MoneyVisibilityToggle className="h-6 w-6" />}</div></div>;
 };
 
 const ApprovalSummary: React.FC<{ label: string; value: number; tone?: 'amber' | 'success' }> = ({ label, value, tone }) => {

@@ -63,6 +63,18 @@ export function useUpdateContract() {
   });
 }
 
+export function useDeleteContract() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (contractId: string) => {
+      const { data, error } = await supabase.from('contracts').delete().eq('id', contractId).select('id').single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => refreshQueries(queryClient, [['contracts'], ['contract_legal_warnings']]),
+  });
+}
+
 export function useSubmitContract() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -100,6 +100,22 @@ export function useLinkSelfEmployeeProfile() {
   });
 }
 
+// Undoes useLinkSelfEmployeeProfile: detaches profiles.employee_id and
+// removes (or offboards) the employees record it created. See
+// unlink_self_employee_profile in 20260903100000_admin_self_employee_unlink.sql.
+export function useUnlinkSelfEmployeeProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('unlink_self_employee_profile');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      refreshQueries(queryClient, [['profiles'], ['employees']]);
+    },
+  });
+}
+
 export function useReviewEmployeeOnboarding() {
   const queryClient = useQueryClient();
   return useMutation({

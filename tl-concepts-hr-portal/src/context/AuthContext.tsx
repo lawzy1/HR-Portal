@@ -176,7 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password: currentPassword,
     });
     if (reauthenticationError) {
-      return { error: 'Mật khẩu hiện tại không đúng hoặc phiên đăng nhập đã hết hạn.' };
+      return { error: await getUserFacingError(reauthenticationError, 'Mật khẩu hiện tại không đúng.') };
     }
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });

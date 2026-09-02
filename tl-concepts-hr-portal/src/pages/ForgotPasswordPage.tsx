@@ -25,7 +25,7 @@ export const ForgotPasswordPage: React.FC = () => {
     try {
       const result = await requestPasswordReset(normalizedEmail);
       if (result.error) {
-        setError('Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.');
+        setError(result.error);
         return;
       }
       // Keep the response deliberately generic so the UI does not reveal

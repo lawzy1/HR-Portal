@@ -8,6 +8,7 @@ import { formatDate } from '../utils/formatters';
 import { X, Download, Building2, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
+import { getUserFacingError } from '../lib/userFacingError';
 
 export const PayslipDetailModal: React.FC = () => {
   const { selectedPayslipId, setSelectedPayslipId, showToast } = useHR();
@@ -59,7 +60,7 @@ export const PayslipDetailModal: React.FC = () => {
     if (!email) return;
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setReauthError('Mật khẩu không đúng.');
+      setReauthError(await getUserFacingError(error, 'Mật khẩu không đúng.'));
       return;
     }
     setVerifiedPayslipId(selectedPayslipId);

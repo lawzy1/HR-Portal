@@ -1881,6 +1881,7 @@ export type Database = {
         Args: { p_month: number; p_year: number }
         Returns: number
       }
+      unlink_self_employee_profile: { Args: never; Returns: undefined }
     }
     Enums: {
       user_role: "admin" | "employee" | "hr"

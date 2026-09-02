@@ -54,8 +54,6 @@ export const AdminSettingsView: React.FC = () => {
   const [bhxhEmployeeRate, setBhxhEmployeeRate] = useState(8);
   const [bhytEmployeeRate, setBhytEmployeeRate] = useState(1.5);
   const [bhtnEmployeeRate, setBhtnEmployeeRate] = useState(1.0);
-  const [standardDays, setStandardDays] = useState(22);
-  const [annualLeaveEntitlement, setAnnualLeaveEntitlement] = useState(12);
   const [companyAddress, setCompanyAddress] = useState('');
   const [companyTaxCode, setCompanyTaxCode] = useState('');
 
@@ -64,8 +62,6 @@ export const AdminSettingsView: React.FC = () => {
       setBhxhEmployeeRate(companySettings.bhxh_employee_rate);
       setBhytEmployeeRate(companySettings.bhyt_employee_rate);
       setBhtnEmployeeRate(companySettings.bhtn_employee_rate);
-      setStandardDays(companySettings.standard_work_days);
-      setAnnualLeaveEntitlement(companySettings.annual_leave_entitlement);
     }
   }, [companySettings]);
 
@@ -95,8 +91,6 @@ export const AdminSettingsView: React.FC = () => {
           bhxh_employee_rate: bhxhEmployeeRate,
           bhyt_employee_rate: bhytEmployeeRate,
           bhtn_employee_rate: bhtnEmployeeRate,
-          standard_work_days: standardDays,
-          annual_leave_entitlement: annualLeaveEntitlement,
         },
         }),
         updateCompany.mutateAsync({
@@ -107,7 +101,7 @@ export const AdminSettingsView: React.FC = () => {
           },
         }),
       ]);
-      showToast('Đã lưu thông số doanh nghiệp, bảo hiểm, ngày công và ngày phép.');
+      showToast('Đã lưu thông số doanh nghiệp và bảo hiểm.');
     } catch (error) {
       showToast(await getUserFacingError(error, 'Không thể lưu cấu hình doanh nghiệp. Vui lòng thử lại.'));
     }
@@ -232,30 +226,6 @@ export const AdminSettingsView: React.FC = () => {
                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Số ngày công chuẩn trong tháng:</label>
-              <input
-                type="number"
-                value={standardDays}
-                onChange={e => setStandardDays(Number(e.target.value))}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-              />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">Nghỉ 2 ngày cuối tuần/tuần = 22 ngày công</span>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Hạn mức phép năm mặc định:</label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={annualLeaveEntitlement}
-                onChange={e => setAnnualLeaveEntitlement(Number(e.target.value))}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
-              />
-              <span className="text-[10px] text-slate-400 mt-0.5 block">TL Concepts mặc định 12 ngày; Admin có thể đổi và vẫn có thể thưởng riêng từng nhân viên.</span>
             </div>
 
             <button

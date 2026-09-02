@@ -7,6 +7,7 @@ import {
   Edit,
   Mail,
   ShieldCheck,
+  Unlink,
   UserCircle,
   UserPlus,
   Send,
@@ -18,9 +19,10 @@ import { useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { useEmployee } from '../../hooks/useEmployees';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 import { AccountSecurityCard } from '../AccountSecurityCard';
+import { ConfirmationDialog } from '../ConfirmationDialog';
 import { CurrencyInput } from '../CurrencyInput';
 import { KPI_LEVEL_SUGGESTIONS } from '../../constants/kpiLevels';
-import { useCreateBackofficeAccount, useLinkSelfEmployeeProfile } from '../../hooks/useProfiles';
+import { useCreateBackofficeAccount, useLinkSelfEmployeeProfile, useUnlinkSelfEmployeeProfile } from '../../hooks/useProfiles';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useHR } from '../../context/HRContext';
 
@@ -31,7 +33,7 @@ const roleLabels = {
 } as const;
 
 export const AdminProfileView: React.FC = () => {
-  const { profile, session } = useAuth();
+  const { profile, session, refreshProfile } = useAuth();
   const { showToast } = useHR();
   const { formatMoney } = useMoneyVisibility();
   const { data: employee } = useEmployee(profile?.employeeId ?? undefined);
@@ -50,6 +52,8 @@ export const AdminProfileView: React.FC = () => {
   const [selfPerformanceCommissionRate, setSelfPerformanceCommissionRate] = useState(0);
   const [selfQcCommissionRate, setSelfQcCommissionRate] = useState(0);
   const [selfGuaranteedIncomeAmount, setSelfGuaranteedIncomeAmount] = useState(0);
+  const unlinkSelfEmployee = useUnlinkSelfEmployeeProfile();
+  const [isUnlinkConfirmOpen, setIsUnlinkConfirmOpen] = useState(false);
 
   const startEditingSelfEmployee = () => {
     setSelfFullName(employee?.full_name || '');
@@ -77,10 +81,22 @@ export const AdminProfileView: React.FC = () => {
         qcCommissionRate: selfQcCommissionRate,
         guaranteedIncomeAmount: selfGuaranteedIncomeAmount,
       });
+      await refreshProfile();
       showToast('Đã lưu thông tin. Bạn sẽ xuất hiện trong danh sách gán KPI.');
       setIsEditingSelfEmployee(false);
     } catch (error) {
       showToast(await getUserFacingError(error, 'Không thể lưu thông tin. Vui lòng thử lại.'));
+    }
+  };
+
+  const handleUnlinkSelfEmployee = async () => {
+    try {
+      await unlinkSelfEmployee.mutateAsync();
+      await refreshProfile();
+      showToast('Đã bỏ liên kết hồ sơ nhân viên. Bạn sẽ không còn xuất hiện trong danh sách gán KPI.');
+      setIsUnlinkConfirmOpen(false);
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể bỏ liên kết. Vui lòng thử lại.'));
     }
   };
 
@@ -142,9 +158,14 @@ export const AdminProfileView: React.FC = () => {
               <h2 className="text-sm font-bold text-slate-900">Thông tin nhân sự liên kết</h2>
             </div>
             {employee && !isEditingSelfEmployee && (
-              <button type="button" onClick={startEditingSelfEmployee} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-primary-600 hover:bg-primary-50">
-                <Edit className="w-3.5 h-3.5" /> Chỉnh sửa
-              </button>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={startEditingSelfEmployee} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-primary-600 hover:bg-primary-50">
+                  <Edit className="w-3.5 h-3.5" /> Chỉnh sửa
+                </button>
+                <button type="button" onClick={() => setIsUnlinkConfirmOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50">
+                  <Unlink className="w-3.5 h-3.5" /> Bỏ liên kết
+                </button>
+              </div>
             )}
           </div>
           {employee && !isEditingSelfEmployee ? (
@@ -265,6 +286,17 @@ export const AdminProfileView: React.FC = () => {
           </form>
         </section>
       )}
+
+      <ConfirmationDialog
+        open={isUnlinkConfirmOpen}
+        onOpenChange={setIsUnlinkConfirmOpen}
+        title="Bỏ liên kết hồ sơ nhân viên?"
+        description="Tài khoản của bạn sẽ không còn gắn với hồ sơ nhân viên này nữa và sẽ biến mất khỏi danh sách gán KPI. Bạn có thể điền lại bất cứ lúc nào."
+        confirmLabel="Bỏ liên kết"
+        variant="danger"
+        isPending={unlinkSelfEmployee.isPending}
+        onConfirm={handleUnlinkSelfEmployee}
+      />
     </div>
   );
 };

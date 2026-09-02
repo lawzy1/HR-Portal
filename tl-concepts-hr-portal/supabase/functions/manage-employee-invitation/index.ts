@@ -4,6 +4,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { logInternalError, publicError } from "../_shared/error-response.ts";
+import { brandedButton, brandedEmailHtml, escapeHtml } from "../_shared/email-template.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -42,10 +43,6 @@ function errorResponse(request: Request, options: Parameters<typeof publicError>
   return publicError(request, corsHeaders(request), options);
 }
 
-function escapeHtml(value: string) {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-
 async function sendEmail(to: string, employeeName: string, actionLink: string) {
   if (!RESEND_API_KEY || !NOTIFICATION_FROM_EMAIL) {
     return { delivered: false, error: "Chưa cấu hình RESEND_API_KEY hoặc NOTIFICATION_FROM_EMAIL" };
@@ -57,8 +54,12 @@ async function sendEmail(to: string, employeeName: string, actionLink: string) {
     body: JSON.stringify({
       from: NOTIFICATION_FROM_EMAIL,
       to: [to],
-      subject: "[TL Concepts HR] Link kích hoạt tài khoản mới",
-      html: `<p>Chào ${escapeHtml(employeeName)},</p><p>Admin đã gửi lại link kích hoạt tài khoản HR Portal. Link có hiệu lực trong 1 giờ.</p><p><a href="${escapeHtml(actionLink)}">Kích hoạt tài khoản và tiếp tục hồ sơ</a></p><p>Nếu bạn đã đặt mật khẩu, bạn cũng có thể đăng nhập để tiếp tục hồ sơ đang dang dở.</p>`,
+      subject: "[TL Concepts HR Portal] Link kích hoạt tài khoản mới",
+      html: brandedEmailHtml({
+        headerSubtitle: "Kích hoạt tài khoản nhân viên",
+        bodyHtml: `<p style="margin:0 0 14px">Chào <strong>${escapeHtml(employeeName)}</strong>,</p><p style="margin:0 0 14px;line-height:1.6">Admin đã gửi lại link kích hoạt tài khoản HR Portal cho bạn. Link có hiệu lực trong 1 giờ.</p><p style="margin:0 0 22px;line-height:1.6">Nếu bạn đã đặt mật khẩu trước đó, bạn cũng có thể đăng nhập trực tiếp để tiếp tục hồ sơ đang dang dở.</p>${brandedButton(actionLink, "Kích hoạt tài khoản")}`,
+        footerNote: "Nếu bạn không mong đợi email này, hãy liên hệ quản trị viên nội bộ.",
+      }),
     }),
   });
   if (response.ok) return { delivered: true, error: null };

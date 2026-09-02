@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { logInternalError, publicError } from "../_shared/error-response.ts";
+import { brandedButton, brandedEmailHtml } from "../_shared/email-template.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -121,8 +122,11 @@ Deno.serve(async (request: Request) => {
   const safeMessage = message.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const emailResult = await sendEmail(
     recipients,
-    `[HR Portal] Yêu cầu thay đổi thông tin — ${employeeName}`,
-    `<p><strong>${employeeName}</strong> (${employeeCode}) vừa gửi yêu cầu thay đổi thông tin.</p><p><strong>Nội dung:</strong></p><p>${safeMessage.replaceAll("\n", "<br>")}</p><p>Mở HR Portal để kiểm tra và cập nhật hồ sơ.</p>`,
+    `[TL Concepts HR Portal] Yêu cầu thay đổi thông tin — ${employeeName}`,
+    brandedEmailHtml({
+      headerSubtitle: "Yêu cầu thay đổi thông tin nhân viên",
+      bodyHtml: `<p style="margin:0 0 14px"><strong>${employeeName}</strong> (${employeeCode}) vừa gửi yêu cầu thay đổi thông tin.</p><p style="margin:0 0 6px"><strong>Nội dung:</strong></p><p style="margin:0 0 22px;line-height:1.6">${safeMessage.replaceAll("\n", "<br>")}</p>${APP_URL ? brandedButton(APP_URL, "Mở TL Concepts HR Portal") : ""}`,
+    }),
   );
 
   await admin

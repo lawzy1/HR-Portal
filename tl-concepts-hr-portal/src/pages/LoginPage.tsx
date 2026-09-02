@@ -34,7 +34,7 @@ export const LoginPage: React.FC = () => {
   const onLogin = async (values: LoginFormValues) => {
     setAuthError(null);
     const { error } = await signIn(values.email, values.password);
-    if (error) return setAuthError('Email hoặc mật khẩu không đúng.');
+    if (error) return setAuthError(error);
     navigate('/', { replace: true });
   };
 

@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, ShieldCheck } from 'luci
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { getUserFacingError } from '../lib/userFacingError';
 
 export const ResetPasswordPage: React.FC = () => {
   const { session, loading, signOut } = useAuth();
@@ -33,15 +34,15 @@ export const ResetPasswordPage: React.FC = () => {
     try {
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
-        setError('Không thể cập nhật mật khẩu. Liên kết có thể đã hết hạn, hãy yêu cầu liên kết mới.');
+        setError(await getUserFacingError(updateError, 'Không thể cập nhật mật khẩu. Liên kết có thể đã hết hạn, hãy yêu cầu liên kết mới.'));
         return;
       }
       // Do not leave the recovery session active after the password has been
       // changed. The user must sign in again with the new password.
       await signOut();
       setIsComplete(true);
-    } catch {
-      setError('Không thể cập nhật mật khẩu. Vui lòng yêu cầu liên kết mới và thử lại.');
+    } catch (error) {
+      setError(await getUserFacingError(error, 'Không thể cập nhật mật khẩu. Vui lòng thử lại.'));
     } finally {
       setIsSaving(false);
     }

@@ -11,6 +11,7 @@ import { formatDate } from '../../utils/formatters';
 import { ContractDocumentLink } from '../ContractDocumentLink';
 import { ContractEditorModal } from './ContractEditorModal';
 import { ConfirmationDialog } from '../ConfirmationDialog';
+import { getContractLifecycleStatus, latestContractsByEmployee } from '../../utils/contracts';
 
 export const AdminContractSalaryView: React.FC = () => {
   const { profile } = useAuth();
@@ -384,6 +385,7 @@ const ContractDirectory: React.FC<{
     const normalizedQuery = query.trim().toLowerCase();
     return contracts.filter((contract) => {
       const person = contract.employees;
+      const lifecycleStatus = getContractLifecycleStatus(contract);
       const matchesQuery = !normalizedQuery || [
         contract.contract_code,
         contract.type,
@@ -392,15 +394,16 @@ const ContractDirectory: React.FC<{
         person?.employee_code,
       ].some((value) => value?.toLowerCase().includes(normalizedQuery));
       const matchesStatus = statusFilter === 'all'
-        || (statusFilter === 'active' && contract.status === 'Đang hiệu lực')
-        || (statusFilter === 'expiring' && contract.status === 'Sắp hết hạn')
+        || (statusFilter === 'active' && ['Đang hiệu lực', 'Đã gia hạn'].includes(lifecycleStatus))
+        || (statusFilter === 'expiring' && lifecycleStatus === 'Sắp hết hạn')
         || (statusFilter === 'pending' && contract.publish_status === 'pending_approval');
       return matchesQuery && matchesStatus;
     });
   }, [contracts, query, statusFilter]);
 
-  const activeCount = contracts.filter((contract) => contract.status === 'Đang hiệu lực').length;
-  const expiringCount = contracts.filter((contract) => contract.status === 'Sắp hết hạn').length;
+  const currentContracts = useMemo(() => latestContractsByEmployee(contracts), [contracts]);
+  const activeCount = currentContracts.filter((contract) => ['Đang hiệu lực', 'Đã gia hạn'].includes(getContractLifecycleStatus(contract))).length;
+  const expiringCount = currentContracts.filter((contract) => getContractLifecycleStatus(contract) === 'Sắp hết hạn').length;
   const pendingCount = contracts.filter((contract) => contract.publish_status === 'pending_approval').length;
 
   return (
@@ -485,7 +488,10 @@ const SummaryPill: React.FC<{ icon: React.ReactNode; label: string; value: numbe
 
 const ApprovalBadge: React.FC<{ status: string }> = ({ status }) => <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === 'published' ? 'bg-primary-100 text-primary-800' : status === 'pending_approval' ? 'bg-amber-100 text-amber-800' : status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'}`}>{CONTRACT_APPROVAL_LABELS[status] || status}</span>;
 
-const ContractStatusBadge: React.FC<{ contract: DbContract }> = ({ contract }) => <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${contract.status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' : contract.status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{contract.status}</span>;
+const ContractStatusBadge: React.FC<{ contract: DbContract }> = ({ contract }) => {
+  const status = getContractLifecycleStatus(contract);
+  return <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' : status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{status}</span>;
+};
 
 const ContractQuickPreview: React.FC<{ contract: DirectoryContract; onClose: () => void; onOpen: () => void }> = ({ contract, onClose, onOpen }) => {
   const { formatMoney } = useMoneyVisibility();
@@ -516,6 +522,7 @@ const ContractCard: React.FC<{
   isAddendum?: boolean;
 }> = ({ contract, isAdmin, onEdit, onSubmit, onApprove, onReject, isAddendum }) => {
   const { formatMoney } = useMoneyVisibility();
+  const lifecycleStatus = getContractLifecycleStatus(contract);
   return <div className={`p-4 rounded-xl border space-y-2 ${isAddendum ? 'bg-primary-50/50 border-primary-200/80' : 'bg-slate-50 border-slate-200/80'}`}>
     <div className="flex items-center justify-between gap-2">
       <span className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
@@ -531,12 +538,12 @@ const ContractCard: React.FC<{
           {CONTRACT_APPROVAL_LABELS[contract.publish_status] || contract.publish_status}
         </span>
         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-          contract.status === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' :
-          contract.status === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
+          lifecycleStatus === 'Đang hiệu lực' ? 'bg-success-100 text-success-800' :
+          lifecycleStatus === 'Sắp hết hạn' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-600'
         }`}>
-          {contract.status}
+          {lifecycleStatus}
         </span>
-        {(contract.publish_status === 'draft' || contract.publish_status === 'rejected' || (isAdmin && contract.publish_status === 'published' && contract.status === 'Đang hiệu lực')) && (
+        {(contract.publish_status === 'draft' || contract.publish_status === 'rejected' || (isAdmin && contract.publish_status === 'published' && ['Đang hiệu lực', 'Sắp hết hạn'].includes(lifecycleStatus))) && (
           <button onClick={onEdit} className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer" title="Chỉnh sửa hợp đồng">
             <Pencil className="w-3.5 h-3.5" />
           </button>

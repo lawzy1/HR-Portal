@@ -1,18 +1,17 @@
 import React, { createContext, useCallback, useContext, useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Employee,
   TabType,
   AdminTabType,
   HrReminder
 } from '../types';
-import { INITIAL_EMPLOYEES } from '../data/initialData';
-import { useEmployees, useAllEmployeeSensitiveInfo } from '../hooks/useEmployees';
+import { useEmployees, useAllEmployeeSensitiveInfo, type DbEmployee } from '../hooks/useEmployees';
 import { useAllContracts } from '../hooks/useContracts';
 import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
 import { useAllProfiles } from '../hooks/useProfiles';
+import { CONTRACT_EXPIRING_WINDOW_DAYS } from '../utils/contracts';
 
 const DAY_MS = 86_400_000;
 const daysUntil = (date: string) => Math.ceil((new Date(`${date}T00:00:00`).getTime() - Date.now()) / DAY_MS);
@@ -30,8 +29,8 @@ interface HRContextType {
   setAdminTab: (tab: AdminTabType) => void;
 
   // Employees state
-  employees: Employee[];
-  currentEmployee: Employee;
+  employees: DbEmployee[];
+  currentEmployee?: DbEmployee;
   currentEmployeeId: string;
   setCurrentEmployeeId: (id: string) => void;
   
@@ -109,17 +108,8 @@ const persistTab = (storageKey: string, value: string) => {
 export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [employees] = useState<Employee[]>(() => {
-    const local = localStorage.getItem('misa_bamboo_hr_employees_v2');
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {
-        console.error('Failed to parse local employee storage', e);
-      }
-    }
-    return INITIAL_EMPLOYEES;
-  });
+  const { data: employeesData } = useEmployees();
+  const employees = useMemo(() => employeesData || [], [employeesData]);
 
   // Active navigation
   // Keep the selected view in the URL as well as sessionStorage. Auth token
@@ -162,10 +152,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [location.hash, location.pathname, location.search, navigate]);
 
   // Employee Selection
-  // Empty, not a mock id like 'emp-01' — these now also feed real Supabase
-  // queries (useEmployee, useContracts, ...) via hooks that key off this id,
-  // and a non-UUID default there causes a 400 from PostgREST on every page
-  // load. Falls back to employees[0] below for the still-mock-data views.
+  // Empty until the real employee list loads; this avoids sending a mock id to
+  // Supabase and keeps the selection stable across refetches.
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string>('');
   const [selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin] = useState<string>('');
 
@@ -189,20 +177,14 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }, 4000);
   };
 
-  useEffect(() => {
-    localStorage.setItem('misa_bamboo_hr_employees_v2', JSON.stringify(employees));
-  }, [employees]);
-
   const currentEmployee = useMemo(() => {
     return employees.find(e => e.id === currentEmployeeId) || employees[0];
   }, [employees, currentEmployeeId]);
 
   // Dynamically generated Reminders — sourced from real Supabase data
-  // (employees, contracts, leave_requests, employee_sensitive_info), not the
-  // mock `employees` state above. read/resolved tracking stays local-only;
+  // (employees, contracts, leave_requests, employee_sensitive_info). read/
+  // resolved tracking stays local-only;
   // there's no reminders table, this is just dismissal state for the UI.
-  const { data: realEmployeesData } = useEmployees();
-  const realEmployees = useMemo(() => realEmployeesData || [], [realEmployeesData]);
   const { data: allContractsData } = useAllContracts();
   const allContracts = useMemo(() => allContractsData || [], [allContractsData]);
   const { data: allLeaveRequestsData } = useAllLeaveRequests();
@@ -252,7 +234,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     latestContractByEmployee.forEach(c => {
       if (!c.end_date) return;
       const remainingDays = daysUntil(c.end_date);
-      if (remainingDays < 0 || remainingDays > 60) return;
+      if (remainingDays < 0 || remainingDays > CONTRACT_EXPIRING_WINDOW_DAYS) return;
       const empName = c.employees?.full_name || '';
       generated.push({
         id: `rem-ctr-${c.id}`,
@@ -269,7 +251,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     // 2. Salary review due
-    realEmployees.forEach(emp => {
+    employees.forEach(emp => {
       if (emp.last_salary_review_date) {
         const reviewDate = nextAnnualReview(emp.last_salary_review_date);
         const remainingDays = daysUntil(reviewDate);
@@ -291,7 +273,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
     // 3. Missing documents
     const sensitiveByEmployee = new Map(allSensitiveInfo.map(s => [s.employee_id, s]));
-    realEmployees.forEach(emp => {
+    employees.forEach(emp => {
       const info = sensitiveByEmployee.get(emp.id);
       if (!info || !info.id_card_front_url || !info.tax_code) {
         generated.push({
@@ -380,7 +362,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     return generated;
-  }, [pendingOnboardingProfiles, realEmployees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, readReminderIds]);
+  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, readReminderIds]);
 
   const markReminderAsRead = (id: string) => {
     setReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);

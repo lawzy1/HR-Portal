@@ -15,6 +15,7 @@ import { useEmployees, useAllEmployeeSensitiveInfo } from '../../hooks/useEmploy
 import { useAllContracts } from '../../hooks/useContracts';
 import { useAllLeaveRequests } from '../../hooks/useLeave';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { getContractLifecycleStatus, latestContractsByEmployee } from '../../utils/contracts';
 
 const RowAvatar: React.FC<{ path: string | null | undefined; alt: string }> = ({ path, alt }) => {
   const { data: url } = useSignedImageUrl(path);
@@ -49,24 +50,12 @@ export const AdminDashboardView: React.FC = () => {
   const probationCount = employees.filter(e => e.status === 'Thử việc').length;
   const newJoinerCount = employees.filter(e => e.status === 'Mới tiếp nhận').length;
 
-  // Contracts expiring — most recently started contract per employee, if it
-  // has a finite end date (an indefinite contract has end_date null). Same
-  // dedupe pattern as HRContext's reminders useMemo.
+  // Contracts expiring — most recently started contract per employee, based on
+  // dates so this cannot drift from the contract directory's status labels.
   const expiringContractsCount = useMemo(() => {
-    const latestContractByEmployee = new Map<string, (typeof allContracts)[number]>();
-    allContracts.forEach(c => {
-      const existing = latestContractByEmployee.get(c.employee_id);
-      if (!existing || c.start_date > existing.start_date) {
-        latestContractByEmployee.set(c.employee_id, c);
-      }
-    });
-    let count = 0;
-    latestContractByEmployee.forEach(c => {
-      if (!c.end_date) return;
-      const remainingDays = Math.ceil((new Date(`${c.end_date}T00:00:00`).getTime() - Date.now()) / 86_400_000);
-      if (remainingDays >= 0 && remainingDays <= 60) count += 1;
-    });
-    return count;
+    return latestContractsByEmployee(allContracts)
+      .filter((contract) => getContractLifecycleStatus(contract) === 'Sắp hết hạn')
+      .length;
   }, [allContracts]);
 
   // Pending leave requests across company

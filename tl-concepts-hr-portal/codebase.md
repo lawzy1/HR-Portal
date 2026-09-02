@@ -44,6 +44,14 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 ## Lịch sử thay đổi
 
+### 2026-09-02 — Đồng nhất cảnh báo hợp đồng sắp hết hạn trên Dashboard
+
+- Dashboard và bảng Quản lý hợp đồng đều đọc danh sách hợp đồng thật qua `useAllContracts` (Supabase), không dùng mock data.
+- `HRContext` cũng dùng query `employees` thật, bỏ fallback `initialData`/localStorage để không còn nhân sự mẫu đi ngầm trong Portal.
+- Trạng thái hiển thị và bộ lọc được suy ra từ `end_date` với ngưỡng 60 ngày: còn 90 ngày không cảnh báo, còn 25 ngày cảnh báo, đã hết hạn và vô thời hạn không cảnh báo.
+- Số tổng hợp của bảng chỉ tính hợp đồng mới nhất theo từng nhân viên, tránh cộng lịch sử hợp đồng và không còn lệch với Dashboard khi `contracts.status` lưu cũ.
+- Verify: `npm run lint`, `npm run typecheck` không có lỗi; `npm run build` thành công (chỉ còn cảnh báo chunk lớn của Vite và warning lint cũ).
+
 ### 2026-09-02 — Bổ sung i18n Tiếng Việt / English
 
 - Thêm locale VI/EN dùng chung, lưu lựa chọn trên trình duyệt và cập nhật thuộc tính ngôn ngữ của trang; không thêm dependency mới.

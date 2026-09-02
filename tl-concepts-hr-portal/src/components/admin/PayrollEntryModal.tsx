@@ -243,7 +243,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
     if (!contractsQuery.isFetched || !leaveRequestsQuery.isFetched || !leaveBalanceQuery.isFetched || !kpiMonthlyQuery.isFetched || !otRecordsQuery.isFetched || !holidaysQuery.isFetched || !companySettingsFetched) return;
 
     const activeContract = (contractsQuery.data || [])
-      .filter((contract) => contract.publish_status === 'published' && contract.status === 'Đang hiệu lực')
+      .filter((contract) => contract.publish_status === 'published' && ['Đang hiệu lực', 'Sắp hết hạn'].includes(contract.status))
       .sort((a, b) => b.start_date.localeCompare(a.start_date))[0]
       || (contractsQuery.data || []).find((contract) => contract.publish_status === 'published');
     const linkedKpiBonus = kpiMonthlyQuery.data?.bonus_amount != null
@@ -257,7 +257,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
     const leaveUsed = asMoney(approvedLeaveDays);
     const standardDays = workDaysInfo.standardWorkDays;
     const defaultActualDays = Math.max(standardDays - leaveUsed, 0);
-    const defaultSalary = asMoney(activeContract?.salary ?? selectedEmployee.current_salary);
+    const defaultSalary = asMoney(selectedEmployee.current_salary ?? activeContract?.salary);
     const bhxhRate = (companySettings?.bhxh_employee_rate ?? 8) / 100;
     const bhytRate = (companySettings?.bhyt_employee_rate ?? 1.5) / 100;
     const bhtnRate = (companySettings?.bhtn_employee_rate ?? 1) / 100;

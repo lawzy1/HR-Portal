@@ -17,68 +17,70 @@ import { useAuth } from '../../context/AuthContext';
 import { useEmployees } from '../../hooks/useEmployees';
 import { AdminTabType } from '../../types';
 import { Logo } from '../Logo';
+import { useI18n } from '../../context/I18nContext';
 
 export const AdminSidebar: React.FC = () => {
   const { adminTab, setAdminTab, reminders, pendingOnboardingCount } = useHR();
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const { data: employees } = useEmployees();
+  const { t } = useI18n();
 
   const unreadRemindersCount = reminders.filter(r => !r.isRead).length;
 
   const menuItems: { id: AdminTabType; label: string; icon: React.ReactNode; badge?: number; adminOnly?: boolean }[] = [
     {
       id: 'admin-dashboard',
-      label: 'Tổng quan HR',
+      label: t('nav.adminDashboard'),
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
       id: 'admin-employees',
-      label: 'Hồ sơ Nhân viên',
+      label: t('nav.employees'),
       icon: <Users className="w-5 h-5" />,
       badge: employees?.length,
     },
     {
       id: 'admin-contracts',
-      label: 'Hợp đồng & Lương',
+      label: t('nav.contracts'),
       icon: <FileCheck className="w-5 h-5" />,
     },
     {
       id: 'admin-leaves',
-      label: 'Quản lý Ngày phép',
+      label: t('nav.adminLeaves'),
       icon: <CalendarDays className="w-5 h-5" />,
     },
     {
       id: 'admin-kpi',
-      label: 'KPI, OT & Thưởng',
+      label: t('nav.adminKpi'),
       icon: <TrendingUp className="w-5 h-5" />,
     },
     {
       id: 'admin-payroll',
-      label: 'Quản lý Payroll',
+      label: t('nav.adminPayroll'),
       icon: <Receipt className="w-5 h-5" />,
     },
     {
       id: 'admin-reminders',
-      label: 'Thông báo & Cảnh báo',
+      label: t('nav.reminders'),
       icon: <BellRing className="w-5 h-5" />,
       badge: pendingOnboardingCount || (unreadRemindersCount > 0 ? unreadRemindersCount : undefined),
     },
     {
       id: 'admin-reports',
-      label: 'Báo cáo & Audit',
+      label: t('nav.reports'),
       icon: <FileBarChart className="w-5 h-5" />,
       adminOnly: true,
     },
     {
       id: 'admin-settings',
-      label: 'Cài đặt Phân quyền',
+      label: t('nav.settings'),
       icon: <ShieldCheck className="w-5 h-5" />,
       adminOnly: true,
     },
     {
       id: 'admin-profile',
-      label: 'Hồ sơ tài khoản',
+      label: t('nav.account'),
       icon: <UserCircle className="w-5 h-5" />,
     },
   ];
@@ -91,7 +93,7 @@ export const AdminSidebar: React.FC = () => {
           <Logo size="sm" />
           <div>
             <h1 className="font-bold text-base text-slate-900 tracking-wide">TL CONCEPTS HR</h1>
-            <p className="text-xs text-slate-500 font-medium">Cổng Quản trị HR & Nhân sự</p>
+            <p className="text-xs text-slate-500 font-medium">{t('sidebar.adminPortal')}</p>
           </div>
         </div>
       </div>
@@ -100,14 +102,14 @@ export const AdminSidebar: React.FC = () => {
       <div className="mx-3 my-3 p-3 bg-sage-50 rounded-xl border border-sage-200">
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-success-500 animate-pulse"></span>
-          <span className="text-xs font-semibold text-sage-800">{isAdmin ? 'Chế độ Admin Portal' : 'Chế độ HR / Kế toán'}</span>
+          <span className="text-xs font-semibold text-sage-800">{isAdmin ? t('sidebar.adminMode') : t('sidebar.hrMode')}</span>
         </div>
       </div>
 
       {/* Navigation List */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         <div className="px-3 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-          Menu Quản trị
+          {t('sidebar.adminMenu')}
         </div>
         {menuItems.filter((item) => isAdmin || !item.adminOnly).map(item => {
           const isActive = adminTab === item.id;

@@ -10,11 +10,13 @@ import {
   ArrowUpRight,
   Calendar
 } from 'lucide-react';
+import { useI18n } from '../context/I18nContext';
 
 export const PayslipsView: React.FC = () => {
   const { setSelectedPayslipId } = useHR();
   const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
+  const { t, value: translateValue } = useI18n();
   const employeeId = profile?.employeeId ?? undefined;
 
   const { data: employee } = useEmployee(employeeId);
@@ -37,17 +39,17 @@ export const PayslipsView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-success-600" />
-            <h1 className="text-lg font-extrabold text-slate-900">Quản lý Phiếu lương Cá nhân</h1>
+            <h1 className="text-lg font-extrabold text-slate-900">{t('payslips.title')}</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Tra cứu toàn bộ phiếu lương hàng tháng của <strong className="text-slate-800">{employee?.full_name}</strong> ({employee?.employee_code})
+            {t('payslips.lookup', { name: employee?.full_name || '—', code: employee?.employee_code || '—' })}
           </p>
         </div>
 
         {/* Year Filter */}
         <div className="flex items-center gap-2 bg-slate-50 p-1.5 border border-slate-200 rounded-xl">
           <Calendar className="w-4 h-4 text-slate-400 ml-2" />
-          <span className="text-xs font-bold text-slate-600">Năm:</span>
+          <span className="text-xs font-bold text-slate-600">{t('common.year', { year: '' }).trim()}:</span>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -63,19 +65,19 @@ export const PayslipsView: React.FC = () => {
       {/* Annual Summary Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-success-900 to-teal-950 text-white p-5 rounded-2xl shadow-md space-y-1">
-          <span className="text-[11px] uppercase font-bold text-success-300 tracking-wider">TỔNG LƯƠNG THỰC LĨNH (NET {selectedYear})</span>
+          <span className="text-[11px] uppercase font-bold text-success-300 tracking-wider">{t('payslips.netYear', { year: selectedYear })}</span>
           <p className="text-2xl font-black tabular-nums text-white">{formatMoney(totalNetAnnual)}</p>
-          <p className="text-[10px] text-success-200">Đã chuyển khoản trực tiếp qua Ngân hàng</p>
+          <p className="text-[10px] text-success-200">{t('payslips.netHelp')}</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">TỔNG THU NHẬP (GROSS {selectedYear})</span>
+          <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">{t('payslips.grossYear', { year: selectedYear })}</span>
           <p className="text-2xl font-black tabular-nums text-slate-900">{formatMoney(totalGrossAnnual)}</p>
-          <p className="text-[10px] text-slate-400">Bao gồm Lương cơ bản, KPI, OT & Các khoản Phụ cấp</p>
+          <p className="text-[10px] text-slate-400">{t('payslips.grossHelp')}</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] uppercase font-bold text-rose-600 tracking-wider">TỔNG THUẾ & BẢO HIỂM ĐÃ ĐÓNG</span>
+          <span className="text-[11px] uppercase font-bold text-rose-600 tracking-wider">{t('payslips.deductionsYear')}</span>
           <p className="text-2xl font-black tabular-nums text-rose-700">-{formatMoney(totalTaxInsuranceAnnual)}</p>
           <p className="text-[10px] text-slate-400">BHXH, BHYT, BHTN & Thuế TNCN</p>
         </div>
@@ -84,18 +86,18 @@ export const PayslipsView: React.FC = () => {
       {/* Payslips Cards Grid */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h2 className="text-sm font-bold text-slate-900">Danh sách các kỳ lương trong năm {selectedYear}</h2>
+          <h2 className="text-sm font-bold text-slate-900">{t('payslips.list', { year: selectedYear })}</h2>
           <span className="text-[11px] text-slate-500 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-            ℹ️ Ngày công chuẩn: Tính từ ngày 01 đến 30/31 hàng tháng (5.5 ngày/tuần: T2-T6 x 1.0 + T7 x 0.5)
+            ℹ️ {t('payslips.workdayHelp')}
           </span>
         </div>
 
         {isLoading ? (
-          <div className="bg-white p-8 text-center rounded-2xl border border-slate-200 text-xs text-slate-400">Đang tải...</div>
+          <div className="bg-white p-8 text-center rounded-2xl border border-slate-200 text-xs text-slate-400">{t('common.loading')}</div>
         ) : payslips.length === 0 ? (
           <div className="bg-white p-8 text-center rounded-2xl border border-slate-200 text-xs text-slate-400 space-y-2">
-            <p className="font-semibold text-slate-600">Chưa có dữ liệu phiếu lương năm {selectedYear}</p>
-            <p>Vui lòng chọn năm khác hoặc liên hệ Phòng Nhân sự.</p>
+            <p className="font-semibold text-slate-600">{t('payslips.noYear', { year: selectedYear })}</p>
+            <p>{t('payslips.noYearHelp')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -108,27 +110,27 @@ export const PayslipsView: React.FC = () => {
                 <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Receipt className="w-4 h-4 text-success-400" />
-                    <span className="font-bold text-sm">Tháng {ps.month}/{ps.year}</span>
+                    <span className="font-bold text-sm">{t('common.month', { month: ps.month })}/{ps.year}</span>
                   </div>
                   <span className="text-[10px] font-bold bg-success-500/20 text-success-300 px-2 py-0.5 rounded-md border border-success-500/30">
-                    {ps.payment_status}
+                    {translateValue(ps.payment_status)}
                   </span>
                 </div>
 
                 {/* Card Body */}
                 <div className="p-5 space-y-3.5 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">Lương cơ bản ({ps.actual_work_days}/{ps.standard_work_days} công):</span>
+                    <span className="text-slate-500">{t('payslips.base', { actual: ps.actual_work_days, standard: ps.standard_work_days })}:</span>
                     <strong className="tabular-nums text-slate-800">{formatMoney(ps.base_salary)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">Lương KPI & OT tăng ca:</span>
+                    <span className="text-slate-500">{t('payslips.kpiOt')}:</span>
                     <strong className="tabular-nums text-success-700">+{formatMoney(ps.kpi_bonus + ps.ot_pay)}</strong>
                   </div>
 
                   <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">Tổng khấu trừ Bảo hiểm & Thuế:</span>
+                    <span className="text-slate-500">{t('payslips.totalDeductions')}:</span>
                     <strong className="tabular-nums text-rose-700">
                       -{formatMoney(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}
                     </strong>
@@ -137,11 +139,11 @@ export const PayslipsView: React.FC = () => {
                   {/* Net highlight */}
                   <div className="bg-success-50 p-3.5 rounded-xl border border-success-200 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-success-800">THỰC LĨNH (NET)</span>
+                      <span className="text-[10px] uppercase font-bold text-success-800">{t('contract.net')}</span>
                       <p className="mt-0.5 text-lg font-black tabular-nums text-success-800">{formatMoney(ps.net_salary)}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-500 font-medium block">Ngày chuyển lương</span>
+                      <span className="text-[10px] text-slate-500 font-medium block">{t('payslips.transferDate')}</span>
                       <span className="text-xs font-bold text-slate-800">{ps.payment_date ? formatDate(ps.payment_date) : '—'}</span>
                     </div>
                   </div>
@@ -153,7 +155,7 @@ export const PayslipsView: React.FC = () => {
                     onClick={() => setSelectedPayslipId(ps.id)}
                     className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-colors cursor-pointer shadow-xs"
                   >
-                    <span>Xem phiếu lương chi tiết</span>
+                    <span>{t('payslips.details')}</span>
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
                 </div>

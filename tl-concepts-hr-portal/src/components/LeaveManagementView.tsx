@@ -4,10 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { useLeaveRequests, useLeaveBalance, useWorkEvents } from '../hooks/useLeave';
 import { formatDate } from '../utils/formatters';
 import { CalendarDays, PlusCircle, Sparkles } from 'lucide-react';
+import { useI18n } from '../context/I18nContext';
 
 export const LeaveManagementView: React.FC = () => {
   const { setIsNewLeaveModalOpen } = useHR();
   const { profile } = useAuth();
+  const { t, value: translateValue } = useI18n();
   const employeeId = profile?.employeeId ?? undefined;
 
   const [filterStatus, setFilterStatus] = useState<string>('Tất cả');
@@ -27,10 +29,10 @@ export const LeaveManagementView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-success-600" />
-            <h1 className="text-lg font-extrabold text-slate-900">Quản lý Ngày phép Cá nhân</h1>
+            <h1 className="text-lg font-extrabold text-slate-900">{t('leave.title')}</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Theo dõi quỹ phép năm, đăng ký nghỉ phép & kiểm tra tiến độ phê duyệt từ Admin/HR
+            {t('leave.description')}
           </p>
         </div>
 
@@ -39,7 +41,7 @@ export const LeaveManagementView: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-success-600 hover:bg-success-700 rounded-xl transition-all shadow-md shadow-success-900/10 cursor-pointer"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>Tạo yêu cầu nghỉ phép mới</span>
+          <span>{t('leave.new')}</span>
         </button>
       </div>
 
@@ -50,45 +52,45 @@ export const LeaveManagementView: React.FC = () => {
             <Sparkles className="w-5 h-5 text-success-300" />
           </div>
           <div>
-            <h3 className="text-xs font-bold uppercase text-success-300 tracking-wider">Quỹ phép năm {year}</h3>
+            <h3 className="text-xs font-bold uppercase text-success-300 tracking-wider">{t('leave.fundYear', { year })}</h3>
             <p className="text-xs text-slate-100 font-medium mt-0.5">
-              Tích lũy theo tháng dựa trên hạn mức năm; thưởng/điều chỉnh của Admin được lưu kèm lý do.
+              {t('leave.policy')}
             </p>
           </div>
         </div>
         {leaveBalance?.expiry_date && (
           <span className="text-[11px] bg-success-950/80 text-success-300 font-mono font-bold px-3 py-1 rounded-lg border border-success-700">
-            Hạn dùng: {formatDate(leaveBalance.expiry_date)}
+            {t('leave.expiry')}: {formatDate(leaveBalance.expiry_date)}
           </span>
         )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-3">
         <div>
-          <h2 className="font-bold text-slate-900 text-sm">WFH thêm & đi trễ</h2>
-          <p className="text-xs text-slate-500">Dữ liệu đã gửi để Admin xác nhận và tổng hợp khi review.</p>
+          <h2 className="font-bold text-slate-900 text-sm">{t('leave.workEvents')}</h2>
+          <p className="text-xs text-slate-500">{t('leave.workEventsHelp')}</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                <th className="p-2.5">Ngày</th>
-                <th className="p-2.5">Loại</th>
-                <th className="p-2.5">Thời lượng</th>
-                <th className="p-2.5">Lý do</th>
-                <th className="p-2.5">Trạng thái</th>
+                <th className="p-2.5">{t('leave.date')}</th>
+                <th className="p-2.5">{t('leave.type')}</th>
+                <th className="p-2.5">{t('leave.duration')}</th>
+                <th className="p-2.5">{t('dashboard.reason')}</th>
+                <th className="p-2.5">{t('common.status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {(workEvents || []).length === 0 ? (
-                <tr><td colSpan={5} className="p-5 text-center text-slate-400">Chưa có dữ liệu WFH thêm hoặc đi trễ.</td></tr>
+                <tr><td colSpan={5} className="p-5 text-center text-slate-400">{t('leave.noWorkEvents')}</td></tr>
               ) : (workEvents || []).map((event) => (
                 <tr key={event.id}>
                   <td className="p-2.5 font-medium">{formatDate(event.event_date)}</td>
-                  <td className="p-2.5">{event.event_type === 'extra_wfh' ? 'WFH thêm' : 'Đi trễ'}</td>
-                  <td className="p-2.5">{event.minutes ? `${event.minutes} phút` : '—'}</td>
+                  <td className="p-2.5">{translateValue(event.event_type === 'extra_wfh' ? 'WFH thêm' : 'Đi trễ')}</td>
+                  <td className="p-2.5">{event.minutes ? t('leave.minutes', { count: event.minutes }) : '—'}</td>
                   <td className="p-2.5">{event.reason}</td>
-                  <td className="p-2.5 font-semibold">{event.status}</td>
+                  <td className="p-2.5 font-semibold">{translateValue(event.status)}</td>
                 </tr>
               ))}
             </tbody>
@@ -99,41 +101,41 @@ export const LeaveManagementView: React.FC = () => {
       {/* Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-slate-500 block">Tổng quỹ phép</span>
+          <span className="text-[11px] font-bold text-slate-500 block">{t('leave.total')}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-black text-slate-900">{leaveBalance?.total_accumulated ?? 0}</span>
-            <span className="text-xs font-semibold text-slate-500">ngày</span>
+            <span className="text-xs font-semibold text-slate-500">{t('common.days', { count: '' }).trim()}</span>
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-slate-500 block">Đã sử dụng</span>
+          <span className="text-[11px] font-bold text-slate-500 block">{t('leave.used')}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-black text-slate-700">{leaveBalance?.used_days ?? 0}</span>
-            <span className="text-xs font-semibold text-slate-500">ngày</span>
+            <span className="text-xs font-semibold text-slate-500">{t('common.days', { count: '' }).trim()}</span>
           </div>
-          <span className="text-[10px] text-success-700 font-semibold block">Đã duyệt chính thức</span>
+          <span className="text-[10px] text-success-700 font-semibold block">{t('leave.approved')}</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-amber-700 block">Đang chờ duyệt</span>
+          <span className="text-[11px] font-bold text-amber-700 block">{t('payroll.pending')}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-black text-amber-700">{leaveBalance?.pending_days ?? 0}</span>
-            <span className="text-xs font-semibold text-slate-500">ngày</span>
+            <span className="text-xs font-semibold text-slate-500">{t('common.days', { count: '' }).trim()}</span>
           </div>
         </div>
 
         <div className="bg-success-50 p-4 rounded-2xl border border-success-300 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-success-900 block">Số phép còn lại</span>
+          <span className="text-[11px] font-bold text-success-900 block">{t('leave.remaining')}</span>
           <div className="flex items-baseline gap-1">
             <span className="text-2xl font-black text-success-700">{leaveBalance?.remaining_days ?? 0}</span>
-            <span className="text-xs font-semibold text-success-800">ngày</span>
+            <span className="text-xs font-semibold text-success-800">{t('common.days', { count: '' }).trim()}</span>
           </div>
-          <span className="text-[10px] text-success-800 font-bold block">Khả dụng đăng ký</span>
+          <span className="text-[10px] text-success-800 font-bold block">{t('leave.available')}</span>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold text-slate-500 block">Ngày hết hạn</span>
+          <span className="text-[11px] font-bold text-slate-500 block">{t('leave.expiryDate')}</span>
           <div className="text-xs font-extrabold text-slate-800 pt-1">{leaveBalance?.expiry_date ? formatDate(leaveBalance.expiry_date) : '—'}</div>
         </div>
       </div>
@@ -142,8 +144,8 @@ export const LeaveManagementView: React.FC = () => {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Lịch sử Yêu cầu nghỉ phép</h3>
-            <p className="text-xs text-slate-500">Tất cả đơn xin nghỉ của bạn — chỉ Admin/HR mới duyệt được</p>
+            <h3 className="text-sm font-bold text-slate-900">{t('leave.history')}</h3>
+            <p className="text-xs text-slate-500">{t('leave.historyHelp')}</p>
           </div>
 
           <div className="flex items-center gap-1.5 bg-slate-50 p-1 border border-slate-200 rounded-xl">
@@ -155,7 +157,7 @@ export const LeaveManagementView: React.FC = () => {
                   filterStatus === st ? 'bg-success-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
                 }`}
               >
-                {st}
+                {translateValue(st)}
               </button>
             ))}
           </div>
@@ -164,31 +166,31 @@ export const LeaveManagementView: React.FC = () => {
         {filteredRequests.length === 0 ? (
           <div className="py-10 text-center text-slate-400 text-xs">
             <CalendarDays className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="font-semibold text-slate-600">Không có đơn xin nghỉ phép nào theo bộ lọc [{filterStatus}]</p>
+            <p className="font-semibold text-slate-600">{t('leave.noFiltered', { filter: translateValue(filterStatus) })}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-slate-700">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold">
                 <tr>
-                  <th className="py-3 px-3.5 rounded-l-lg">Loại phép</th>
-                  <th className="py-3 px-3.5">Thời gian nghỉ</th>
-                  <th className="py-3 px-3.5">Số ngày</th>
-                  <th className="py-3 px-3.5">Lý do xin nghỉ</th>
-                  <th className="py-3 px-3.5 rounded-r-lg">Trạng thái</th>
+                  <th className="py-3 px-3.5 rounded-l-lg">{t('dashboard.leaveType')}</th>
+                  <th className="py-3 px-3.5">{t('leave.period')}</th>
+                  <th className="py-3 px-3.5">{t('dashboard.dayCount')}</th>
+                  <th className="py-3 px-3.5">{t('leave.reason')}</th>
+                  <th className="py-3 px-3.5 rounded-r-lg">{t('common.status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-3.5 font-bold text-slate-900">{req.leave_type}</td>
+                    <td className="py-3.5 px-3.5 font-bold text-slate-900">{translateValue(req.leave_type)}</td>
                     <td className="py-3.5 px-3.5 text-slate-700">
                       <div>
                         <strong>{formatDate(req.start_date)} - {formatDate(req.end_date)}</strong>
-                        <span className="text-[11px] text-slate-500 block">({req.half_day_option})</span>
+                        <span className="text-[11px] text-slate-500 block">({translateValue(req.half_day_option)})</span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-3.5 font-extrabold text-success-800">{req.total_days} ngày</td>
+                    <td className="py-3.5 px-3.5 font-extrabold text-success-800">{t('common.days', { count: req.total_days })}</td>
                     <td className="py-3.5 px-3.5 text-slate-600 max-w-xs">
                       <p className="truncate">{req.reason}</p>
                       {req.approver_comment && <p className="text-[10px] text-slate-500 italic mt-0.5">Note: "{req.approver_comment}"</p>}
@@ -199,7 +201,7 @@ export const LeaveManagementView: React.FC = () => {
                         req.status === 'Chờ duyệt' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                         'bg-rose-50 text-rose-700 border-rose-200'
                       }`}>
-                        {req.status}
+                        {translateValue(req.status)}
                       </span>
                     </td>
                   </tr>

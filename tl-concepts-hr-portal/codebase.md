@@ -44,6 +44,33 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 
 ## Lịch sử thay đổi
 
+### 2026-09-02 — Bổ sung i18n Tiếng Việt / English
+
+- Thêm locale VI/EN dùng chung, lưu lựa chọn trên trình duyệt và cập nhật thuộc tính ngôn ngữ của trang; không thêm dependency mới.
+- Nút chuyển ngôn ngữ có ở màn đăng nhập, onboarding và header sau đăng nhập. Menu toàn hệ thống cùng các label chính của onboarding, Tổng quan nhân viên, Hợp đồng, Phiếu lương, Ngày phép và Payroll đã dùng dictionary chung.
+- Trạng thái/loại hợp đồng trong database vẫn giữ nguyên giá trị nghiệp vụ tiếng Việt; giao diện chỉ dịch lúc hiển thị để không ảnh hưởng RPC, filter hoặc quy trình phê duyệt.
+- Language switcher dùng dropdown pill có icon globe, menu lựa chọn native-name (Tiếng Việt/English), đóng khi chọn, click ngoài hoặc nhấn Escape; trên `/login` nằm trong hàng logo của card.
+- Verify: `npm run lint`, `npm run typecheck` sạch error; production build thành công; kiểm tra local xác nhận đổi VI/EN tức thời, reload vẫn giữ locale, `html lang` đúng, menu đóng đúng và console không có lỗi.
+
+### 2026-09-02 — Mở luồng import payroll và tái tạo PDF khi gửi
+
+- Preview payroll cho phép lưu các dòng hợp lệ thành nháp ngay cả khi file còn dòng lỗi; UI báo rõ số dòng bị bỏ qua. Kỳ đang chờ duyệt/đã phát hành vẫn khóa để không sửa dữ liệu đã chốt.
+- File input có thể chọn lại cùng một file sau khi sửa. Worker luôn tạo lại PDF khi xử lý/retry, ghi đè file cũ và tắt object streams để tăng tương thích với trình đọc PDF trong email.
+- Verify: `npm run lint`, `npm run typecheck` sạch error (8 warning cũ), production build thành công; `process-payslip-outbox` version 6 đã ACTIVE trên production.
+
+### 2026-09-02 — Gọn hóa màn hợp đồng cho nhân viên
+
+- Lịch sử hợp đồng trên màn User chuyển từ bảng ngang sang thẻ responsive: hợp đồng hiện tại tự mở, hợp đồng cũ có thể mở khi cần; không còn phải kéo ngang trên mobile.
+- Mỗi thẻ hiển thị đủ thời hạn, vị trí/cấp bậc, KPI/ngày, nơi và lịch làm việc, lương/phụ cấp/commission, liên kết file, ghi chú và quan hệ phụ lục với hợp đồng gốc.
+- Hợp đồng `Sắp hết hạn` được xem là hợp đồng hiện tại, đồng nhất với Admin và payroll.
+
+### 2026-09-02 — Đồng bộ hợp đồng, hồ sơ nhân viên và payroll
+
+- Hợp đồng mới lấy sẵn loại HĐ, ngày bắt đầu, vị trí, lương, level, KPI/ngày, commission và mức đảm bảo thu nhập từ hồ sơ. Khi sửa hợp đồng hiện hành đã phát hành, các trường dùng chung ưu tiên giá trị hiện tại trong hồ sơ; nháp/bị trả lại giữ nguyên dữ liệu đang chỉnh.
+- Payroll mới ưu tiên `employees.current_salary`, fallback sang hợp đồng đã phát hành; hợp đồng `Sắp hết hạn` vẫn được xem là hiện hành. Phiếu lương đã lưu không bị ghi đè vì là snapshot theo kỳ.
+- Migration production `20260902123000_sync_approved_contract_to_employee.sql` đảm bảo khi Admin duyệt hợp đồng `Đang hiệu lực` hoặc `Sắp hết hạn`, hồ sơ được đồng bộ vị trí/loại HĐ/lương/level/KPI/commission/mức đảm bảo; lịch sử lương và quỹ phép được cập nhật trong cùng giao dịch.
+- Verify: `npm run lint`, `npm run typecheck` sạch error (8 warning cũ); production build và Supabase migration dry-run/push thành công.
+
 ### 2026-09-02 — Căn layout payroll, dropdown và sửa retry email
 
 - Card tổng hợp payroll tách label/value thành hai dòng và căn giữa số tiền; toàn bộ native dropdown dùng một chevron thống nhất, cách lề phải 12px và chừa khoảng cho nội dung.

@@ -62,22 +62,29 @@ export const ContractEditorModal: React.FC<{
   });
 
   useEffect(() => {
+    const useCurrentProfile = !contract
+      || (contract.publish_status === 'published' && ['Đang hiệu lực', 'Sắp hết hạn'].includes(contract.status));
+    const textValue = (profileValue: string | null, contractValue: string | null) =>
+      useCurrentProfile ? profileValue || contractValue || '' : contractValue || profileValue || '';
+    const numberValue = (profileValue: number | null, contractValue: number | null) =>
+      String((useCurrentProfile ? profileValue ?? contractValue : contractValue ?? profileValue) ?? '');
+
     setForm({
       contract_code: contract?.contract_code || '',
-      type: contract?.type || TYPES[1],
+      type: contract?.type || employee.contract_type || TYPES[1],
       signed_date: contract?.signed_date || '',
-      start_date: contract?.start_date || '',
+      start_date: contract?.start_date || employee.start_date || '',
       end_date: contract?.end_date || '',
-      position: contract?.position || employee.job_title || '',
-      salary: contract?.salary?.toString() || employee.current_salary?.toString() || '',
-      kpi_target_month: contract?.kpi_target_month?.toString() || employee.kpi_target_per_day?.toString() || '',
+      position: textValue(employee.job_title, contract?.position ?? null),
+      salary: numberValue(employee.current_salary, contract?.salary ?? null),
+      kpi_target_month: numberValue(employee.kpi_target_per_day, contract?.kpi_target_month ?? null),
       allowance_amount: contract?.allowance_amount?.toString() || '',
       phone_allowance: contract?.phone_allowance?.toString() || '',
       lunch_allowance: contract?.lunch_allowance?.toString() || '',
-      commission_rate_per_view: contract?.commission_rate_per_view?.toString() || '',
-      qc_commission_rate_per_view: contract?.qc_commission_rate_per_view?.toString() || '',
-      guaranteed_income: contract?.guaranteed_income?.toString() || '',
-      level_title: contract?.level_title || employee.kpi_level || '',
+      commission_rate_per_view: numberValue(employee.performance_commission_rate, contract?.commission_rate_per_view ?? null),
+      qc_commission_rate_per_view: numberValue(employee.qc_commission_rate, contract?.qc_commission_rate_per_view ?? null),
+      guaranteed_income: numberValue(employee.guaranteed_income_amount, contract?.guaranteed_income ?? null),
+      level_title: textValue(employee.kpi_level, contract?.level_title ?? null),
       work_location: contract?.work_location || '',
       working_schedule: contract?.working_schedule || '',
       adjustment_categories: contract?.adjustment_categories || [],

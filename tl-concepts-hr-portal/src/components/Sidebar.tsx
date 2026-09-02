@@ -17,6 +17,7 @@ import {
   User,
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { useI18n } from '../context/I18nContext';
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -30,38 +31,39 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
   const { data: leaveBalance } = useLeaveBalance(profile?.employeeId ?? undefined, new Date().getFullYear());
   const { data: payslips } = usePayrollRecords(profile?.employeeId ?? undefined, new Date().getFullYear());
+  const { t } = useI18n();
 
   const navItems: { id: TabType; label: string; icon: React.ReactNode; badge?: string }[] = [
     {
       id: 'dashboard',
-      label: 'Tổng quan',
+      label: t('nav.dashboard'),
       icon: <LayoutDashboard className="w-5 h-5" />
     },
     {
       id: 'profile',
-      label: 'Hồ sơ cá nhân',
+      label: t('nav.profile'),
       icon: <UserSquare2 className="w-5 h-5" />
     },
     {
       id: 'contracts',
-      label: 'Hợp đồng & Lương',
+      label: t('nav.contracts'),
       icon: <FileCheck className="w-5 h-5" />
     },
     {
       id: 'payslips',
-      label: 'Phiếu lương',
+      label: t('nav.payslips'),
       icon: <Receipt className="w-5 h-5" />,
       badge: payslips && payslips.length > 0 ? `${payslips.length}` : undefined
     },
     {
       id: 'leaves',
-      label: 'Ngày phép',
+      label: t('nav.leaves'),
       icon: <CalendarDays className="w-5 h-5" />,
-      badge: leaveBalance ? `${leaveBalance.remaining_days ?? 0} ngày` : undefined
+      badge: leaveBalance ? t('common.days', { count: leaveBalance.remaining_days ?? 0 }) : undefined
     },
     {
       id: 'kpi',
-      label: 'Theo dõi KPI & Dự án',
+      label: t('nav.kpi'),
       icon: <Award className="w-5 h-5" />
     },
   ];
@@ -75,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
           <Logo size="sm" />
           <div>
             <h1 className="font-bold text-sm text-slate-900 tracking-wide">TL CONCEPTS</h1>
-            <p className="text-[11px] text-slate-500 font-medium">Portal Dịch vụ Nhân viên</p>
+            <p className="text-[11px] text-slate-500 font-medium">{t('sidebar.employeePortal')}</p>
           </div>
         </div>
 
@@ -105,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         {/* Navigation Menu */}
         <div className="space-y-1">
           <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Danh mục chính
+            {t('sidebar.mainMenu')}
           </p>
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -145,10 +147,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-500 text-[11px] space-y-2">
           <div className="flex items-center gap-1.5 text-success-700 font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Quỹ phép năm</span>
+            <span>{t('sidebar.leaveFund')}</span>
           </div>
           <p className="text-slate-500 leading-relaxed text-[10px]">
-            Quỹ phép do Admin/HR cấp và điều chỉnh — xem chi tiết ở mục Ngày phép.
+            {t('sidebar.leaveFundHelp')}
           </p>
         </div>
       </div>

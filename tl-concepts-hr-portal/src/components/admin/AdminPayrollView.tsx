@@ -19,6 +19,7 @@ import type { TablesInsert } from '../../lib/database.types';
 import { getMonthWorkDays, getWorkDaysFormulaText } from '../../utils/workDays';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { PayrollEntryModal } from './PayrollEntryModal';
+import { useI18n } from '../../context/I18nContext';
 
 type PayrollImportField = keyof TablesInsert<'payroll_records'> | 'employee_name';
 
@@ -310,6 +311,7 @@ export const AdminPayrollView: React.FC = () => {
   const isAdmin = profile?.role === 'admin';
   const { showToast, setSelectedPayslipId } = useHR();
   const { formatMoney } = useMoneyVisibility();
+  const { t } = useI18n();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [sourceName, setSourceName] = useState('Dán từ Excel');
@@ -350,6 +352,8 @@ export const AdminPayrollView: React.FC = () => {
   const hasPublishedRecords = records.some((record) => record.publish_status === 'published');
   const hasEditableRecords = records.some((record) => record.publish_status === 'draft' || record.publish_status === 'rejected');
   const importablePreviewCount = preview.filter((row) => !row.isSummary).length;
+  const validPreviewCount = preview.filter((row) => !row.isSummary && !row.error && row.record).length;
+  const invalidPreviewCount = importablePreviewCount - validPreviewCount;
   const totals = records.reduce(
     (sum, record) => ({
       gross: sum.gross + record.gross_income,
@@ -543,10 +547,10 @@ export const AdminPayrollView: React.FC = () => {
     const valid = preview
       .filter((row): row is PreviewRow & { record: TablesInsert<'payroll_records'> } => !row.isSummary && !row.error && Boolean(row.record))
       .map((row) => row.record);
-    if (!valid.length || valid.length !== importablePreviewCount || hasPendingRecords || hasPublishedRecords) return;
+    if (!valid.length || hasPendingRecords || hasPublishedRecords) return;
     try {
       await importPayroll.mutateAsync(valid);
-      showToast(`Đã nhập ${valid.length} phiếu lương nháp. Kiểm tra tổng trước khi gửi duyệt.`);
+      showToast(`Đã lưu ${valid.length} phiếu lương nháp${invalidPreviewCount ? `; bỏ qua ${invalidPreviewCount} dòng lỗi` : ''}.`);
       setPreview([]);
       setPreviewColumns([]);
       setPaste('');
@@ -612,8 +616,8 @@ export const AdminPayrollView: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Payroll & phê duyệt phiếu lương</h1>
-          <p className="text-sm text-slate-600">Bảng lương tháng là nơi làm việc chính; Excel chỉ dùng để nạp nhanh các dòng vào đúng kỳ lương.</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('payroll.title')}</h1>
+          <p className="text-sm text-slate-600">{t('payroll.description')}</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <button
@@ -625,31 +629,31 @@ export const AdminPayrollView: React.FC = () => {
             disabled={!employees.length}
             className="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-primary-600/20 transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> Thêm phiếu lương
+            <Plus className="h-4 w-4" /> {t('payroll.add')}
           </button>
           <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="p-2 border rounded-xl text-sm">
-            {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>Tháng {month}</option>)}
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{t('common.month', { month })}</option>)}
           </select>
           <input type="number" value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="w-24 p-2 border rounded-xl text-sm" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Tổng chi phí quỹ lương · Gross" value={totals.gross} showToggle />
-        <Metric label="Trích nộp BHXH / BHYT / BHTN" value={totals.insurance} tone="rose" />
-        <Metric label="Thuế TNCN (PIT) khấu trừ" value={totals.pit} tone="primary" />
-        <Metric label="Tổng lương thực nhận · Net" value={totals.net} tone="success" />
+        <Metric label={t('payroll.grossTotal')} value={totals.gross} showToggle />
+        <Metric label={t('payroll.insuranceTotal')} value={totals.insurance} tone="rose" />
+        <Metric label={t('payroll.pitTotal')} value={totals.pit} tone="primary" />
+        <Metric label={t('payroll.netTotal')} value={totals.net} tone="success" />
       </div>
 
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="font-bold text-slate-900">Bảng lương Tháng {selectedMonth}/{selectedYear}</h2>
-            <p className="text-xs text-slate-500">Các cột theo mẫu BẢNG LƯƠNG; mỗi dòng là một phiếu lương của nhân viên trong kỳ.</p>
+            <h2 className="font-bold text-slate-900">{t('payroll.tableTitle', { month: selectedMonth, year: selectedYear })}</h2>
+            <p className="text-xs text-slate-500">{t('payroll.tableHelp')}</p>
           </div>
           <label className="relative block w-full lg:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Tìm nhân viên, mã NV, vị trí..." className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-xs outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" />
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={t('payroll.search')} className="w-full rounded-xl border border-slate-300 py-2 pl-9 pr-3 text-xs outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20" />
           </label>
         </div>
 
@@ -657,13 +661,13 @@ export const AdminPayrollView: React.FC = () => {
           <div className="flex items-start gap-3">
             <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-success-100" />
             <div>
-              <p className="text-xs font-extrabold">Quy chuẩn ngày công Tháng {selectedMonth}/{selectedYear}</p>
+              <p className="text-xs font-extrabold">{t('payroll.workdayRule', { month: selectedMonth, year: selectedYear })}</p>
               <p className="mt-0.5 text-[11px] text-success-100">{getWorkDaysFormulaText(workDaysInfo)}</p>
             </div>
           </div>
           <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-right">
-            <span className="block text-[10px] font-bold uppercase tracking-wide text-success-100">Ngày công chuẩn</span>
-            <strong className="text-base">{workDaysInfo.standardWorkDays} công</strong>
+            <span className="block text-[10px] font-bold uppercase tracking-wide text-success-100">{t('payroll.standardDays')}</span>
+            <strong className="text-base">{t('payroll.workdayUnit', { count: workDaysInfo.standardWorkDays })}</strong>
           </div>
         </div>
 
@@ -671,44 +675,44 @@ export const AdminPayrollView: React.FC = () => {
           <table className="min-w-[1780px] w-full text-left text-xs">
             <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-600">
               <tr>
-                <th className="p-3">MSNV</th><th className="p-3">Họ tên & vị trí</th><th className="p-3 text-center">Chuẩn / thực tế</th>
-                <th className="p-3 text-right">Lương cơ bản</th><th className="p-3 text-right">Phụ cấp ăn trưa</th><th className="p-3 text-right">Phụ cấp điện thoại</th>
-                <th className="p-3 text-right">Thưởng KPI</th><th className="p-3 text-right">OT / thưởng dự án</th><th className="p-3 text-right">Thưởng lễ</th>
-                <th className="bg-slate-100 p-3 text-right">Thu nhập Gross</th><th className="p-3 text-right text-rose-700">BHXH, BHYT, BHTN</th>
-                <th className="p-3 text-right">Giảm trừ gia cảnh</th><th className="p-3 text-right text-primary-700">Thuế TNCN</th><th className="bg-success-50 p-3 text-right text-success-800">Thực nhận Net</th><th className="p-3 text-center">Thao tác</th>
+                <th className="p-3">{t('payroll.employeeCode')}</th><th className="p-3">{t('payroll.employeePosition')}</th><th className="p-3 text-center">{t('payroll.days')}</th>
+                <th className="p-3 text-right">{t('payroll.baseSalary')}</th><th className="p-3 text-right">{t('payroll.lunchAllowance')}</th><th className="p-3 text-right">{t('payroll.phoneAllowance')}</th>
+                <th className="p-3 text-right">{t('payroll.kpiBonus')}</th><th className="p-3 text-right">{t('payroll.otBonus')}</th><th className="p-3 text-right">{t('payroll.holidayBonus')}</th>
+                <th className="bg-slate-100 p-3 text-right">{t('payroll.grossIncome')}</th><th className="p-3 text-right text-rose-700">{t('payroll.insurance')}</th>
+                <th className="p-3 text-right">{t('payroll.familyDeduction')}</th><th className="p-3 text-right text-primary-700">{t('payroll.pit')}</th><th className="bg-success-50 p-3 text-right text-success-800">{t('payroll.netIncome')}</th><th className="p-3 text-center">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {visibleRecords.length === 0 ? (
-                <tr><td colSpan={15} className="p-8 text-center text-slate-400">{records.length ? 'Không tìm thấy nhân viên phù hợp.' : 'Chưa có dòng lương cho kỳ này. Dùng “Thêm phiếu lương” hoặc tải Excel để nạp nhanh bảng lương.'}</td></tr>
+                <tr><td colSpan={15} className="p-8 text-center text-slate-400">{records.length ? t('payroll.noSearchResult') : t('payroll.noRows')}</td></tr>
               ) : visibleRecords.map((record) => {
                 const insurance = record.bhxh_deduction + record.bhyt_deduction + record.bhtn_deduction;
                 const canEdit = record.publish_status === 'draft' || record.publish_status === 'rejected';
                 return <tr key={record.id} className="hover:bg-slate-50/70">
                   <td className="p-3 font-mono text-[11px] font-bold text-slate-700">{record.employees?.employee_code || '—'}</td>
-                  <td className="p-3"><strong className="block text-slate-900">{record.employees?.full_name || '—'}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{record.employees?.job_title || 'Chưa cập nhật vị trí'}</span></td>
+                  <td className="p-3"><strong className="block text-slate-900">{record.employees?.full_name || '—'}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{record.employees?.job_title || t('payroll.positionMissing')}</span></td>
                   <td className="p-3 text-center font-semibold text-slate-700">{record.standard_work_days} / {record.actual_work_days}</td>
                   <td className="p-3 text-right font-semibold">{formatMoney(record.base_salary)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.lunch_allowance)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.phone_allowance)}</td>
                   <td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.kpi_bonus)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.ot_pay + record.project_bonus_amount)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.holiday_bonus_amount)}</td>
                   <td className="bg-slate-50 p-3 text-right font-extrabold text-slate-900">{formatMoney(record.gross_income)}</td><td className="p-3 text-right font-semibold text-rose-700">−{formatMoney(insurance)}</td>
                   <td className="p-3 text-right text-slate-500">{formatMoney(record.family_deduction)}</td><td className="p-3 text-right font-semibold text-primary-700">−{formatMoney(record.personal_income_tax)}</td>
                   <td className="bg-success-50 p-3 text-right font-extrabold text-success-800">{formatMoney(record.net_salary)}</td>
-                    <td className="p-3"><div className="flex items-center justify-center gap-1.5"><button type="button" onClick={() => { setEditingEmployeeId(record.employee_id); setIsPayrollFormOpen(true); }} disabled={!canEdit} className="inline-flex items-center gap-1 rounded-lg bg-primary-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-45" title={canEdit ? 'Sửa phiếu lương' : 'Kỳ lương đã khóa'}><Pencil className="h-3 w-3" />Sửa lương</button><button type="button" onClick={() => setSelectedPayslipId(record.id)} className="rounded-lg bg-slate-100 p-1.5 text-slate-700 transition hover:bg-slate-200" title="Xem phiếu lương"><FileText className="h-3.5 w-3.5" /></button>{isAdmin && record.publish_status === 'published' && record.notification_status !== 'sent' && <button type="button" onClick={() => void handleRetryNotification(record.id)} disabled={retryNotification.isPending || processNotifications.isPending} className="rounded-lg bg-primary-50 p-1.5 text-primary-700 transition hover:bg-primary-100 disabled:opacity-50" title="Tạo PDF / gửi lại email"><Mail className="h-3.5 w-3.5" /></button>}</div></td>
+                    <td className="p-3"><div className="flex items-center justify-center gap-1.5"><button type="button" onClick={() => { setEditingEmployeeId(record.employee_id); setIsPayrollFormOpen(true); }} disabled={!canEdit} className="inline-flex items-center gap-1 rounded-lg bg-primary-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-45" title={canEdit ? t('payroll.editTitle') : t('payroll.locked')}><Pencil className="h-3 w-3" />{t('payroll.edit')}</button><button type="button" onClick={() => setSelectedPayslipId(record.id)} className="rounded-lg bg-slate-100 p-1.5 text-slate-700 transition hover:bg-slate-200" title={t('payroll.viewTitle')}><FileText className="h-3.5 w-3.5" /></button>{isAdmin && record.publish_status === 'published' && record.notification_status !== 'sent' && <button type="button" onClick={() => void handleRetryNotification(record.id)} disabled={retryNotification.isPending || processNotifications.isPending} className="rounded-lg bg-primary-50 p-1.5 text-primary-700 transition hover:bg-primary-100 disabled:opacity-50" title={t('payroll.retryEmail')}><Mail className="h-3.5 w-3.5" /></button>}</div></td>
                 </tr>;
               })}
             </tbody>
           </table>
         </div>
-        <p className="text-[11px] text-slate-500">Hiển thị {visibleRecords.length}/{records.length} dòng. HR/Kế toán nhập và gửi duyệt; Admin duyệt & phát hành trước khi User xem được.</p>
+        <p className="text-[11px] text-slate-500">{t('payroll.visibleRows', { visible: visibleRecords.length, total: records.length })}</p>
       </section>
 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <ClipboardPaste className="w-5 h-5 text-primary-600" />
           <div>
-            <h2 className="font-bold text-slate-900">Nạp nhanh bảng lương từ Excel</h2>
-            <p className="text-xs text-slate-500">Excel sẽ append/upsert từng nhân viên vào bảng lương tháng ở trên, theo kỳ lấy từ tiêu đề file.</p>
-            <p className="text-xs text-slate-500">Preview giữ nguyên toàn bộ cột trong file; hiện đối chiếu nhân viên ưu tiên họ tên khớp duy nhất, rồi dùng MSNV làm dự phòng.</p>
+            <h2 className="font-bold text-slate-900">{t('payroll.quickImport')}</h2>
+            <p className="text-xs text-slate-500">{t('payroll.quickImportHelp')}</p>
+            <p className="text-xs text-slate-500">{t('payroll.previewHelp')}</p>
           </div>
         </div>
         <textarea
@@ -720,18 +724,24 @@ export const AdminPayrollView: React.FC = () => {
         />
         <div className="flex flex-wrap gap-2">
           <label className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-2">
-            <Upload className="w-4 h-4" /> Chọn XLSX/CSV/TSV
-            <input type="file" accept=".xlsx,.csv,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+            <Upload className="w-4 h-4" /> {t('payroll.chooseFile')}
+            <input type="file" accept=".xlsx,.csv,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values" className="hidden" onChange={(e) => { void handleFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
           </label>
           <button onClick={() => buildPreview(paste)} disabled={!paste.trim()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4" /> Kiểm tra dữ liệu
+            <FileSpreadsheet className="w-4 h-4" /> {t('payroll.checkData')}
           </button>
-          {importablePreviewCount > 0 && (
-            <button onClick={handleImport} disabled={preview.some((row) => !row.isSummary && row.error) || importPayroll.isPending || hasPendingRecords || hasPublishedRecords} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold disabled:opacity-50">
-              Lưu {importablePreviewCount} phiếu nháp
+          {preview.length > 0 && (
+            <button onClick={handleImport} disabled={!validPreviewCount || importPayroll.isPending || hasPendingRecords || hasPublishedRecords} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">
+              {importPayroll.isPending ? t('payroll.saving') : t('payroll.saveDrafts', { count: validPreviewCount })}
             </button>
           )}
         </div>
+
+        {invalidPreviewCount > 0 && (
+          <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+            Có {invalidPreviewCount} dòng lỗi sẽ được bỏ qua. Sửa các dòng được đánh dấu bên dưới nếu muốn nhập đủ toàn bộ file.
+          </p>
+        )}
 
         {(hasPendingRecords || hasPublishedRecords) && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -744,11 +754,11 @@ export const AdminPayrollView: React.FC = () => {
             <table className="min-w-max w-full text-left text-xs">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="p-2 whitespace-nowrap">Dòng</th>
+                  <th className="p-2 whitespace-nowrap">{t('payroll.row')}</th>
                   {previewColumns.map((column, index) => (
                     <th key={`${column.label}-${index}`} className="p-2 whitespace-nowrap">{column.label || `Cột ${index + 1}`}</th>
                   ))}
-                  <th className="p-2 whitespace-nowrap">Kiểm tra</th>
+                  <th className="p-2 whitespace-nowrap">{t('payroll.validation')}</th>
                 </tr>
               </thead>
               <tbody>{preview.map((item) => (
@@ -763,7 +773,7 @@ export const AdminPayrollView: React.FC = () => {
                     return <td key={`${item.rowNumber}-${column.label}-${index}`} className={`p-2 whitespace-nowrap ${isEmployeeName ? 'font-bold' : ''}`}>{value}</td>;
                   })}
                   <td className={`p-2 font-semibold ${item.error ? 'text-rose-700' : item.warning ? 'text-amber-700' : 'text-success-700'}`}>
-                    {item.isSummary ? 'Tổng cộng' : item.error || item.warning || 'Hợp lệ'}
+                    {item.isSummary ? t('payroll.summary') : item.error || item.warning || t('payroll.valid')}
                   </td>
                 </tr>
               ))}</tbody>
@@ -774,34 +784,34 @@ export const AdminPayrollView: React.FC = () => {
 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
-          <div><h2 className="font-bold text-slate-900">Phê duyệt & phát hành Tháng {selectedMonth}/{selectedYear}</h2><p className="text-xs text-slate-500">Nhân viên chỉ xem được phiếu sau khi Admin phê duyệt toàn bộ kỳ lương.</p></div>
+          <div><h2 className="font-bold text-slate-900">{t('payroll.approvalTitle', { month: selectedMonth, year: selectedYear })}</h2><p className="text-xs text-slate-500">{t('payroll.approvalHelp')}</p></div>
           <div className="flex flex-wrap justify-end gap-2">
             {hasEditableRecords && (
               <button onClick={handleSubmitForApproval} disabled={submitPayroll.isPending} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold disabled:opacity-50 flex items-center gap-2">
-                <Send className="w-4 h-4" /> Gửi Admin duyệt
+                <Send className="w-4 h-4" /> {t('payroll.submit')}
               </button>
             )}
             {isAdmin && hasPendingRecords && (
               <>
                 <button onClick={() => setApprovalDialog('reject')} className="px-4 py-2 border border-rose-300 bg-white text-rose-700 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <RotateCcw className="w-4 h-4" /> Trả lại
+                  <RotateCcw className="w-4 h-4" /> {t('payroll.reject')}
                 </button>
                 <button onClick={() => setApprovalDialog('approve')} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4" /> Duyệt & phát hành
+                  <ShieldCheck className="w-4 h-4" /> {t('payroll.approve')}
                 </button>
               </>
             )}
             {hasPublishedRecords && (
               <span className="inline-flex items-center gap-2 rounded-xl border border-success-200 bg-success-50 px-4 py-2 text-xs font-bold text-success-800">
-                <CheckCircle2 className="h-4 w-4" /> Đã phát hành
+                <CheckCircle2 className="h-4 w-4" /> {t('payroll.published')}
               </span>
             )}
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          <ApprovalSummary label="Phiếu nháp / trả lại" value={records.filter((record) => record.publish_status === 'draft' || record.publish_status === 'rejected').length} />
-          <ApprovalSummary label="Đang chờ Admin duyệt" value={records.filter((record) => record.publish_status === 'pending_approval').length} tone="amber" />
-          <ApprovalSummary label="Đã phát hành" value={records.filter((record) => record.publish_status === 'published').length} tone="success" />
+          <ApprovalSummary label={t('payroll.drafts')} value={records.filter((record) => record.publish_status === 'draft' || record.publish_status === 'rejected').length} />
+          <ApprovalSummary label={t('payroll.pending')} value={records.filter((record) => record.publish_status === 'pending_approval').length} tone="amber" />
+          <ApprovalSummary label={t('payroll.published')} value={records.filter((record) => record.publish_status === 'published').length} tone="success" />
         </div>
         {isAdmin && records.some((record) => record.publish_status === 'published' && record.notification_status !== 'sent') && (
           <div className="rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs text-primary-900">
@@ -869,6 +879,7 @@ const Metric: React.FC<{ label: string; value: number; tone?: 'rose' | 'primary'
 };
 
 const ApprovalSummary: React.FC<{ label: string; value: number; tone?: 'amber' | 'success' }> = ({ label, value, tone }) => {
+  const { t } = useI18n();
   const className = tone === 'amber' ? 'border-amber-200 bg-amber-50 text-amber-800' : tone === 'success' ? 'border-success-200 bg-success-50 text-success-800' : 'border-slate-200 bg-slate-50 text-slate-700';
-  return <div className={`rounded-xl border px-4 py-3 ${className}`}><span className="block text-[11px] font-semibold">{label}</span><strong className="mt-1 block text-2xl font-black">{value} phiếu</strong></div>;
+  return <div className={`rounded-xl border px-4 py-3 ${className}`}><span className="block text-[11px] font-semibold">{label}</span><strong className="mt-1 block text-2xl font-black">{t('payroll.payslipCount', { count: value })}</strong></div>;
 };

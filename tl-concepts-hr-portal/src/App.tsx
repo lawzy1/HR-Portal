@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { HRProvider, useHR } from './context/HRContext';
 import { MoneyVisibilityProvider } from './context/MoneyVisibilityContext';
+import { I18nProvider } from './context/I18nContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
@@ -111,28 +112,30 @@ function MainContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/auth/activate" element={<ActivateAccountPage />} />
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <MoneyVisibilityProvider>
-                    <HRProvider>
-                      <MainContent />
-                    </HRProvider>
-                  </MoneyVisibilityProvider>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
+      <I18nProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/auth/activate" element={<ActivateAccountPage />} />
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <MoneyVisibilityProvider>
+                      <HRProvider>
+                        <MainContent />
+                      </HRProvider>
+                    </MoneyVisibilityProvider>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

@@ -164,7 +164,9 @@ async function createPayslipPdf(record: PayrollRecord) {
   page.drawText("Tài liệu được phát hành sau khi Admin phê duyệt trên TL Concepts HR Portal.", {
     x: 52, y: 38, size: 7.5, font, color: muted,
   });
-  return new Uint8Array(await document.save());
+  // Avoid object streams for compatibility with older PDF viewers used by
+  // desktop mail clients.
+  return new Uint8Array(await document.save({ useObjectStreams: false }));
 }
 
 async function sendPayslipEmail(to: string, employeeName: string, month: number, year: number, pdf: Uint8Array) {
@@ -257,26 +259,13 @@ export default {
         payroll.employeeSensitive = employeeSensitive;
 
         const path = String(payroll.payslip_pdf_path || `${payroll.company_id}/${payroll.employee_id}/payslips/${payroll.year}-${String(payroll.month).padStart(2, "0")}-${payroll.id}.pdf`);
-        let pdf: Uint8Array;
-        if (payroll.payslip_pdf_path) {
-          const { data: existingPdf, error: downloadError } = await ctx.supabaseAdmin.storage
-            .from('employee-documents')
-            .download(path);
-          if (downloadError || !existingPdf) throw new Error(`Không đọc được PDF đã phát hành: ${downloadError?.message ?? 'không có dữ liệu'}`);
-          pdf = new Uint8Array(await existingPdf.arrayBuffer());
-        } else {
-          pdf = await createPayslipPdf(payroll);
-          const { error: uploadError } = await ctx.supabaseAdmin.storage
-            .from("employee-documents")
-            .upload(path, pdf, { contentType: "application/pdf", upsert: false });
-          if (uploadError) {
-            const { data: existingPdf, error: downloadError } = await ctx.supabaseAdmin.storage
-              .from('employee-documents')
-              .download(path);
-            if (downloadError || !existingPdf) throw new Error(`Không lưu được PDF: ${uploadError.message}`);
-            pdf = new Uint8Array(await existingPdf.arrayBuffer());
-          }
-        }
+        // Always regenerate the attachment. Reusing an existing corrupt file
+        // makes every retry resend the same broken PDF forever.
+        const pdf = await createPayslipPdf(payroll);
+        const { error: uploadError } = await ctx.supabaseAdmin.storage
+          .from("employee-documents")
+          .upload(path, pdf, { contentType: "application/pdf", cacheControl: "0", upsert: true });
+        if (uploadError) throw new Error(`Không lưu được PDF: ${uploadError.message}`);
         const pdfSha256 = await sha256Hex(pdf);
 
         const recipient = job.recipient_email || payroll.employees?.email;

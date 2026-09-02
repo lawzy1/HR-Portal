@@ -96,7 +96,7 @@ export function useApproveContract() {
       return data;
     },
     onSuccess: () => {
-      refreshQueries(queryClient, [['contracts'], ['employees'], ['salary_history']]);
+      refreshQueries(queryClient, [['contracts'], ['employees'], ['salary_history'], ['leave_balances']]);
     },
   });
 }

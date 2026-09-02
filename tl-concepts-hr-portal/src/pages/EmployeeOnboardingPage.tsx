@@ -9,9 +9,12 @@ import {
 import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
 import { supabase } from '../lib/supabaseClient';
 import { getUserFacingError } from '../lib/userFacingError';
+import { useI18n } from '../context/I18nContext';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export const EmployeeOnboardingPage: React.FC = () => {
   const { profile, signOut, refreshProfile } = useAuth();
+  const { t } = useI18n();
   const employeeId = profile?.employeeId ?? undefined;
   const editableEmployeeId = profile && ['in_progress', 'needs_changes'].includes(profile.onboardingStatus) ? employeeId : undefined;
   const employeeQuery = useEmployee(editableEmployeeId);
@@ -80,7 +83,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
   }, [employee, isHydrated, relatives, relativesQuery.isSuccess, sensitiveInfo, sensitiveInfoQuery.isSuccess]);
 
   if (profile?.onboardingStatus === 'submitted') {
-    return <OnboardingStatus title="Hồ sơ đã gửi" description="HR đang kiểm tra thông tin và minh chứng của bạn. Toàn bộ HR Portal sẽ mở ngay sau khi hồ sơ được duyệt." onSignOut={signOut} />;
+    return <OnboardingStatus title={t('onboarding.submitted')} description={t('onboarding.submittedHelp')} onSignOut={signOut} />;
   }
 
   if (employeeQuery.isError || sensitiveInfoQuery.isError || relativesQuery.isError) {
@@ -186,82 +189,82 @@ export const EmployeeOnboardingPage: React.FC = () => {
         <header className="rounded-2xl bg-[#173f37] p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-emerald-200">TL Concepts HR Portal</p>
-            <h1 className="mt-2 text-2xl font-black">Hoàn thiện hồ sơ nhân viên</h1>
-            <p className="mt-1 text-sm text-emerald-50/80">Xin chào {employee.full_name}. Tài khoản đang chờ HR kiểm tra và kích hoạt.</p>
+            <h1 className="mt-2 text-2xl font-black">{t('onboarding.title')}</h1>
+            <p className="mt-1 text-sm text-emerald-50/80">{t('onboarding.hello', { name: employee.full_name })}</p>
           </div>
-          <button type="button" onClick={signOut} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold hover:bg-white/20 cursor-pointer">
-            <LogOut className="h-4 w-4" /> Đăng xuất
-          </button>
+          <div className="flex items-center gap-2"><LanguageSwitcher /><button type="button" onClick={signOut} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold hover:bg-white/20 cursor-pointer">
+            <LogOut className="h-4 w-4" /> {t('header.logout')}
+          </button></div>
         </header>
 
         <form onSubmit={save} className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm space-y-7">
-          <Section title="1. Thông tin cá nhân">
+          <Section title={t('onboarding.personal')}>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Họ và tên"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.fullName')}><input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} /></Input>
               <ReadOnly label="Email" value={employee.email || '—'} />
-              <Input label="Số điện thoại *"><input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} /></Input>
-              <Input label="Ngày sinh *"><input required type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} /></Input>
-              <Input label="Giới tính *">
+              <Input label={`${t('onboarding.phone')} *`}><input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} /></Input>
+              <Input label={`${t('onboarding.dob')} *`}><input required type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} /></Input>
+              <Input label={`${t('onboarding.gender')} *`}>
                 <select required value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
-                  <option value="">— Chọn —</option><option>Nam</option><option>Nữ</option><option>Khác</option>
+                  <option value="">{t('onboarding.select')}</option><option value="Nam">{t('onboarding.male')}</option><option value="Nữ">{t('onboarding.female')}</option><option value="Khác">{t('onboarding.other')}</option>
                 </select>
               </Input>
-              <Input label="Tình trạng hôn nhân">
+              <Input label={t('onboarding.maritalStatus')}>
                 <select value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)} className={inputClass}>
-                  <option value="">— Chọn —</option><option>Độc thân</option><option>Đã kết hôn</option>
+                  <option value="">{t('onboarding.select')}</option><option value="Độc thân">{t('onboarding.single')}</option><option value="Đã kết hôn">{t('onboarding.married')}</option>
                 </select>
               </Input>
-              <Input label="Địa chỉ thường trú"><textarea value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} className={inputClass} rows={3} /></Input>
-              <Input label="Địa chỉ tạm trú"><textarea value={temporaryAddress} onChange={(e) => setTemporaryAddress(e.target.value)} className={inputClass} rows={3} /></Input>
+              <Input label={t('onboarding.permanentAddress')}><textarea value={permanentAddress} onChange={(e) => setPermanentAddress(e.target.value)} className={inputClass} rows={3} /></Input>
+              <Input label={t('onboarding.temporaryAddress')}><textarea value={temporaryAddress} onChange={(e) => setTemporaryAddress(e.target.value)} className={inputClass} rows={3} /></Input>
             </div>
-            <FilePicker label="Ảnh đại diện" file={avatarFile} existingPath={employee.avatar_url} onChange={setAvatarFile} />
+            <FilePicker label={t('onboarding.avatar')} file={avatarFile} existingPath={employee.avatar_url} onChange={setAvatarFile} />
           </Section>
 
-          <Section title="2. CCCD, MST và BHXH" collapsible>
+          <Section title={t('onboarding.identity')} collapsible>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Số CCCD"><input value={idCardNumber} onChange={(e) => setIdCardNumber(e.target.value)} className={inputClass} /></Input>
-              <Input label="Ngày cấp"><input type="date" value={idCardIssueDate} onChange={(e) => setIdCardIssueDate(e.target.value)} className={inputClass} /></Input>
-              <Input label="Nơi cấp"><input value={idCardIssuePlace} onChange={(e) => setIdCardIssuePlace(e.target.value)} className={inputClass} /></Input>
-              <Input label="Mã số thuế"><input value={taxCode} onChange={(e) => setTaxCode(e.target.value)} className={inputClass} /></Input>
-              <Input label="Mã số BHXH"><input value={socialInsuranceCode} onChange={(e) => setSocialInsuranceCode(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.idNumber')}><input value={idCardNumber} onChange={(e) => setIdCardNumber(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.issueDate')}><input type="date" value={idCardIssueDate} onChange={(e) => setIdCardIssueDate(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.issuePlace')}><input value={idCardIssuePlace} onChange={(e) => setIdCardIssuePlace(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.taxCode')}><input value={taxCode} onChange={(e) => setTaxCode(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.socialInsurance')}><input value={socialInsuranceCode} onChange={(e) => setSocialInsuranceCode(e.target.value)} className={inputClass} /></Input>
             </div>
             <div className="grid sm:grid-cols-3 gap-3">
-              <FilePicker label="CCCD mặt trước" file={frontFile} existingPath={sensitiveInfo?.id_card_front_url} onChange={setFrontFile} />
-              <FilePicker label="CCCD mặt sau" file={backFile} existingPath={sensitiveInfo?.id_card_back_url} onChange={setBackFile} />
-              <FilePicker label="Ảnh cư trú VNeID" file={vneidFile} existingPath={sensitiveInfo?.vneid_residency_url} onChange={setVneidFile} />
+              <FilePicker label={t('onboarding.idFront')} file={frontFile} existingPath={sensitiveInfo?.id_card_front_url} onChange={setFrontFile} />
+              <FilePicker label={t('onboarding.idBack')} file={backFile} existingPath={sensitiveInfo?.id_card_back_url} onChange={setBackFile} />
+              <FilePicker label={t('onboarding.vneid')} file={vneidFile} existingPath={sensitiveInfo?.vneid_residency_url} onChange={setVneidFile} />
             </div>
           </Section>
 
-          <Section title="3. Tài khoản nhận lương" collapsible>
+          <Section title={t('onboarding.bank')} collapsible>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Ngân hàng"><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass} /></Input>
-              <Input label="Số tài khoản"><input value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} className={inputClass} /></Input>
-              <Input label="Chủ tài khoản"><input value={bankAccountHolder} onChange={(e) => setBankAccountHolder(e.target.value)} className={inputClass} /></Input>
-              <Input label="Chi nhánh"><input value={bankBranch} onChange={(e) => setBankBranch(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.bankName')}><input value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.accountNumber')}><input value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.accountHolder')}><input value={bankAccountHolder} onChange={(e) => setBankAccountHolder(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.branch')}><input value={bankBranch} onChange={(e) => setBankBranch(e.target.value)} className={inputClass} /></Input>
             </div>
           </Section>
 
-          <Section title="4. Người thân / liên hệ khẩn cấp" collapsible>
+          <Section title={t('onboarding.emergency')} collapsible>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Input label="Họ và tên"><input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} className={inputClass} /></Input>
-              <Input label="Mối quan hệ"><input value={emergencyRelationship} onChange={(e) => setEmergencyRelationship(e.target.value)} placeholder="Ví dụ: Mẹ" className={inputClass} /></Input>
-              <Input label="Số điện thoại"><input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className={inputClass} /></Input>
-              <Input label="Địa chỉ"><input value={emergencyAddress} onChange={(e) => setEmergencyAddress(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.fullName')}><input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.relationship')}><input value={emergencyRelationship} onChange={(e) => setEmergencyRelationship(e.target.value)} placeholder={t('onboarding.relationshipExample')} className={inputClass} /></Input>
+              <Input label={t('onboarding.phone')}><input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} className={inputClass} /></Input>
+              <Input label={t('onboarding.address')}><input value={emergencyAddress} onChange={(e) => setEmergencyAddress(e.target.value)} className={inputClass} /></Input>
             </div>
           </Section>
 
           {profile.onboardingStatus === 'needs_changes' && profile.onboardingNote && (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><strong>HR yêu cầu bổ sung:</strong> {profile.onboardingNote}</p>
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><strong>{t('onboarding.requestedChanges')}</strong> {profile.onboardingNote}</p>
           )}
 
           {error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</p>}
           {message && <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800"><CheckCircle2 className="h-4 w-4" />{message}</p>}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-5">
-            <p className="flex items-center gap-2 text-[11px] text-slate-500"><ShieldCheck className="h-4 w-4 text-emerald-700" />Ảnh được lưu trong bucket riêng tư và chỉ bạn/Admin xem được.</p>
+            <p className="flex items-center gap-2 text-[11px] text-slate-500"><ShieldCheck className="h-4 w-4 text-emerald-700" />{t('onboarding.privateFiles')}</p>
             <button type="submit" disabled={isSaving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#173f37] px-5 py-3 text-sm font-bold text-white hover:bg-[#0f302a] disabled:opacity-60 cursor-pointer">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Lưu và gửi HR duyệt
+              {t('onboarding.submit')}
             </button>
           </div>
         </form>
@@ -295,6 +298,7 @@ const FilePicker: React.FC<{
   existingPath?: string | null;
   onChange: (file: File | null) => void;
 }> = ({ label, file, existingPath, onChange }) => {
+  const { t } = useI18n();
   const { data: existingPreviewUrl, isLoading: isLoadingExistingPreview } = useSignedImageUrl(existingPath);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
 
@@ -311,11 +315,11 @@ const FilePicker: React.FC<{
 
   const previewUrl = localPreviewUrl ?? existingPreviewUrl;
   const status = file
-    ? 'Đã chọn · sẽ tải lên khi gửi'
+    ? t('onboarding.selected')
     : existingPath
       ? isLoadingExistingPreview
-        ? 'Đang tải ảnh đã lưu...'
-        : 'Đã tải lên · chọn để thay'
+        ? t('onboarding.loadingImage')
+        : t('onboarding.replaceImage')
       : 'PNG, JPG hoặc WEBP';
 
   return (
@@ -324,7 +328,7 @@ const FilePicker: React.FC<{
         <span className="relative block h-36 w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
           <img src={previewUrl} alt={`Xem trước ${label}`} className="h-full w-full object-contain" />
           <span className="absolute right-2 top-2 rounded-full bg-emerald-700 px-2 py-1 text-[9px] font-bold text-white shadow-sm">
-            {file ? 'Ảnh mới' : 'Đã lưu'}
+            {file ? t('onboarding.newImage') : t('onboarding.saved')}
           </span>
         </span>
       ) : (
@@ -344,6 +348,7 @@ const FilePicker: React.FC<{
   );
 };
 
-const OnboardingStatus: React.FC<{ title: string; description: string; onSignOut: () => Promise<void> }> = ({ title, description, onSignOut }) => (
-  <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4"><section className="max-w-md rounded-2xl bg-white p-7 text-center shadow-xl"><CheckCircle2 className="mx-auto h-12 w-12 text-emerald-700" /><h1 className="mt-4 text-xl font-black text-slate-900">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-600">{description}</p><button type="button" onClick={() => void onSignOut()} className="mt-6 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700">Đăng xuất</button></section></main>
-);
+const OnboardingStatus: React.FC<{ title: string; description: string; onSignOut: () => Promise<void> }> = ({ title, description, onSignOut }) => {
+  const { t } = useI18n();
+  return <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4"><LanguageSwitcher className="absolute right-5 top-5" /><section className="max-w-md rounded-2xl bg-white p-7 text-center shadow-xl"><CheckCircle2 className="mx-auto h-12 w-12 text-emerald-700" /><h1 className="mt-4 text-xl font-black text-slate-900">{title}</h1><p className="mt-2 text-sm leading-6 text-slate-600">{description}</p><button type="button" onClick={() => void onSignOut()} className="mt-6 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700">{t('header.logout')}</button></section></main>;
+};

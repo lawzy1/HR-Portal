@@ -23,6 +23,7 @@ import {
   MessageSquareWarning,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useI18n } from '../../context/I18nContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useEmployees, useEmployee, useEmployeeInvitations, useManageEmployeeInvitation, useOffboardEmployee, useDeleteOffboardedEmployee, type DbEmployee, type DbEmployeeInvitation } from '../../hooks/useEmployees';
 import { useEmployeeSensitiveInfo, useEmployeeRelatives, useUpsertEmployeeSensitiveInfo } from '../../hooks/useEmployees';
@@ -47,6 +48,7 @@ const Avatar: React.FC<{ path: string | null; alt: string; className: string }> 
 
 const DocPreview: React.FC<{ path: string | null | undefined; label: string; emptyHint: string }> = ({ path, label, emptyHint }) => {
   const { data: url } = useSignedImageUrl(path);
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
       <span className="text-xs font-semibold text-slate-700 block">{label}:</span>
@@ -55,7 +57,7 @@ const DocPreview: React.FC<{ path: string | null | undefined; label: string; emp
           <img src={url} alt={label} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <a href={url} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-white text-slate-900 rounded-lg text-xs font-bold flex items-center space-x-1">
-              <span>Xem ảnh gốc</span>
+              <span>{t('adminEmployees.viewOriginal')}</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -69,16 +71,16 @@ const DocPreview: React.FC<{ path: string | null | undefined; label: string; emp
   );
 };
 
-function invitationState(invitation: DbEmployeeInvitation) {
-  if (invitation.revoked_at) return { label: 'Đã thu hồi', className: 'bg-slate-200 text-slate-700' };
-  if (invitation.completed_at) return { label: 'Đã gửi hồ sơ', className: 'bg-success-100 text-success-800' };
-  if (new Date(invitation.expires_at).getTime() <= Date.now()) return { label: 'Link đã hết hạn', className: 'bg-rose-100 text-rose-700' };
-  if (invitation.accepted_at) return { label: 'Đã mở link · đang kích hoạt', className: 'bg-amber-100 text-amber-800' };
-  return { label: 'Đã gửi link · chờ kích hoạt', className: 'bg-primary-100 text-primary-800' };
+function invitationState(invitation: DbEmployeeInvitation, value: (source: string) => string) {
+  if (invitation.revoked_at) return { label: value('Đã thu hồi'), className: 'bg-slate-200 text-slate-700' };
+  if (invitation.completed_at) return { label: value('Đã gửi hồ sơ'), className: 'bg-success-100 text-success-800' };
+  if (new Date(invitation.expires_at).getTime() <= Date.now()) return { label: value('Link đã hết hạn'), className: 'bg-rose-100 text-rose-700' };
+  if (invitation.accepted_at) return { label: value('Đã mở link · đang kích hoạt'), className: 'bg-amber-100 text-amber-800' };
+  return { label: value('Đã gửi link · chờ kích hoạt'), className: 'bg-primary-100 text-primary-800' };
 }
 
-function formatInvitationTime(value: string | null) {
-  return value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—';
+function formatInvitationTime(value: string | null, locale: string) {
+  return value ? new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—';
 }
 
 type PendingConfirmation = 'revoke_invitation' | 'approve_onboarding' | 'needs_changes' | null;
@@ -93,6 +95,7 @@ export const AdminEmployeeListView: React.FC = () => {
   } = useHR();
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const { t, value, locale } = useI18n();
 
   const { data: employees } = useEmployees();
   const { data: invitations } = useEmployeeInvitations();
@@ -227,10 +230,10 @@ export const AdminEmployeeListView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Quản lý Hồ sơ Nhân viên toàn Công ty
+            {t('adminEmployees.title')}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Tra cứu, cập nhật thông tin cá nhân, CCCD, MST, BHXH, tài khoản ngân hàng và hợp đồng.
+            {t('adminEmployees.description')}
           </p>
         </div>
 
@@ -240,7 +243,7 @@ export const AdminEmployeeListView: React.FC = () => {
             className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold text-sm flex items-center space-x-2 shadow-md shadow-primary-500/20 transition-all cursor-pointer shrink-0"
           >
             <UserPlus className="w-4 h-4" />
-            <span>Thêm nhân viên</span>
+            <span>{t('adminEmployees.addEmployee')}</span>
           </button>
         )}
       </div>
@@ -255,7 +258,7 @@ export const AdminEmployeeListView: React.FC = () => {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Tìm tên, mã NV, email, SĐT..."
+                placeholder={t('adminEmployees.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
@@ -268,7 +271,7 @@ export const AdminEmployeeListView: React.FC = () => {
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:border-primary-500"
               >
-                <option value="ALL">Tất cả Phòng ban</option>
+                <option value="ALL">{t('adminEmployees.allDepartments')}</option>
                 {departments.map((d) => (
                   <option key={d} value={d!}>{d}</option>
                 ))}
@@ -279,27 +282,27 @@ export const AdminEmployeeListView: React.FC = () => {
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:border-primary-500"
               >
-                <option value="ALL">Tất cả Trạng thái</option>
-                <option value="Chính thức">Chính thức</option>
-                <option value="Thử việc">Thử việc</option>
-                <option value="Mới tiếp nhận">Mới tiếp nhận</option>
-                <option value="Chờ kích hoạt">Chờ kích hoạt</option>
-                <option value="Chờ duyệt hồ sơ">Chờ duyệt hồ sơ</option>
-                <option value="Chờ duyệt">Chờ duyệt đăng ký</option>
-                <option value="Đã nghỉ việc">Đã nghỉ việc</option>
+                <option value="ALL">{t('adminEmployees.allStatuses')}</option>
+                <option value="Chính thức">{value('Chính thức')}</option>
+                <option value="Thử việc">{value('Thử việc')}</option>
+                <option value="Mới tiếp nhận">{value('Mới tiếp nhận')}</option>
+                <option value="Chờ kích hoạt">{value('Chờ kích hoạt')}</option>
+                <option value="Chờ duyệt hồ sơ">{value('Chờ duyệt hồ sơ')}</option>
+                <option value="Chờ duyệt">{t('adminEmployees.statusPendingRegistration')}</option>
+                <option value="Đã nghỉ việc">{value('Đã nghỉ việc')}</option>
               </select>
             </div>
           </div>
 
           <div className="flex items-center justify-between px-1 text-xs text-slate-500 font-medium">
-            <span>Danh sách ({filteredEmployees.length} nhân sự)</span>
-            <span className="text-[11px] text-slate-400">Chọn người để xem hồ sơ</span>
+            <span>{t('adminEmployees.listCount', { count: filteredEmployees.length })}</span>
+            <span className="text-[11px] text-slate-400">{t('adminEmployees.selectHint')}</span>
           </div>
 
           <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
             {filteredEmployees.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                {allEmployees.length === 0 ? 'Chưa có nhân viên nào — nhân viên có thể tự đăng ký tại trang đăng nhập.' : 'Không tìm thấy nhân viên thỏa điều kiện.'}
+                {allEmployees.length === 0 ? t('adminEmployees.emptyNoEmployees') : t('adminEmployees.emptyNoMatch')}
               </div>
             ) : (
               filteredEmployees.map((emp) => {
@@ -337,7 +340,7 @@ export const AdminEmployeeListView: React.FC = () => {
                               ? 'bg-slate-200 text-slate-600'
                               : 'bg-primary-100 text-primary-800'
                       }`}>
-                        {emp.status === 'Chờ kích hoạt' && invitationsByEmployee.get(emp.id) ? invitationState(invitationsByEmployee.get(emp.id)!).label : emp.status}
+                        {emp.status === 'Chờ kích hoạt' && invitationsByEmployee.get(emp.id) ? invitationState(invitationsByEmployee.get(emp.id)!, value).label : value(emp.status)}
                       </span>
                     </div>
                   </div>
@@ -351,7 +354,7 @@ export const AdminEmployeeListView: React.FC = () => {
         <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
           {!selectedEmp ? (
             <div className="p-12 text-center text-slate-400">
-              Vui lòng chọn nhân viên ở danh sách bên trái để mở hồ sơ.
+              {t('adminEmployees.selectPrompt')}
             </div>
           ) : (
             <>
@@ -366,11 +369,11 @@ export const AdminEmployeeListView: React.FC = () => {
                       <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full ${
                         selectedEmp.status === 'Chính thức' ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {selectedEmp.status === 'Chờ kích hoạt' && selectedInvitation ? invitationState(selectedInvitation).label : selectedEmp.status}
+                        {selectedEmp.status === 'Chờ kích hoạt' && selectedInvitation ? invitationState(selectedInvitation, value).label : value(selectedEmp.status)}
                       </span>
                     </div>
                     <p className="text-sm text-slate-600 font-medium mt-0.5">{selectedEmp.job_title} • {selectedEmp.department}</p>
-                    <p className="text-xs text-slate-400 mt-1">Ngày bắt đầu làm việc: {selectedEmp.start_date || '—'}</p>
+                    <p className="text-xs text-slate-400 mt-1">{t('dashboard.startDate')}: {selectedEmp.start_date || '—'}</p>
                   </div>
                 </div>
 
@@ -380,17 +383,17 @@ export const AdminEmployeeListView: React.FC = () => {
                     className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"
                   >
                     <Edit className="w-3.5 h-3.5" />
-                    <span>Chỉnh sửa hồ sơ</span>
+                    <span>{t('adminEmployees.editProfile')}</span>
                   </button>
 
                   {isAdmin && selectedEmp.status !== 'Đã nghỉ việc' && (
                     <button
                       onClick={() => setEmployeeToOffboard(selectedEmp)}
                       className="px-3.5 py-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer border border-rose-200"
-                      title="Đánh dấu nghỉ việc"
+                      title={t('adminEmployees.offboardTooltip')}
                     >
                       <UserMinus className="w-4 h-4" />
-                      <span>Nghỉ việc</span>
+                      <span>{t('adminEmployees.offboardAction')}</span>
                     </button>
                   )}
                   {isAdmin && selectedEmp.status === 'Đã nghỉ việc' && (
@@ -401,10 +404,10 @@ export const AdminEmployeeListView: React.FC = () => {
                         setEmployeeToDelete(selectedEmp);
                       }}
                       className="px-3.5 py-2 text-white bg-rose-600 hover:bg-rose-700 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm shadow-rose-600/20"
-                      title="Xóa vĩnh viễn hồ sơ và tài khoản"
+                      title={t('adminEmployees.deletePermanentTooltip')}
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span>Xóa vĩnh viễn</span>
+                      <span>{t('adminEmployees.deletePermanentAction')}</span>
                     </button>
                   )}
                 </div>
@@ -416,25 +419,25 @@ export const AdminEmployeeListView: React.FC = () => {
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 rounded-lg bg-white p-2 text-primary-700 shadow-sm"><Clock3 className="h-4 w-4" /></div>
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Lời mời kích hoạt</p>
-                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${invitationState(selectedInvitation).className}`}>{invitationState(selectedInvitation).label}</span>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t('adminEmployees.invitationTitle')}</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${invitationState(selectedInvitation, value).className}`}>{invitationState(selectedInvitation, value).label}</span>
                         <p className="mt-2 text-xs leading-5 text-slate-600">
-                          Gửi lần gần nhất: <b>{formatInvitationTime(selectedInvitation.last_sent_at)}</b> · Hết hạn: <b>{formatInvitationTime(selectedInvitation.expires_at)}</b>
-                          {selectedInvitation.last_opened_at ? <> · Mở gần nhất: <b>{formatInvitationTime(selectedInvitation.last_opened_at)}</b></> : null}
+                          {t('adminEmployees.invitationTimes', { sent: formatInvitationTime(selectedInvitation.last_sent_at, locale), expires: formatInvitationTime(selectedInvitation.expires_at, locale) })}
+                          {selectedInvitation.last_opened_at ? t('adminEmployees.invitationOpened', { opened: formatInvitationTime(selectedInvitation.last_opened_at, locale) }) : null}
                         </p>
                       </div>
                     </div>
                     {canManageSelectedInvitation && (
                       <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => void handleInvitationAction('resend')} disabled={manageInvitation.isPending} className="inline-flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-60">
-                          <Send className="h-3.5 w-3.5" /> {selectedInvitation.revoked_at ? 'Gửi lời mời mới' : 'Gửi lại link'}
+                          <Send className="h-3.5 w-3.5" /> {selectedInvitation.revoked_at ? t('adminEmployees.resendNew') : t('adminEmployees.resendLink')}
                         </button>
-                        {!selectedInvitation.revoked_at && <button type="button" onClick={() => setPendingConfirmation('revoke_invitation')} disabled={manageInvitation.isPending} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"><Ban className="h-3.5 w-3.5" /> Thu hồi</button>}
+                        {!selectedInvitation.revoked_at && <button type="button" onClick={() => setPendingConfirmation('revoke_invitation')} disabled={manageInvitation.isPending} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"><Ban className="h-3.5 w-3.5" /> {t('adminEmployees.revoke')}</button>}
                       </div>
                     )}
                   </div>
                   {invitationActionError && <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{invitationActionError}</p>}
-                  {manualActivationLink && <div className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 sm:flex-row sm:items-center sm:justify-between"><span className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />Email chưa gửi được. Sao chép link mới để gửi thủ công qua kênh an toàn.</span><button type="button" onClick={() => void copyManualActivationLink()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 font-bold text-amber-900 shadow-sm"><Copy className="h-3.5 w-3.5" /> Sao chép link</button></div>}
+                  {manualActivationLink && <div className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 sm:flex-row sm:items-center sm:justify-between"><span className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{t('adminEmployees.emailNotSentWarning')}</span><button type="button" onClick={() => void copyManualActivationLink()} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 font-bold text-amber-900 shadow-sm"><Copy className="h-3.5 w-3.5" /> {t('adminEmployees.copyLink')}</button></div>}
                 </section>
               )}
 
@@ -444,14 +447,14 @@ export const AdminEmployeeListView: React.FC = () => {
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5 rounded-lg bg-white p-2 text-primary-700 shadow-sm"><CheckCircle2 className="h-4 w-4" /></div>
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-primary-800">Hồ sơ đang chờ duyệt</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">Nhân viên đã gửi đủ hồ sơ onboarding.</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-600">Kiểm tra CCCD, ngân hàng và người liên hệ bên dưới trước khi duyệt. Khi duyệt, nhân viên có thể vào HR Portal ngay.</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-primary-800">{t('adminEmployees.pendingReviewTitle')}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">{t('adminEmployees.pendingReviewHeadline')}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">{t('adminEmployees.pendingReviewHelp')}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => requestOnboardingReview('approved')} disabled={reviewOnboarding.isPending} className="inline-flex items-center gap-1.5 rounded-xl bg-success-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-success-700 disabled:opacity-60"><CheckCircle2 className="h-3.5 w-3.5" /> Duyệt hồ sơ</button>
-                      <button type="button" onClick={() => requestOnboardingReview('needs_changes')} disabled={reviewOnboarding.isPending} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-800 transition hover:bg-amber-50 disabled:opacity-60"><MessageSquareWarning className="h-3.5 w-3.5" /> Yêu cầu bổ sung</button>
+                      <button type="button" onClick={() => requestOnboardingReview('approved')} disabled={reviewOnboarding.isPending} className="inline-flex items-center gap-1.5 rounded-xl bg-success-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-success-700 disabled:opacity-60"><CheckCircle2 className="h-3.5 w-3.5" /> {t('adminEmployees.approveProfile')}</button>
+                      <button type="button" onClick={() => requestOnboardingReview('needs_changes')} disabled={reviewOnboarding.isPending} className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-800 transition hover:bg-amber-50 disabled:opacity-60"><MessageSquareWarning className="h-3.5 w-3.5" /> {t('adminEmployees.requestChangesAction')}</button>
                     </div>
                   </div>
                 </section>
@@ -462,29 +465,29 @@ export const AdminEmployeeListView: React.FC = () => {
                 <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-2">
                     <User className="w-4 h-4 text-primary-600" />
-                    <span>1. Thông tin Cá nhân & Liên hệ</span>
+                    <span>{t('adminEmployees.section1Title')}</span>
                   </h3>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-500">Ngày sinh:</span><span className="font-semibold text-slate-800">{selectedEmp.dob || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Giới tính:</span><span className="font-semibold text-slate-800">{selectedEmp.gender || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Tình trạng hôn nhân:</span><span className="font-semibold text-slate-800">{selectedEmp.marital_status || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Số điện thoại:</span><span className="font-semibold text-primary-600">{selectedEmp.phone || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Email công việc:</span><span className="font-semibold text-primary-600">{selectedEmp.email || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.dob')}:</span><span className="font-semibold text-slate-800">{selectedEmp.dob || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.gender')}:</span><span className="font-semibold text-slate-800">{selectedEmp.gender || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.maritalStatus')}:</span><span className="font-semibold text-slate-800">{selectedEmp.marital_status || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.phone')}:</span><span className="font-semibold text-primary-600">{selectedEmp.phone || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('adminEmployees.workEmail')}:</span><span className="font-semibold text-primary-600">{selectedEmp.email || '—'}</span></div>
                   </div>
                 </div>
 
                 <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-2">
                     <MapPin className="w-4 h-4 text-primary-600" />
-                    <span>2. Địa chỉ Thường trú & Tạm trú</span>
+                    <span>{t('adminEmployees.section2Title')}</span>
                   </h3>
                   <div className="space-y-2 text-xs">
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Địa chỉ thường trú (Hộ khẩu):</span>
+                      <span className="text-slate-500 block mb-0.5">{t('onboarding.permanentAddress')}:</span>
                       <p className="font-medium text-slate-800 bg-white p-2 rounded border border-slate-200">{selectedEmp.permanent_address || '—'}</p>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Địa chỉ tạm trú hiện tại:</span>
+                      <span className="text-slate-500 block mb-0.5">{t('onboarding.temporaryAddress')}:</span>
                       <p className="font-medium text-slate-800 bg-white p-2 rounded border border-slate-200">{selectedEmp.temporary_address || '—'}</p>
                     </div>
                   </div>
@@ -496,27 +499,27 @@ export const AdminEmployeeListView: React.FC = () => {
                 <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-primary-600" />
-                    <span>3. CCCD, MST & BHXH</span>
+                    <span>{t('adminEmployees.section3Title')}</span>
                   </h3>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-500">Số CCCD / Hộ chiếu:</span><span className="font-bold text-slate-900 font-mono">{sensitiveInfo?.id_card_number || 'Chưa cập nhật'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Ngày cấp:</span><span className="font-medium text-slate-800">{sensitiveInfo?.id_card_issue_date || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Nơi cấp:</span><span className="font-medium text-slate-800 truncate max-w-[180px]">{sensitiveInfo?.id_card_issue_place || '—'}</span></div>
-                    <div className="flex justify-between pt-1 border-t border-slate-200"><span className="text-slate-500">Mã số thuế cá nhân:</span><span className="font-bold text-primary-600 font-mono">{sensitiveInfo?.tax_code || 'Chưa cập nhật'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Mã số BHXH:</span><span className="font-bold text-success-600 font-mono">{sensitiveInfo?.social_insurance_code || 'Chưa cập nhật'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.idNumber')}:</span><span className="font-bold text-slate-900 font-mono">{sensitiveInfo?.id_card_number || t('common.notUpdated')}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.issueDate')}:</span><span className="font-medium text-slate-800">{sensitiveInfo?.id_card_issue_date || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.issuePlace')}:</span><span className="font-medium text-slate-800 truncate max-w-[180px]">{sensitiveInfo?.id_card_issue_place || '—'}</span></div>
+                    <div className="flex justify-between pt-1 border-t border-slate-200"><span className="text-slate-500">{t('onboarding.taxCode')}:</span><span className="font-bold text-primary-600 font-mono">{sensitiveInfo?.tax_code || t('common.notUpdated')}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.socialInsurance')}:</span><span className="font-bold text-success-600 font-mono">{sensitiveInfo?.social_insurance_code || t('common.notUpdated')}</span></div>
                     <div className="pt-2 border-t border-slate-200">
-                      <label className="text-slate-500 block mb-1">Trạng thái đối chiếu ảnh/dữ liệu:</label>
+                      <label className="text-slate-500 block mb-1">{t('adminEmployees.verificationStatusLabel')}</label>
                       <select
                         value={sensitiveInfo?.identity_verification_status || 'not_checked'}
                         onChange={(e) => handleVerificationStatus(e.target.value)}
                         className="w-full p-1.5 bg-white border border-slate-300 rounded-lg font-semibold"
                       >
-                        <option value="not_checked">Chưa kiểm tra</option>
-                        <option value="matched">Dữ liệu khớp ảnh</option>
-                        <option value="mismatch">Không khớp — cần bổ sung</option>
-                        <option value="manual_verified">HR đã xác nhận thủ công</option>
+                        <option value="not_checked">{t('adminEmployees.verifyNotChecked')}</option>
+                        <option value="matched">{t('adminEmployees.verifyMatched')}</option>
+                        <option value="mismatch">{t('adminEmployees.verifyMismatch')}</option>
+                        <option value="manual_verified">{t('adminEmployees.verifyManual')}</option>
                       </select>
-                      <p className="text-[10px] text-slate-400 mt-1">Chỉ đối chiếu hồ sơ nội bộ, không xác minh giấy tờ thật/giả.</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{t('adminEmployees.verificationHelp')}</p>
                     </div>
                   </div>
                 </div>
@@ -524,13 +527,13 @@ export const AdminEmployeeListView: React.FC = () => {
                 <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-2">
                     <CreditCard className="w-4 h-4 text-primary-600" />
-                    <span>4. Tài khoản Ngân hàng Nhận lương</span>
+                    <span>{t('adminEmployees.section4Title')}</span>
                   </h3>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-500">Tên ngân hàng:</span><span className="font-semibold text-slate-800 text-right max-w-[200px]">{sensitiveInfo?.bank_name || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Số tài khoản:</span><span className="font-extrabold text-primary-600 font-mono text-sm">{sensitiveInfo?.bank_account_number || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Chủ tài khoản:</span><span className="font-bold text-slate-900 uppercase">{sensitiveInfo?.bank_account_holder || '—'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Chi nhánh:</span><span className="font-medium text-slate-700">{sensitiveInfo?.bank_branch || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.bankName')}:</span><span className="font-semibold text-slate-800 text-right max-w-[200px]">{sensitiveInfo?.bank_name || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.accountNumber')}:</span><span className="font-extrabold text-primary-600 font-mono text-sm">{sensitiveInfo?.bank_account_number || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.accountHolder')}:</span><span className="font-bold text-slate-900 uppercase">{sensitiveInfo?.bank_account_holder || '—'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">{t('onboarding.branch')}:</span><span className="font-medium text-slate-700">{sensitiveInfo?.bank_branch || '—'}</span></div>
                   </div>
                 </div>
               </div>
@@ -539,21 +542,21 @@ export const AdminEmployeeListView: React.FC = () => {
               <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-2">
                   <ShieldCheck className="w-4 h-4 text-primary-600" />
-                  <span>5. Người thân & Người liên hệ khẩn cấp</span>
+                  <span>{t('adminEmployees.section5Title')}</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {!relatives || relatives.length === 0 ? (
-                    <p className="text-xs text-slate-400 italic">Chưa đăng ký thông tin người thân.</p>
+                    <p className="text-xs text-slate-400 italic">{t('adminEmployees.noRelatives')}</p>
                   ) : (
                     relatives.map((rel) => (
                       <div key={rel.id} className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-900">{rel.full_name} ({rel.relationship})</span>
                           {rel.is_emergency_contact && (
-                            <span className="px-2 py-0.5 bg-rose-100 text-rose-700 font-bold text-[10px] rounded">Khẩn cấp</span>
+                            <span className="px-2 py-0.5 bg-rose-100 text-rose-700 font-bold text-[10px] rounded">{t('adminEmployees.emergencyBadge')}</span>
                           )}
                         </div>
-                        <p className="text-slate-600">SĐT: <b className="text-slate-800">{rel.phone}</b></p>
+                        <p className="text-slate-600">{t('adminEmployees.phoneLabel')} <b className="text-slate-800">{rel.phone}</b></p>
                         <p className="text-slate-500 text-[11px] truncate">{rel.address}</p>
                       </div>
                     ))
@@ -561,21 +564,21 @@ export const AdminEmployeeListView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Documents (read-only preview — upload happens in Chỉnh sửa hồ sơ) */}
+              {/* Documents (read-only preview — upload happens in Edit profile) */}
               <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-2">
                     <Eye className="w-4 h-4 text-primary-600" />
-                    <span>6. Ảnh CCCD 2 mặt & Tài liệu đính kèm</span>
+                    <span>{t('adminEmployees.section6Title')}</span>
                   </h3>
                   <button onClick={openSelectedEmployeeEditor} className="text-xs font-bold text-primary-600 hover:underline cursor-pointer">
-                    Chỉnh sửa / Tải ảnh mới
+                    {t('adminEmployees.editUploadNew')}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <DocPreview path={sensitiveInfo?.id_card_front_url} label="Mặt trước CCCD" emptyHint="Chưa có ảnh mặt trước" />
-                  <DocPreview path={sensitiveInfo?.id_card_back_url} label="Mặt sau CCCD" emptyHint="Chưa có ảnh mặt sau" />
+                  <DocPreview path={sensitiveInfo?.id_card_front_url} label={t('adminEmployees.frontIdLabel')} emptyHint={t('adminEmployees.frontIdEmpty')} />
+                  <DocPreview path={sensitiveInfo?.id_card_back_url} label={t('adminEmployees.backIdLabel')} emptyHint={t('adminEmployees.backIdEmpty')} />
                 </div>
 
                 <div className="mt-3 p-3.5 bg-gradient-to-r from-red-50/80 via-rose-50/50 to-orange-50/40 rounded-xl border border-red-200/90 space-y-2.5">
@@ -585,8 +588,8 @@ export const AdminEmployeeListView: React.FC = () => {
                         <ShieldCheck className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-red-950 block">Ảnh chụp "Thông tin cư trú" (VNeID):</span>
-                        <span className="text-[10px] text-red-700">Xác thực hộ khẩu, nơi thường trú/tạm trú</span>
+                        <span className="text-xs font-bold text-red-950 block">{t('adminEmployees.vneidPhotoLabel')}</span>
+                        <span className="text-[10px] text-red-700">{t('adminEmployees.vneidPhotoHelp')}</span>
                       </div>
                     </div>
                     <button
@@ -595,21 +598,21 @@ export const AdminEmployeeListView: React.FC = () => {
                       className="px-2.5 py-1 bg-white hover:bg-red-50 text-red-700 border border-red-300 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                     >
                       <HelpCircle className="w-3.5 h-3.5 text-red-600" />
-                      <span>Xem ảnh mẫu hướng dẫn</span>
+                      <span>{t('adminEmployees.vneidSampleBtn')}</span>
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                    <DocPreview path={sensitiveInfo?.vneid_residency_url} label="Ảnh VNeID cư trú" emptyHint="Chưa tải ảnh VNeID" />
+                    <DocPreview path={sensitiveInfo?.vneid_residency_url} label={t('adminEmployees.vneidResidencyLabel')} emptyHint={t('adminEmployees.vneidEmpty')} />
 
                     <div onClick={() => setIsVneidGuideOpen(true)} className="bg-slate-900 rounded-lg p-2 flex items-center gap-3 border border-slate-700 cursor-pointer group h-36">
                       <div className="w-16 h-full rounded overflow-hidden bg-slate-800 shrink-0">
-                        <img src={VNEID_SAMPLE_IMAGE} alt="Ảnh mẫu VNeID" className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform" />
+                        <img src={VNEID_SAMPLE_IMAGE} alt={t('adminEmployees.vneidSampleCaption')} className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform" />
                       </div>
                       <div className="text-white space-y-1">
-                        <span className="bg-yellow-400 text-red-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">ẢNH MẪU CHUẨN</span>
-                        <p className="text-[11px] font-bold text-slate-200 leading-tight">Mẫu chụp VNeID Cư trú</p>
-                        <p className="text-[10px] text-slate-400">Bấm để xem 5 bước hướng dẫn</p>
+                        <span className="bg-yellow-400 text-red-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">{t('adminEmployees.vneidSampleBadge')}</span>
+                        <p className="text-[11px] font-bold text-slate-200 leading-tight">{t('adminEmployees.vneidSampleCaption')}</p>
+                        <p className="text-[10px] text-slate-400">{t('adminEmployees.vneidSampleHint')}</p>
                       </div>
                     </div>
                   </div>
@@ -623,9 +626,9 @@ export const AdminEmployeeListView: React.FC = () => {
       <ConfirmationDialog
         open={pendingConfirmation === 'revoke_invitation'}
         onOpenChange={(open) => !open && setPendingConfirmation(null)}
-        title="Thu hồi lời mời kích hoạt?"
-        description={`Sau khi thu hồi, ${selectedEmp?.full_name || 'nhân viên này'} sẽ không thể tiếp tục onboarding cho tới khi Admin gửi lại link mới.`}
-        confirmLabel="Thu hồi lời mời"
+        title={t('adminEmployees.confirmRevokeTitle')}
+        description={t('adminEmployees.confirmRevokeDesc', { name: selectedEmp?.full_name || t('role.employee') })}
+        confirmLabel={t('adminEmployees.confirmRevokeBtn')}
         variant="danger"
         isPending={manageInvitation.isPending}
         onConfirm={() => void handleInvitationAction('revoke')}
@@ -634,9 +637,9 @@ export const AdminEmployeeListView: React.FC = () => {
       <ConfirmationDialog
         open={pendingConfirmation === 'approve_onboarding'}
         onOpenChange={(open) => !open && setPendingConfirmation(null)}
-        title="Duyệt hồ sơ nhân viên?"
-        description={`Duyệt hồ sơ của ${selectedEmp?.full_name || 'nhân viên này'} sẽ mở quyền truy cập HR Portal ngay.`}
-        confirmLabel="Duyệt hồ sơ"
+        title={t('adminEmployees.confirmApproveTitle')}
+        description={t('adminEmployees.confirmApproveDesc', { name: selectedEmp?.full_name || t('role.employee') })}
+        confirmLabel={t('adminEmployees.confirmApproveBtn')}
         isPending={reviewOnboarding.isPending}
         onConfirm={reviewSelectedOnboarding}
       />
@@ -644,13 +647,13 @@ export const AdminEmployeeListView: React.FC = () => {
       <ConfirmationDialog
         open={pendingConfirmation === 'needs_changes'}
         onOpenChange={(open) => !open && setPendingConfirmation(null)}
-        title="Yêu cầu bổ sung hồ sơ"
-        description={`Nội dung này sẽ hiển thị cho ${selectedEmp?.full_name || 'nhân viên'} khi họ quay lại onboarding.`}
-        confirmLabel="Gửi yêu cầu"
+        title={t('adminEmployees.confirmChangesTitle')}
+        description={t('adminEmployees.confirmChangesDesc', { name: selectedEmp?.full_name || t('role.employee') })}
+        confirmLabel={t('adminEmployees.confirmChangesBtn')}
         isPending={reviewOnboarding.isPending}
         onConfirm={reviewSelectedOnboarding}
       >
-        <label htmlFor="onboarding-review-note" className="mb-2 block text-sm font-semibold text-slate-700">Nội dung cần bổ sung</label>
+        <label htmlFor="onboarding-review-note" className="mb-2 block text-sm font-semibold text-slate-700">{t('adminEmployees.changesNoteLabel')}</label>
         <textarea
           id="onboarding-review-note"
           value={reviewNote}
@@ -659,7 +662,7 @@ export const AdminEmployeeListView: React.FC = () => {
             if (reviewNoteError) setReviewNoteError('');
           }}
           rows={4}
-          placeholder="Ví dụ: Vui lòng tải lại ảnh mặt trước CCCD rõ nét hơn."
+          placeholder={t('adminEmployees.changesNotePlaceholder')}
           className="w-full resize-none rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           aria-invalid={Boolean(reviewNoteError)}
           aria-describedby={reviewNoteError ? 'onboarding-review-note-error' : undefined}
@@ -670,9 +673,9 @@ export const AdminEmployeeListView: React.FC = () => {
       <ConfirmationDialog
         open={Boolean(employeeToOffboard)}
         onOpenChange={(open) => !open && setEmployeeToOffboard(null)}
-        title="Xác nhận đánh dấu nghỉ việc"
-        description={`Chuyển trạng thái của ${employeeToOffboard?.full_name || 'nhân viên'} thành “Đã nghỉ việc”. Hồ sơ vẫn được lưu trữ để tra cứu bảo hiểm và lịch sử sau này.`}
-        confirmLabel="Xác nhận nghỉ việc"
+        title={t('adminEmployees.confirmOffboardTitle')}
+        description={t('adminEmployees.confirmOffboardDesc', { name: employeeToOffboard?.full_name || t('role.employee') })}
+        confirmLabel={t('adminEmployees.confirmOffboardBtn')}
         variant="danger"
         isPending={offboardEmployee.isPending}
         onConfirm={async () => {
@@ -691,9 +694,9 @@ export const AdminEmployeeListView: React.FC = () => {
             setDeleteConfirmationCode('');
           }
         }}
-        title="Xóa vĩnh viễn nhân viên?"
-        description={`Hành động này xóa tài khoản đăng nhập, hồ sơ và các tài liệu của ${employeeToDelete?.full_name || 'nhân viên'} khỏi hệ thống. Không thể khôi phục.`}
-        confirmLabel="Xóa vĩnh viễn"
+        title={t('adminEmployees.confirmDeleteTitle')}
+        description={t('adminEmployees.confirmDeleteDesc', { name: employeeToDelete?.full_name || t('role.employee') })}
+        confirmLabel={t('adminEmployees.confirmDeleteBtn')}
         variant="danger"
         isPending={deleteOffboardedEmployee.isPending}
         isConfirmDisabled={deleteConfirmationCode.trim() !== employeeToDelete?.employee_code}
@@ -710,17 +713,17 @@ export const AdminEmployeeListView: React.FC = () => {
           }
         }}
       >
-        <label htmlFor="permanent-delete-code" className="mb-2 block text-sm font-semibold text-slate-700">Nhập mã nhân viên để xác nhận</label>
+        <label htmlFor="permanent-delete-code" className="mb-2 block text-sm font-semibold text-slate-700">{t('adminEmployees.deleteCodeLabel')}</label>
         <input
           id="permanent-delete-code"
           type="text"
           value={deleteConfirmationCode}
           onChange={(event) => setDeleteConfirmationCode(event.target.value)}
-          placeholder={employeeToDelete?.employee_code || 'Mã nhân viên'}
+          placeholder={employeeToDelete?.employee_code || t('payroll.employeeCode')}
           autoComplete="off"
           className="w-full rounded-xl border border-rose-300 px-3 py-2.5 font-mono text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
         />
-        <p className="mt-2 text-xs leading-5 text-rose-700">Mã cần nhập: <strong className="font-mono">{employeeToDelete?.employee_code}</strong>. Audit log chỉ giữ lại dấu vết thao tác xóa.</p>
+        <p className="mt-2 text-xs leading-5 text-rose-700">{t('adminEmployees.deleteCodeHelp', { code: employeeToDelete?.employee_code || '' })}</p>
       </ConfirmationDialog>
 
       <VneidGuideModal isOpen={isVneidGuideOpen} onClose={() => setIsVneidGuideOpen(false)} />

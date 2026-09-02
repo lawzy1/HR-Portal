@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Globe2 } from 'lucide-react';
+import { ChevronDown, Globe } from 'lucide-react';
 import { useI18n } from '../context/I18nContext';
 
 export function LanguageSwitcher({ className = '' }: { className?: string }) {
@@ -35,7 +35,7 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
         }}
         className="inline-flex min-w-[104px] items-center justify-between gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm outline-none transition hover:border-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
       >
-        <span className="inline-flex items-center gap-1.5"><Globe2 className="h-3.5 w-3.5 text-slate-900" aria-hidden="true" />{currentLabel}</span>
+        <span className="inline-flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-slate-900" aria-hidden="true" />{currentLabel}</span>
         <ChevronDown className={`h-3 w-3 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 

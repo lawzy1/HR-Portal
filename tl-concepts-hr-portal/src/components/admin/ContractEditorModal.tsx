@@ -9,6 +9,7 @@ import { getUserFacingError } from '../../lib/userFacingError';
 import { CurrencyInput } from '../CurrencyInput';
 import { MoneyVisibilityToggle } from '../../context/MoneyVisibilityContext';
 import { ConfirmationDialog } from '../ConfirmationDialog';
+import { useEmployeeSensitiveInfo } from '../../hooks/useEmployees';
 
 const TYPES = ['Thử việc', 'HĐ xác định thời hạn (1 năm)', 'HĐ xác định thời hạn (2 năm)', 'HĐ không xác định thời hạn', 'Phụ lục hợp đồng'];
 const STATUSES = ['Đang hiệu lực', 'Sắp hết hạn', 'Hết hạn', 'Đã gia hạn'];
@@ -35,6 +36,7 @@ export const ContractEditorModal: React.FC<{
   const updateContract = useUpdateContract();
   const deleteContract = useDeleteContract();
   const { uploadFile, isUploading } = useFileUpload();
+  const { data: sensitiveInfo } = useEmployeeSensitiveInfo(employee.id);
   const [file, setFile] = useState<File | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [form, setForm] = useState({
@@ -206,6 +208,17 @@ export const ContractEditorModal: React.FC<{
           <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
 
+        <div className="mx-5 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
+          <p className="mb-2 font-bold text-slate-600 uppercase tracking-wide text-[10px]">Thông tin cá nhân từ hồ sơ đã duyệt (tham khảo, không thuộc hợp đồng)</p>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+            <p><span className="text-slate-500">Địa chỉ thường trú:</span> <span className="font-semibold text-slate-800">{employee.permanent_address || '—'}</span></p>
+            <p><span className="text-slate-500">Số CCCD:</span> <span className="font-semibold text-slate-800">{sensitiveInfo?.id_card_number || '—'}</span></p>
+            <p><span className="text-slate-500">Ngày cấp CCCD:</span> <span className="font-semibold text-slate-800">{sensitiveInfo?.id_card_issue_date || '—'}</span></p>
+            <p><span className="text-slate-500">Nơi cấp CCCD:</span> <span className="font-semibold text-slate-800">{sensitiveInfo?.id_card_issue_place || '—'}</span></p>
+            <p><span className="text-slate-500">Ngân hàng:</span> <span className="font-semibold text-slate-800">{sensitiveInfo?.bank_name ? `${sensitiveInfo.bank_name} — ${sensitiveInfo.bank_account_number || '—'}` : '—'}</span></p>
+          </div>
+        </div>
+
         <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2 -mb-1 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[11px] text-slate-500"><span className="text-rose-600">*</span> Trường bắt buộc</p>
@@ -275,7 +288,7 @@ export const ContractEditorModal: React.FC<{
             <CurrencyInput value={form.salary} onValueChange={value => set('salary', value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">KPI/ngày (view/ngày)
-            <input type="number" min="0" step="0.1" value={form.kpi_target_month} onChange={e => set('kpi_target_month', e.target.value)} className={`${inputClass} mt-1`} />
+            <input type="number" min="0" step="0.01" value={form.kpi_target_month} onChange={e => set('kpi_target_month', e.target.value)} className={`${inputClass} mt-1`} />
           </label>
           <label className="text-xs font-semibold text-slate-700">Phụ cấp
             <CurrencyInput value={form.allowance_amount} onValueChange={value => set('allowance_amount', value)} placeholder="0" className={`${inputClass} mt-1`} />

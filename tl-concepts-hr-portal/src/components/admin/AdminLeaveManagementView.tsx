@@ -322,7 +322,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                       <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-primary-100 text-primary-800">{req.leave_type}</span>
                     </div>
                     <p className="text-xs text-slate-700 mt-1">
-                      Thời gian: <b>{req.start_date}</b> đến <b>{req.end_date}</b> ({req.total_days} ngày - {req.half_day_option})
+                      Thời gian: <b>{formatDate(req.start_date)}</b> đến <b>{formatDate(req.end_date)}</b> ({req.total_days} ngày - {req.half_day_option})
                     </p>
                     <p className="text-xs text-slate-600 mt-0.5 italic">Lý do: "{req.reason}"</p>
                   </div>
@@ -391,7 +391,7 @@ export const AdminLeaveManagementView: React.FC = () => {
                     <tr key={req.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4 font-bold text-slate-900">{req.employees?.full_name}</td>
                       <td className="py-3 px-4 font-medium text-primary-700">{req.leave_type}</td>
-                      <td className="py-3 px-4">{req.start_date} ~ {req.end_date}</td>
+                      <td className="py-3 px-4">{formatDate(req.start_date)} ~ {formatDate(req.end_date)}</td>
                       <td className="py-3 px-4 font-semibold">{req.total_days} ngày ({req.half_day_option})</td>
                       <td className="py-3 px-4 max-w-[200px] truncate">{req.reason}</td>
                       <td className="py-3 px-4">

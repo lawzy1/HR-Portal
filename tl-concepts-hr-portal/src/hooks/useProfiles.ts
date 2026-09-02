@@ -62,6 +62,44 @@ export function useCreateBackofficeAccount() {
   });
 }
 
+// Lets an admin/hr account link itself to a lightweight employees record
+// (name + job title/department, no leave/payroll fields) so it shows up in
+// KPI assignment. See link_self_employee_profile in
+// 20260902130000_admin_self_employee_link.sql.
+interface LinkSelfEmployeeProfileInput {
+  fullName: string;
+  jobTitle: string;
+  department: string;
+  kpiLevel: string;
+  kpiTargetPerDay: number | '';
+  performanceCommissionRate: number;
+  qcCommissionRate: number;
+  guaranteedIncomeAmount: number;
+}
+
+export function useLinkSelfEmployeeProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: LinkSelfEmployeeProfileInput) => {
+      const { data, error } = await supabase.rpc('link_self_employee_profile', {
+        p_full_name: input.fullName,
+        p_job_title: input.jobTitle,
+        p_department: input.department,
+        p_kpi_level: input.kpiLevel,
+        p_kpi_target_per_day: input.kpiTargetPerDay === '' ? undefined : input.kpiTargetPerDay,
+        p_performance_commission_rate: input.performanceCommissionRate,
+        p_qc_commission_rate: input.qcCommissionRate,
+        p_guaranteed_income_amount: input.guaranteedIncomeAmount,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      refreshQueries(queryClient, [['profiles'], ['employees']]);
+    },
+  });
+}
+
 export function useReviewEmployeeOnboarding() {
   const queryClient = useQueryClient();
   return useMutation({

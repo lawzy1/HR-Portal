@@ -8,6 +8,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { formatDate } from '../../utils/formatters';
 
 export const AdminRemindersView: React.FC = () => {
   const { 
@@ -59,6 +60,7 @@ export const AdminRemindersView: React.FC = () => {
               <option value="ALL">Tất cả Cảnh báo</option>
               <option value="onboarding_review">Hồ sơ nhân viên chờ duyệt</option>
               <option value="contract">Hợp đồng lao động</option>
+              <option value="contract_missing">Nhân viên chưa có hợp đồng</option>
               <option value="salary_review">Kỳ xét lương</option>
               <option value="missing_doc">Thiếu hồ sơ CCCD/MST</option>
               <option value="leave_request">Đơn xin nghỉ phép</option>
@@ -142,7 +144,7 @@ export const AdminRemindersView: React.FC = () => {
                     {rem.dueDate && (
                       <p className="text-[11px] font-medium text-slate-500 mt-1 flex items-center space-x-1">
                         <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>Mốc thời hạn: {rem.dueDate}</span>
+                        <span>Mốc thời hạn: {formatDate(rem.dueDate)}</span>
                       </p>
                     )}
                   </div>
@@ -153,7 +155,7 @@ export const AdminRemindersView: React.FC = () => {
                     <button
                       onClick={() => {
                         setSelectedEmployeeIdForAdmin(rem.employeeId!);
-                        if (rem.category === 'contract' || rem.category === 'salary_review') {
+                        if (rem.category === 'contract' || rem.category === 'contract_missing' || rem.category === 'salary_review') {
                           setAdminTab('admin-contracts');
                         } else if (rem.category === 'leave_request') {
                           setAdminTab('admin-leaves');

@@ -16,6 +16,7 @@ import { useAllContracts } from '../../hooks/useContracts';
 import { useAllLeaveRequests } from '../../hooks/useLeave';
 import { useSignedImageUrl } from '../../hooks/useFileUpload';
 import { getContractLifecycleStatus, latestContractsByEmployee } from '../../utils/contracts';
+import { formatDate } from '../../utils/formatters';
 
 const RowAvatar: React.FC<{ path: string | null | undefined; alt: string }> = ({ path, alt }) => {
   const { data: url } = useSignedImageUrl(path);
@@ -79,7 +80,7 @@ export const AdminDashboardView: React.FC = () => {
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-100 text-primary-700">
               {isAdmin ? 'Admin Portal' : 'HR/Kế toán Portal'}
             </span>
-            <span className="text-xs text-slate-500">Hôm nay: {new Date().toLocaleDateString('vi-VN')}</span>
+            <span className="text-xs text-slate-500">Hôm nay: {formatDate(new Date().toISOString())}</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Tổng quan Quản trị HR & Báo cáo Doanh nghiệp

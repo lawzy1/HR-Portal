@@ -36,10 +36,26 @@ export const latestContractsByEmployee = <T extends { employee_id: string; start
   return [...latest.values()];
 };
 
+/** Employee statuses that mean onboarding has been reviewed/approved (not still pending invite/review). */
+export const ONBOARDED_EMPLOYEE_STATUSES = ['Mới tiếp nhận', 'Chính thức', 'Thử việc'];
+
+type NeedsContractEmployee = { id: string; status?: string | null };
+type NeedsContractContract = { employee_id: string; publish_status?: string | null };
+
+/** Derive "chờ hợp đồng" instead of storing it — an onboarded employee with no published contract yet. */
+export const employeeNeedsContract = (employee: NeedsContractEmployee, contracts: NeedsContractContract[]): boolean =>
+  !!employee.status &&
+  ONBOARDED_EMPLOYEE_STATUSES.includes(employee.status) &&
+  !contracts.some((c) => c.employee_id === employee.id && c.publish_status === 'published');
+
 if (import.meta.env.DEV) {
   const today = new Date(2026, 8, 2);
   console.assert(getContractLifecycleStatus({ status: 'Đang hiệu lực', end_date: '2026-12-01' }, today) === 'Đang hiệu lực');
   console.assert(getContractLifecycleStatus({ status: 'Đang hiệu lực', end_date: '2026-09-27' }, today) === 'Sắp hết hạn');
   console.assert(getContractLifecycleStatus({ status: 'Đang hiệu lực', end_date: '2026-09-01' }, today) === 'Hết hạn');
   console.assert(getContractLifecycleStatus({ status: 'Đang hiệu lực', end_date: null }, today) === 'Đang hiệu lực');
+  console.assert(employeeNeedsContract({ id: 'e1', status: 'Mới tiếp nhận' }, []) === true);
+  console.assert(employeeNeedsContract({ id: 'e1', status: 'Mới tiếp nhận' }, [{ employee_id: 'e1', publish_status: 'published' }]) === false);
+  console.assert(employeeNeedsContract({ id: 'e1', status: 'Mới tiếp nhận' }, [{ employee_id: 'e1', publish_status: 'draft' }]) === true);
+  console.assert(employeeNeedsContract({ id: 'e1', status: 'Chờ duyệt hồ sơ' }, []) === false);
 }

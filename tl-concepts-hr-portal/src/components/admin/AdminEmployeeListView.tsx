@@ -248,7 +248,7 @@ export const AdminEmployeeListView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* Left Column: List & Filters */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col space-y-4">
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col space-y-4 lg:sticky lg:top-6 lg:h-[calc(100vh-10rem)]">
 
           <div className="space-y-3">
             <div className="relative">
@@ -296,7 +296,7 @@ export const AdminEmployeeListView: React.FC = () => {
             <span className="text-[11px] text-slate-400">Chọn người để xem hồ sơ</span>
           </div>
 
-          <div className="space-y-2 overflow-y-auto max-h-[620px] pr-1">
+          <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
             {filteredEmployees.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
                 {allEmployees.length === 0 ? 'Chưa có nhân viên nào — nhân viên có thể tự đăng ký tại trang đăng nhập.' : 'Không tìm thấy nhân viên thỏa điều kiện.'}

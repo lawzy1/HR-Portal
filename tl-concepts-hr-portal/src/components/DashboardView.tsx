@@ -9,6 +9,7 @@ import { useLeaveBalance, useLeaveRequests } from '../hooks/useLeave';
 import { useKpiMonthly } from '../hooks/useKpi';
 import { useLatestPayrollRecord } from '../hooks/usePayroll';
 import { formatDate } from '../utils/formatters';
+import { employeeNeedsContract } from '../utils/contracts';
 import {
   CreditCard,
   CalendarDays,
@@ -49,6 +50,8 @@ export const DashboardView: React.FC = () => {
   const { data: latestPayslip } = useLatestPayrollRecord(employeeId);
 
   const currentContract = (contracts || [])[0];
+  const hasPublishedContract = (contracts || []).some((c) => c.publish_status === 'published');
+  const isAwaitingContract = !hasPublishedContract && !!employee && employeeNeedsContract(employee, contracts || []);
 
   if (!employee) {
     return <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-sm text-slate-500">{t('common.loading')}</div>;
@@ -167,10 +170,12 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <p className="text-sm font-extrabold text-slate-900 truncate">
-            {currentContract ? (currentContract.end_date ? formatDate(currentContract.end_date) : t('contract.noExpiry')) : t('dashboard.noContract')}
+            {isAwaitingContract
+              ? t('dashboard.awaitingContract')
+              : currentContract ? (currentContract.end_date ? formatDate(currentContract.end_date) : t('contract.noExpiry')) : t('dashboard.noContract')}
           </p>
           <p className="text-[11px] text-slate-500 font-medium mt-1.5 flex items-center justify-between">
-            <span>{currentContract ? `${t('dashboard.contractType')}: ${translateValue(currentContract.type)}` : ''}</span>
+            <span>{!isAwaitingContract && currentContract ? `${t('dashboard.contractType')}: ${translateValue(currentContract.type)}` : ''}</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
           </p>
         </div>

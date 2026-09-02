@@ -228,7 +228,7 @@ export const AdminContractSalaryView: React.FC = () => {
                 <div key={sal.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-primary-700 bg-primary-50 px-2 py-0.5 rounded border border-primary-200">{sal.change_type}</span>
-                    <span className="text-xs text-slate-500 font-medium">Áp dụng: {sal.effective_date}</span>
+                    <span className="text-xs text-slate-500 font-medium">Áp dụng: {formatDate(sal.effective_date)}</span>
                   </div>
                   <div className="flex items-center justify-between pt-1 text-xs">
                     <div>
@@ -564,7 +564,7 @@ const ContractCard: React.FC<{
     <div className="text-xs text-slate-600 space-y-1">
       <p>Loại HĐ: <b>{contract.type}</b></p>
       <p>Vị trí chuyên môn: <b>{contract.position}</b></p>
-      <p>Ngày ký: <b>{contract.signed_date || '—'}</b> • Thời hạn: <b>{contract.start_date}</b> đến <b>{contract.end_date || 'Không xác định'}</b></p>
+      <p>Ngày ký: <b>{contract.signed_date ? formatDate(contract.signed_date) : '—'}</b> • Thời hạn: <b>{formatDate(contract.start_date)}</b> đến <b>{contract.end_date ? formatDate(contract.end_date) : 'Không xác định'}</b></p>
       <p>Mức lương HĐ: <b className="text-success-700">{formatMoney(contract.salary || 0)}</b>
         {contract.allowance_amount > 0 && <> • Phụ cấp: <b className="text-success-700">{formatMoney(contract.allowance_amount)}</b></>}
         {contract.kpi_target_month != null && <> • KPI/ngày: <b className="text-primary-700">{contract.kpi_target_month} view/ngày</b></>}

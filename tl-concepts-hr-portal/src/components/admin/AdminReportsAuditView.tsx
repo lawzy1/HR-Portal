@@ -6,6 +6,7 @@ import { useAllLeaveRequests } from '../../hooks/useLeave';
 import { useAllPayrollHistory } from '../../hooks/usePayroll';
 import { useAuditLogs, useRecordAuditEvent } from '../../hooks/useAuditLogs';
 import { downloadCsv } from '../../utils/csv';
+import { formatDateTime } from '../../utils/formatters';
 
 const ACTION_LABEL: Record<string, string> = { INSERT: 'Tạo mới', UPDATE: 'Cập nhật', DELETE: 'Xoá', VIEW: 'Xem', EXPORT: 'Xuất dữ liệu' };
 const ENTITY_LABEL: Record<string, string> = {
@@ -132,7 +133,7 @@ export const AdminReportsAuditView: React.FC = () => {
                 const details = log.details as { changed_fields?: string[] };
                 return (
                   <tr key={log.id} className="hover:bg-slate-50">
-                    <td className="p-3 whitespace-nowrap">{new Date(log.created_at).toLocaleString('vi-VN')}</td>
+                    <td className="p-3 whitespace-nowrap">{formatDateTime(log.created_at)}</td>
                     <td className="p-3 font-semibold">{log.profiles?.employees?.full_name || (log.actor_profile_id ? 'Admin' : 'Hệ thống')}</td>
                     <td className="p-3">{ACTION_LABEL[log.action] || log.action}</td>
                     <td className="p-3">{ENTITY_LABEL[log.entity_type] || log.entity_type}</td>

@@ -3,17 +3,24 @@ export function formatVND(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(amount);
 }
 
+/** Single reusable date format for the whole app: dd/mm/yyyy. */
+export const DATE_DISPLAY_FORMAT = 'dd/mm/yyyy';
+
+/** Formats an ISO date (yyyy-mm-dd) or timestamp string as dd/mm/yyyy. */
 export function formatDate(dateString: string): string {
   if (!dateString || dateString === 'N/A') return 'N/A';
-  try {
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateString;
-  } catch {
-    return dateString;
+  const parts = dateString.slice(0, 10).split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
+  return dateString;
+}
+
+/** Formats an ISO timestamp as dd/mm/yyyy, HH:mm (Vietnam time). */
+export function formatDateTime(dateString: string): string {
+  if (!dateString) return 'N/A';
+  const time = new Date(dateString).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  return `${formatDate(dateString)}, ${time}`;
 }
 
 export function formatMonthYear(month: number, year: number): string {

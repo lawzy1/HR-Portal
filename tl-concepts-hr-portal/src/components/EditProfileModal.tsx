@@ -39,17 +39,7 @@ import {
 import { VneidGuideModal } from './VneidGuideModal';
 import { VNEID_SAMPLE_IMAGE } from '../constants/vneidSample';
 
-// Free-text + suggestions, not a rigid enum — studio can define new levels
-// without a schema change or a level-management screen.
-const KPI_LEVEL_SUGGESTIONS = [
-  'Level 1: Junior 3D Artist',
-  'Level 2: 3D Artist',
-  'Level 3: 3D Artist - Interior',
-  'Level 3: 3D Artist - Exterior',
-  'Level 4: Mid-level 3D Artist - Interior',
-  'Level 4: Mid-level 3D Artist - Exterior',
-  'Level 5: Senior 3D Artist',
-];
+import { KPI_LEVEL_SUGGESTIONS } from '../constants/kpiLevels';
 
 // Renders a stored Storage path as a signed preview, or a freshly-picked
 // local file before it's uploaded — one component instead of repeating the
@@ -567,7 +557,7 @@ export const EditProfileModal: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           value={kpiTargetPerDay}
                           onChange={(e) => setKpiTargetPerDay(e.target.value === '' ? '' : Number(e.target.value))}

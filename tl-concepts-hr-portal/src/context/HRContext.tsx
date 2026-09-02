@@ -11,7 +11,7 @@ import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
 import { useAllProfiles } from '../hooks/useProfiles';
-import { CONTRACT_EXPIRING_WINDOW_DAYS } from '../utils/contracts';
+import { CONTRACT_EXPIRING_WINDOW_DAYS, employeeNeedsContract } from '../utils/contracts';
 
 const DAY_MS = 86_400_000;
 const daysUntil = (date: string) => Math.ceil((new Date(`${date}T00:00:00`).getTime() - Date.now()) / DAY_MS);
@@ -247,6 +247,22 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         isRead: readReminderIds.includes(`rem-ctr-${c.id}`),
         createdAt: c.created_at,
         severity: remainingDays <= 30 ? 'high' : 'medium',
+      });
+    });
+
+    // 1b. Employee onboarded but no published contract yet.
+    employees.forEach(emp => {
+      if (!employeeNeedsContract(emp, allContracts)) return;
+      generated.push({
+        id: `rem-no-contract-${emp.id}`,
+        category: 'contract_missing',
+        title: 'Nhân viên chưa có hợp đồng',
+        message: `${emp.full_name} đã duyệt hồ sơ nhưng chưa có hợp đồng lao động nào được phát hành.`,
+        employeeId: emp.id,
+        employeeName: emp.full_name,
+        isRead: readReminderIds.includes(`rem-no-contract-${emp.id}`),
+        createdAt: emp.created_at,
+        severity: 'high',
       });
     });
 

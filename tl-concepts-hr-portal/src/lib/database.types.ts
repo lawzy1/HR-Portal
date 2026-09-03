@@ -236,6 +236,7 @@ export type Database = {
           company_id: string
           contract_code: string
           created_at: string
+          custom_fields: Json
           document_name: string | null
           document_path: string | null
           document_sha256: string | null
@@ -272,6 +273,7 @@ export type Database = {
           company_id: string
           contract_code: string
           created_at?: string
+          custom_fields?: Json
           document_name?: string | null
           document_path?: string | null
           document_sha256?: string | null
@@ -308,6 +310,7 @@ export type Database = {
           company_id?: string
           contract_code?: string
           created_at?: string
+          custom_fields?: Json
           document_name?: string | null
           document_path?: string | null
           document_sha256?: string | null
@@ -1729,6 +1732,10 @@ export type Database = {
           message: string
           severity: string
         }[]
+      }
+      delete_payroll_record: {
+        Args: { p_payroll_id: string }
+        Returns: string
       }
       create_employee_invitation: {
         Args: {

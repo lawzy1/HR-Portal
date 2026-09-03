@@ -11,7 +11,7 @@ export function useOtRecords(employeeId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ot_records')
-        .select('*')
+        .select('id, company_id, employee_id, date, hours, views_render_count, reason, approver_id, status, created_at')
         .eq('employee_id', employeeId!)
         .order('date', { ascending: false });
       if (error) throw error;
@@ -27,7 +27,7 @@ export function useAllOtRecords() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ot_records')
-        .select('*, employees(full_name, employee_code, avatar_url)')
+        .select('id, company_id, employee_id, date, hours, views_render_count, reason, approver_id, status, created_at, employees(full_name, employee_code, avatar_url)')
         .order('date', { ascending: false });
       if (error) throw error;
       return data;
@@ -57,6 +57,20 @@ export function useUpdateOtRecord() {
       const { data, error } = await supabase.from('ot_records').update(updates).eq('id', id).select().single();
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      refreshQueries(queryClient, [['ot_records']]);
+    },
+  });
+}
+
+// Admin only (enforced by RLS — ot_records_delete_admin_only).
+export function useDeleteOtRecord() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('ot_records').delete().eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => {
       refreshQueries(queryClient, [['ot_records']]);

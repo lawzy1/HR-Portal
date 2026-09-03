@@ -48,6 +48,17 @@ export const employeeNeedsContract = (employee: NeedsContractEmployee, contracts
   ONBOARDED_EMPLOYEE_STATUSES.includes(employee.status) &&
   !contracts.some((c) => c.employee_id === employee.id && c.publish_status === 'published');
 
+export type ContractCustomFields = Record<string, string>;
+
+export const getContractCustomFields = (value: unknown): ContractCustomFields => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  return Object.entries(value).reduce<ContractCustomFields>((fields, [name, fieldValue]) => {
+    if (typeof fieldValue === 'string') fields[name] = fieldValue;
+    return fields;
+  }, {});
+};
+
 if (import.meta.env.DEV) {
   const today = new Date(2026, 8, 2);
   console.assert(getContractLifecycleStatus({ status: 'Đang hiệu lực', end_date: '2026-12-01' }, today) === 'Đang hiệu lực');

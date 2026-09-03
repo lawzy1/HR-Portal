@@ -8,6 +8,9 @@ import { contractMessages } from './contract';
 import { payrollMessages } from './payroll';
 import { adminEmployeesMessages } from './adminEmployees';
 import { adminKpiMessages } from './adminKpi';
+import { adminDashboardMessages } from './adminDashboard';
+import { adminRemindersMessages } from './adminReminders';
+import { adminProfileMessages } from './adminProfile';
 export { englishValues } from './englishValues';
 
 export const messages = {
@@ -22,6 +25,9 @@ export const messages = {
     ...payrollMessages.vi,
     ...adminEmployeesMessages.vi,
     ...adminKpiMessages.vi,
+    ...adminDashboardMessages.vi,
+    ...adminRemindersMessages.vi,
+    ...adminProfileMessages.vi,
   },
   en: {
     ...commonMessages.en,
@@ -34,6 +40,9 @@ export const messages = {
     ...payrollMessages.en,
     ...adminEmployeesMessages.en,
     ...adminKpiMessages.en,
+    ...adminDashboardMessages.en,
+    ...adminRemindersMessages.en,
+    ...adminProfileMessages.en,
   },
 } as const;
 

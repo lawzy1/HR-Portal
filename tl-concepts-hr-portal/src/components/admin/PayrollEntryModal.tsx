@@ -201,9 +201,8 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       .reduce(
         (sum, record) => ({
           hours: sum.hours + asMoney(record.hours),
-          amount: sum.amount + asMoney(record.amount),
         }),
-        { hours: 0, amount: 0 },
+        { hours: 0 },
       );
   }, [otRecordsQuery.data, form.month, form.year]);
 
@@ -252,9 +251,6 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       : asMoney(kpiMonthlyQuery.data?.performance_commission_amount)
         + asMoney(kpiMonthlyQuery.data?.qc_commission_amount)
         + asMoney(kpiMonthlyQuery.data?.guaranteed_income_topup);
-    const linkedOtPay = linkedOt.amount > 0
-      ? linkedOt.amount
-      : Math.round(asMoney(kpiMonthlyQuery.data?.ot_hours) * asMoney(kpiMonthlyQuery.data?.ot_hourly_rate));
     const leaveUsed = asMoney(approvedLeaveDays);
     const standardDays = workDaysInfo.standardWorkDays;
     const defaultActualDays = Math.max(standardDays - leaveUsed, 0);
@@ -277,7 +273,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
       phoneAllowance: existingRecord?.phone_allowance ?? asMoney(activeContract?.phone_allowance),
       kpiBonus: existingRecord?.kpi_bonus ?? linkedKpiBonus,
       otHours: existingRecord?.ot_hours ?? linkedOt.hours,
-      otPay: existingRecord?.ot_pay ?? linkedOtPay,
+      otPay: existingRecord?.ot_pay ?? 0,
       projectBonusAmount: existingRecord?.project_bonus_amount ?? 0,
       holidayBonusAmount: existingRecord?.holiday_bonus_amount ?? 0,
       bhxhDeduction: existingRecord?.bhxh_deduction ?? Math.round(defaultSalary * bhxhRate),
@@ -317,7 +313,6 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
     approvedLeaveDays,
     workDaysInfo.standardWorkDays,
     linkedOt.hours,
-    linkedOt.amount,
     companySettings,
   ]);
 
@@ -472,7 +467,7 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
                 <span className="mt-1 block text-[10px] text-slate-500">Lương cơ bản × ngày công thực tế / ngày công chuẩn</span>
               </div>
               <MoneyField label="Thưởng KPI sản phẩm" value={form.kpiBonus} onChange={(value) => updateField('kpiBonus', value)} hint="KPI tháng" />
-              <MoneyField label="OT / thưởng dự án" value={form.otPay} onChange={(value) => updateField('otPay', value)} hint={linkedOt.amount > 0 ? 'OT đã duyệt' : undefined} />
+              <MoneyField label="OT / thưởng dự án" value={form.otPay} onChange={(value) => updateField('otPay', value)} hint={linkedOt.hours > 0 ? 'Có OT đã duyệt — nhập tiền thực tế' : undefined} />
               <NumberField label="Số giờ OT" value={form.otHours} onChange={(value) => updateField('otHours', value)} step={0.5} hint="OT đã duyệt" />
               <MoneyField label="Thưởng dự án (tách riêng)" value={form.projectBonusAmount} onChange={(value) => updateField('projectBonusAmount', value)} />
               <MoneyField label="Thưởng lễ" value={form.holidayBonusAmount} onChange={(value) => updateField('holidayBonusAmount', value)} />

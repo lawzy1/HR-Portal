@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
 import { MoneyVisibilityToggle, useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
-import { useEmployee } from '../hooks/useEmployees';
+import { useEmployees, useEmployee } from '../hooks/useEmployees';
 import { useContracts, useSalaryHistory, useContractLegalWarnings } from '../hooks/useContracts';
 import { usePayrollRecords } from '../hooks/usePayroll';
 import { formatDate } from '../utils/formatters';
 import { ContractDocumentLink } from './ContractDocumentLink';
 import { useI18n } from '../context/I18nContext';
+import { getApproverDisplayName } from '../utils/approver';
+import { getContractCustomFields } from '../utils/contracts';
 import {
   FileCheck,
   TrendingUp,
@@ -27,6 +29,7 @@ export const ContractSalaryView: React.FC = () => {
   const employeeId = profile?.employeeId ?? undefined;
 
   const { data: employee } = useEmployee(employeeId);
+  const { data: allEmployees } = useEmployees();
   const { data: contracts } = useContracts(employeeId);
   const { data: salaryHistory } = useSalaryHistory(employeeId);
   const { data: legalWarnings } = useContractLegalWarnings(employeeId);
@@ -213,6 +216,19 @@ export const ContractSalaryView: React.FC = () => {
 
                       {parentContract && <p className="text-xs text-slate-600">{t('contract.parent')} <strong>{parentContract.contract_code}</strong></p>}
                       {ctr.adjustment_categories.length > 0 && <p className="text-xs text-slate-600">{t('contract.adjustments')} <strong>{ctr.adjustment_categories.join(', ')}</strong></p>}
+                      {Object.keys(getContractCustomFields(ctr.custom_fields)).length > 0 && (
+                        <div className="rounded-xl border border-primary-100 bg-primary-50/50 p-3">
+                          <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-primary-700">Thông tin bổ sung</p>
+                          <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {Object.entries(getContractCustomFields(ctr.custom_fields)).map(([name, value]) => (
+                              <div key={name}>
+                                <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{name}</dt>
+                                <dd className="mt-1 break-words text-xs font-semibold text-slate-700">{value || '—'}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </div>
+                      )}
                       {ctr.note && <p className="rounded-xl border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600"><strong>{t('common.notes')}:</strong> {ctr.note}</p>}
                       <ContractDocumentLink path={ctr.document_path} name={ctr.document_name} />
                     </div>
@@ -261,7 +277,7 @@ export const ContractSalaryView: React.FC = () => {
                         <td className="py-3.5 px-3 font-mono font-bold text-success-600">{diff > 0 && '+'}{formatMoney(diff)}</td>
                         <td className="py-3.5 px-3 font-semibold text-slate-800">{sal.change_type}</td>
                         <td className="py-3.5 px-3 text-slate-600 max-w-xs">{sal.reason}</td>
-                        <td className="py-3.5 px-3 text-slate-500 font-medium">{sal.approved_by}</td>
+                        <td className="py-3.5 px-3 text-slate-500 font-medium">{getApproverDisplayName(sal.approved_by, allEmployees)}</td>
                       </tr>
                     );
                   })}

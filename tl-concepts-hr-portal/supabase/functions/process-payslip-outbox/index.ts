@@ -11,7 +11,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const NOTIFICATION_FROM_EMAIL = Deno.env.get("NOTIFICATION_FROM_EMAIL");
 const APP_URL = (Deno.env.get("APP_URL") ?? "https://hr-portal-tl.vercel.app").replace(/\/$/, "");
 const FONT_URL = Deno.env.get("PAYSLIP_FONT_URL")
-  ?? "https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans%5Bwdth%2Cwght%5D.ttf";
+  ?? "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf";
 
 let fontBytesPromise: Promise<Uint8Array> | null = null;
 

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEmployeeSensitiveInfo } from '../hooks/useEmployees';
 import { usePayrollRecord } from '../hooks/usePayroll';
 import { formatDate } from '../utils/formatters';
-import { X, Download, Building2, CheckCircle2, FileText } from 'lucide-react';
+import { X, Download, CheckCircle2, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 import { getUserFacingError } from '../lib/userFacingError';
@@ -137,7 +137,7 @@ export const PayslipDetailModal: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-5 gap-4">
             <div>
               <div className="flex items-center gap-2 text-success-700 font-extrabold text-base mb-1">
-                <Building2 className="w-5 h-5" />
+                <img src="/favicon.ico" alt="" aria-hidden="true" className="h-8 w-8 object-contain" />
                 <span>TL CONCEPTS</span>
               </div>
             </div>
@@ -145,7 +145,6 @@ export const PayslipDetailModal: React.FC = () => {
               <span className="inline-block px-3 py-1 bg-success-50 text-success-800 font-bold text-xs rounded-lg border border-success-200 mb-1">
                 PHIẾU LƯƠNG
               </span>
-              <p className="text-xs text-slate-500 font-medium">Mã phiếu: <span className="font-mono">{payslip.id}</span></p>
             </div>
           </div>
 
@@ -191,7 +190,7 @@ export const PayslipDetailModal: React.FC = () => {
             </div>
             <div>
               <span className="text-slate-500 block text-[11px]">Tài khoản nhận lương</span>
-              <strong className="font-mono text-slate-800">{bankInfo?.bank_name || '—'} · {bankInfo?.bank_account_number || '—'}</strong>
+              <strong className="font-mono text-slate-800">{bankInfo?.bank_name || '—'} - {bankInfo?.bank_account_number || '—'}</strong>
             </div>
           </div>
 

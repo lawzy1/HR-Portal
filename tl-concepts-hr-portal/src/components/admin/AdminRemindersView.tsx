@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { formatDate } from '../../utils/formatters';
+import { useI18n } from '../../context/I18nContext';
 
 export const AdminRemindersView: React.FC = () => {
+  const { t, value: translateValue } = useI18n();
   const { 
     reminders, 
     resolveReminder, 
@@ -34,16 +36,22 @@ export const AdminRemindersView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Trung tâm Cảnh báo & Nhắc nhở HR Tự động
+            {t('adminReminders.title')}
           </h1>
           <p className="text-sm text-slate-600 mt-0.5">
-            Xử lý hồ sơ nhân viên chờ duyệt cùng các nhắc nhở hợp đồng, lương, giấy tờ và đơn từ tồn đọng.
+            {t('adminReminders.subtitle')}
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          {pendingOnboardingCount > 0 && <span className="px-3 py-1.5 bg-primary-100 text-primary-800 rounded-xl font-bold text-xs">{pendingOnboardingCount} hồ sơ chờ duyệt</span>}
-          <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs">{reminders.length} Cảnh báo đang hoạt động</span>
+          {pendingOnboardingCount > 0 && (
+            <span className="px-3 py-1.5 bg-primary-100 text-primary-800 rounded-xl font-bold text-xs">
+              {t('adminReminders.pendingOnboardingCount', { count: pendingOnboardingCount })}
+            </span>
+          )}
+          <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs">
+            {t('adminReminders.activeAlertsCount', { count: reminders.length })}
+          </span>
         </div>
       </div>
 
@@ -51,42 +59,42 @@ export const AdminRemindersView: React.FC = () => {
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">Danh mục:</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">{t('adminReminders.categoryLabel')}</span>
             <select
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none"
             >
-              <option value="ALL">Tất cả Cảnh báo</option>
-              <option value="onboarding_review">Hồ sơ nhân viên chờ duyệt</option>
-              <option value="contract">Hợp đồng lao động</option>
-              <option value="contract_missing">Nhân viên chưa có hợp đồng</option>
-              <option value="salary_review">Kỳ xét lương</option>
-              <option value="missing_doc">Thiếu hồ sơ CCCD/MST</option>
-              <option value="leave_request">Đơn xin nghỉ phép</option>
-              <option value="ot_request">Yêu cầu OT</option>
-              <option value="work_event">WFH / Đi muộn</option>
-              <option value="payroll">Lương & Payroll</option>
+              <option value="ALL">{t('adminReminders.allCategories')}</option>
+              <option value="onboarding_review">{t('adminReminders.catOnboardingReview')}</option>
+              <option value="contract">{t('adminReminders.catContract')}</option>
+              <option value="contract_missing">{t('adminReminders.catContractMissing')}</option>
+              <option value="salary_review">{t('adminReminders.catSalaryReview')}</option>
+              <option value="missing_doc">{t('adminReminders.catMissingDoc')}</option>
+              <option value="leave_request">{t('adminReminders.catLeaveRequest')}</option>
+              <option value="ot_request">{t('adminReminders.catOtRequest')}</option>
+              <option value="work_event">{t('adminReminders.catWorkEvent')}</option>
+              <option value="payroll">{t('adminReminders.catPayroll')}</option>
             </select>
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">Mức độ:</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">{t('adminReminders.severityLabel')}</span>
             <select
               value={filterSeverity}
               onChange={e => setFilterSeverity(e.target.value)}
               className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none"
             >
-              <option value="ALL">Tất cả Mức độ</option>
-              <option value="high">Khẩn cấp / Mức cao</option>
-              <option value="medium">Mức Trung bình</option>
-              <option value="low">Mức Nhẹ / Nhắc nhở</option>
+              <option value="ALL">{t('adminReminders.allSeverities')}</option>
+              <option value="high">{t('adminReminders.sevHigh')}</option>
+              <option value="medium">{t('adminReminders.sevMedium')}</option>
+              <option value="low">{t('adminReminders.sevLow')}</option>
             </select>
           </div>
         </div>
 
         <span className="text-xs font-medium text-slate-500">
-          Hiển thị {filteredReminders.length} nhắc nhở
+          {t('adminReminders.showingCount', { count: filteredReminders.length })}
         </span>
       </div>
 
@@ -95,8 +103,8 @@ export const AdminRemindersView: React.FC = () => {
         {filteredReminders.length === 0 ? (
           <div className="p-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <CheckCircle2 className="w-10 h-10 text-success-500 mx-auto mb-2" />
-            <p className="font-bold text-slate-800 text-base">Tuyệt vời! Không có cảnh báo nào trong danh mục này.</p>
-            <p className="text-xs text-slate-500 mt-1">Hệ thống HR đang vận hành mượt mà.</p>
+            <p className="font-bold text-slate-800 text-base">{t('adminReminders.emptyTitle')}</p>
+            <p className="text-xs text-slate-500 mt-1">{t('adminReminders.emptySubtitle')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -124,7 +132,7 @@ export const AdminRemindersView: React.FC = () => {
 
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-sm">{rem.title}</span>
+                      <span className="font-bold text-sm">{translateValue(rem.title)}</span>
                       {rem.employeeName && (
                         <span className="px-2.5 py-0.5 text-xs font-semibold bg-white border border-slate-200 rounded-md text-slate-800">
                           {rem.employeeName}
@@ -133,18 +141,18 @@ export const AdminRemindersView: React.FC = () => {
                       <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${
                         rem.severity === 'high' ? 'bg-rose-200 text-rose-800' : 'bg-amber-200 text-amber-800'
                       }`}>
-                        {rem.severity === 'high' ? 'Khẩn cấp' : 'Trung bình'}
+                        {rem.severity === 'high' ? t('adminReminders.high') : t('adminReminders.medium')}
                       </span>
                     </div>
 
                     <p className="text-xs text-slate-700 mt-1.5 leading-relaxed">
-                      {rem.message}
+                      {translateValue(rem.message)}
                     </p>
 
                     {rem.dueDate && (
                       <p className="text-[11px] font-medium text-slate-500 mt-1 flex items-center space-x-1">
                         <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>Mốc thời hạn: {formatDate(rem.dueDate)}</span>
+                        <span>{t('adminReminders.dueDate', { date: formatDate(rem.dueDate) })}</span>
                       </p>
                     )}
                   </div>
@@ -169,7 +177,7 @@ export const AdminRemindersView: React.FC = () => {
                       }}
                       className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1 shadow-md shadow-primary-500/20 cursor-pointer"
                     >
-                      <span>Xử lý ngay</span>
+                      <span>{t('adminReminders.actionNow')}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}
@@ -178,7 +186,7 @@ export const AdminRemindersView: React.FC = () => {
                     onClick={() => resolveReminder(rem.id)}
                     className="px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer"
                   >
-                    Đã đọc
+                    {t('adminReminders.markAsRead')}
                   </button>
                 </div>
               </div>

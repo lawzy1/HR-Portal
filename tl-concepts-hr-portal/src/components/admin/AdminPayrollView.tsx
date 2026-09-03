@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileText, Mail, Pencil, Plus, RotateCcw, Search, Send, ShieldCheck, Upload } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileText, Mail, Pencil, Plus, RotateCcw, Search, Send, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHR } from '../../context/HRContext';
 import { MoneyVisibilityToggle, useMoneyVisibility } from '../../context/MoneyVisibilityContext';
@@ -9,6 +9,7 @@ import { useCompanyHolidays } from '../../hooks/useLeave';
 import {
   useAllPayrollRecords,
   useApprovePayrollMonth,
+  useDeletePayrollRecord,
   useImportPayrollRecords,
   useProcessPayslipNotifications,
   useRejectPayrollMonth,
@@ -323,10 +324,19 @@ export const AdminPayrollView: React.FC = () => {
   const [isPayrollFormOpen, setIsPayrollFormOpen] = useState(false);
   const [editingEmployeeId, setEditingEmployeeId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [recordToDelete, setRecordToDelete] = useState<{
+    id: string;
+    employee_id: string;
+    month: number;
+    year: number;
+    publish_status: string;
+    employees: { full_name: string } | null;
+  } | null>(null);
   const { data: employeesData } = useEmployees();
   const { data: holidaysData } = useCompanyHolidays();
   const { data: recordsData } = useAllPayrollRecords(selectedMonth, selectedYear);
   const importPayroll = useImportPayrollRecords();
+  const deletePayroll = useDeletePayrollRecord();
   const submitPayroll = useSubmitPayrollMonth();
   const approvePayroll = useApprovePayrollMonth();
   const rejectPayroll = useRejectPayrollMonth();
@@ -612,6 +622,17 @@ export const AdminPayrollView: React.FC = () => {
     }
   };
 
+  const handleDeletePayroll = async () => {
+    if (!recordToDelete) return;
+    try {
+      await deletePayroll.mutateAsync(recordToDelete.id);
+      showToast(`Đã xóa phiếu lương của ${recordToDelete.employees?.full_name || 'nhân viên'} khỏi kỳ ${recordToDelete.month}/${recordToDelete.year}.`);
+      setRecordToDelete(null);
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể xóa phiếu lương. Vui lòng thử lại.'));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -697,7 +718,7 @@ export const AdminPayrollView: React.FC = () => {
                   <td className="bg-slate-50 p-3 text-right font-extrabold text-slate-900">{formatMoney(record.gross_income)}</td><td className="p-3 text-right font-semibold text-rose-700">−{formatMoney(insurance)}</td>
                   <td className="p-3 text-right text-slate-500">{formatMoney(record.family_deduction)}</td><td className="p-3 text-right font-semibold text-primary-700">−{formatMoney(record.personal_income_tax)}</td>
                   <td className="bg-success-50 p-3 text-right font-extrabold text-success-800">{formatMoney(record.net_salary)}</td>
-                    <td className="p-3"><div className="flex items-center justify-center gap-1.5"><button type="button" onClick={() => { setEditingEmployeeId(record.employee_id); setIsPayrollFormOpen(true); }} disabled={!canEdit} className="inline-flex items-center gap-1 rounded-lg bg-primary-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-45" title={canEdit ? t('payroll.editTitle') : t('payroll.locked')}><Pencil className="h-3 w-3" />{t('payroll.edit')}</button><button type="button" onClick={() => setSelectedPayslipId(record.id)} className="rounded-lg bg-slate-100 p-1.5 text-slate-700 transition hover:bg-slate-200" title={t('payroll.viewTitle')}><FileText className="h-3.5 w-3.5" /></button>{isAdmin && record.publish_status === 'published' && record.notification_status !== 'sent' && <button type="button" onClick={() => void handleRetryNotification(record.id)} disabled={retryNotification.isPending || processNotifications.isPending} className="rounded-lg bg-primary-50 p-1.5 text-primary-700 transition hover:bg-primary-100 disabled:opacity-50" title={t('payroll.retryEmail')}><Mail className="h-3.5 w-3.5" /></button>}</div></td>
+                    <td className="p-3"><div className="flex items-center justify-center gap-1.5"><button type="button" onClick={() => { setEditingEmployeeId(record.employee_id); setIsPayrollFormOpen(true); }} disabled={!canEdit} className="inline-flex items-center gap-1 rounded-lg bg-primary-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-45" title={canEdit ? t('payroll.editTitle') : t('payroll.locked')}><Pencil className="h-3 w-3" />{t('payroll.edit')}</button><button type="button" onClick={() => setRecordToDelete(record)} disabled={!canEdit || deletePayroll.isPending} className="rounded-lg bg-rose-50 p-1.5 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40" title={canEdit ? t('payroll.deleteTitle') : t('payroll.deleteLocked')} aria-label={canEdit ? t('payroll.deleteTitle') : t('payroll.deleteLocked')}><Trash2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setSelectedPayslipId(record.id)} className="rounded-lg bg-slate-100 p-1.5 text-slate-700 transition hover:bg-slate-200" title={t('payroll.viewTitle')}><FileText className="h-3.5 w-3.5" /></button>{isAdmin && record.publish_status === 'published' && record.notification_status !== 'sent' && <button type="button" onClick={() => void handleRetryNotification(record.id)} disabled={retryNotification.isPending || processNotifications.isPending} className="rounded-lg bg-primary-50 p-1.5 text-primary-700 transition hover:bg-primary-100 disabled:opacity-50" title={t('payroll.retryEmail')}><Mail className="h-3.5 w-3.5" /></button>}</div></td>
                 </tr>;
               })}
             </tbody>
@@ -850,6 +871,21 @@ export const AdminPayrollView: React.FC = () => {
           </label>
         )}
       </ConfirmationDialog>
+
+      <ConfirmationDialog
+        open={Boolean(recordToDelete)}
+        onOpenChange={(open) => !open && setRecordToDelete(null)}
+        title={t('payroll.deleteConfirmTitle')}
+        description={t('payroll.deleteConfirmDescription', {
+          name: recordToDelete?.employees?.full_name || 'nhân viên',
+          month: recordToDelete?.month || selectedMonth,
+          year: recordToDelete?.year || selectedYear,
+        })}
+        confirmLabel={t('payroll.deleteConfirmButton')}
+        variant="danger"
+        isPending={deletePayroll.isPending}
+        onConfirm={() => void handleDeletePayroll()}
+      />
 
       <PayrollEntryModal
         open={isPayrollFormOpen}

@@ -150,6 +150,18 @@ export function useImportPayrollRecords() {
   });
 }
 
+export function useDeletePayrollRecord() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payrollId: string) => {
+      const { data, error } = await supabase.rpc('delete_payroll_record', { p_payroll_id: payrollId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
+  });
+}
+
 export function useSubmitPayrollMonth() {
   const queryClient = useQueryClient();
   return useMutation({

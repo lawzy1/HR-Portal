@@ -3,6 +3,7 @@ import { Eye, EyeOff, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useHR } from '../context/HRContext';
 import { getUserFacingError } from '../lib/userFacingError';
+import { useI18n } from '../context/I18nContext';
 
 /**
  * Self-service account security for every role. This component never accepts
@@ -10,6 +11,7 @@ import { getUserFacingError } from '../lib/userFacingError';
  * Supabase session after re-authentication.
  */
 export const AccountSecurityCard: React.FC = () => {
+  const { t } = useI18n();
   const { changePassword } = useAuth();
   const { showToast } = useHR();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -24,19 +26,19 @@ export const AccountSecurityCard: React.FC = () => {
     setError(null);
 
     if (!currentPassword) {
-      setError('Vui lòng nhập mật khẩu hiện tại.');
+      setError(t('security.errCurrentRequired'));
       return;
     }
     if (newPassword.length < 8) {
-      setError('Mật khẩu mới cần ít nhất 8 ký tự.');
+      setError(t('security.errMinLength'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Mật khẩu xác nhận chưa khớp.');
+      setError(t('security.errMismatch'));
       return;
     }
     if (newPassword === currentPassword) {
-      setError('Mật khẩu mới phải khác mật khẩu hiện tại.');
+      setError(t('security.errSamePassword'));
       return;
     }
 
@@ -50,9 +52,9 @@ export const AccountSecurityCard: React.FC = () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      showToast('Đã đổi mật khẩu tài khoản thành công.');
+      showToast(t('security.successToast'));
     } catch (caught) {
-      setError(await getUserFacingError(caught, 'Không thể đổi mật khẩu. Vui lòng thử lại.'));
+      setError(await getUserFacingError(caught, t('security.genericError')));
     } finally {
       setIsSaving(false);
     }
@@ -64,52 +66,55 @@ export const AccountSecurityCard: React.FC = () => {
         <div>
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-primary-600" />
-            <span>Bảo mật tài khoản</span>
+            <span>{t('security.title')}</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-1">Đổi mật khẩu của chính tài khoản đang đăng nhập.</p>
+          <p className="text-xs text-slate-500 mt-1">{t('security.subtitle')}</p>
         </div>
         <ShieldCheck className="w-5 h-5 text-success-600 shrink-0" />
       </div>
 
       <form onSubmit={submit} className="space-y-3 max-w-xl">
         <PasswordField
-          label="Mật khẩu hiện tại"
+          label={t('security.currentPassword')}
           value={currentPassword}
           show={showPasswords}
           autoComplete="current-password"
           onChange={setCurrentPassword}
           onToggle={() => setShowPasswords((value) => !value)}
+          toggleAriaLabel={showPasswords ? t('security.hidePassword') : t('security.showPassword')}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <PasswordField
-            label="Mật khẩu mới"
+            label={t('security.newPassword')}
             value={newPassword}
             show={showPasswords}
             autoComplete="new-password"
             onChange={setNewPassword}
             onToggle={() => setShowPasswords((value) => !value)}
+            toggleAriaLabel={showPasswords ? t('security.hidePassword') : t('security.showPassword')}
           />
           <PasswordField
-            label="Xác nhận mật khẩu mới"
+            label={t('security.confirmNewPassword')}
             value={confirmPassword}
             show={showPasswords}
             autoComplete="new-password"
             onChange={setConfirmPassword}
             onToggle={() => setShowPasswords((value) => !value)}
+            toggleAriaLabel={showPasswords ? t('security.hidePassword') : t('security.showPassword')}
           />
         </div>
 
         {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</p>}
 
         <div className="flex items-center justify-between gap-3 pt-1">
-          <p className="text-[11px] text-slate-400">Tối thiểu 8 ký tự. Bạn sẽ vẫn được giữ đăng nhập sau khi đổi.</p>
+          <p className="text-[11px] text-slate-400">{t('security.helpText')}</p>
           <button
             type="submit"
             disabled={isSaving}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isSaving ? 'Đang lưu...' : 'Đổi mật khẩu'}
+            {isSaving ? t('security.saving') : t('security.changePasswordBtn')}
           </button>
         </div>
       </form>
@@ -124,7 +129,8 @@ const PasswordField: React.FC<{
   autoComplete: 'current-password' | 'new-password';
   onChange: (value: string) => void;
   onToggle: () => void;
-}> = ({ label, value, show, autoComplete, onChange, onToggle }) => (
+  toggleAriaLabel?: string;
+}> = ({ label, value, show, autoComplete, onChange, onToggle, toggleAriaLabel }) => (
   <label className="block text-xs font-bold text-slate-700">
     <span className="mb-1.5 block">{label}</span>
     <span className="relative block">
@@ -139,7 +145,7 @@ const PasswordField: React.FC<{
       <button
         type="button"
         onClick={onToggle}
-        aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+        aria-label={toggleAriaLabel || (show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu')}
         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
       >
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

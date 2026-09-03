@@ -35,10 +35,11 @@ import {
   useCompanyWorkdayOverride,
   useUpsertCompanyWorkdayOverride,
 } from '../../hooks/useKpi';
-import { useAllOtRecords, useCreateOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
+import { useAllOtRecords, useCreateOtRecord, useDeleteOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { useAllLeaveRequests, useCompanyHolidays } from '../../hooks/useLeave';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../../utils/workDays';
+import { formatDate } from '../../utils/formatters';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { ModalPanel } from '../ui/ModalPanel';
@@ -59,6 +60,16 @@ type KpiJobRow = NonNullable<ReturnType<typeof useAllKpiJobItems>['data']>[numbe
 type OtRecordRow = NonNullable<ReturnType<typeof useAllOtRecords>['data']>[number];
 type DbEmployeeRow = NonNullable<ReturnType<typeof useEmployees>['data']>[number];
 type KpiMonthlyRow = NonNullable<ReturnType<typeof useAllKpiMonthly>['data']>[number];
+type OtStatus = 'Chờ duyệt' | 'Đã duyệt' | 'Từ chối' | 'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming';
+
+const OT_STATUS_OPTIONS: { value: OtStatus; label: string }[] = [
+  { value: 'Chờ duyệt', label: 'Chờ duyệt' },
+  { value: 'Đã duyệt', label: 'Đã duyệt' },
+  { value: 'Từ chối', label: 'Từ chối' },
+  { value: 'Đã hoàn thành', label: 'Đã hoàn thành' },
+  { value: 'Đang thực hiện', label: 'Đang thực hiện' },
+  { value: 'Upcoming', label: 'Upcoming' },
+];
 
 interface JobGroup {
   orderJob: string;
@@ -156,6 +167,7 @@ export const AdminKpiOtView: React.FC = () => {
   const upsertWorkdayOverride = useUpsertCompanyWorkdayOverride();
   const createOtRecord = useCreateOtRecord();
   const updateOtRecord = useUpdateOtRecord();
+  const deleteOtRecord = useDeleteOtRecord();
 
   // New KPI Job Entry Modal / Form
   const [isNewJobModalOpen, setIsNewJobModalOpen] = useState(false);
@@ -180,9 +192,9 @@ export const AdminKpiOtView: React.FC = () => {
   const [otHours, setOtHours] = useState<number>(4);
   const [otViewsRender, setOtViewsRender] = useState<number>(2);
   const [otReason, setOtReason] = useState<string>('');
-  const [otPresetType, setOtPresetType] = useState<'AUTO' | 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'CUSTOM'>('AUTO');
-  const [customOtPercentage, setCustomOtPercentage] = useState<number>(150);
-  const [otStatus, setOtStatus] = useState<'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming'>('Đã hoàn thành');
+  const [otStatus, setOtStatus] = useState<OtStatus>('Đã hoàn thành');
+  const [editingOt, setEditingOt] = useState<OtRecordRow | null>(null);
+  const [deletingOt, setDeletingOt] = useState<OtRecordRow | null>(null);
   const [kpiDecision, setKpiDecision] = useState<'approve' | 'reject' | null>(null);
   const [kpiRejectionReason, setKpiRejectionReason] = useState('');
   const [isWorkdayEditorOpen, setIsWorkdayEditorOpen] = useState(false);
@@ -484,8 +496,6 @@ export const AdminKpiOtView: React.FC = () => {
         .filter(ot => ot.employee_id === emp.id && isSameMonthYear(ot.date, selectedMonth, selectedYear))
         .reduce((sum, ot) => sum + (ot.hours || 0), 0);
 
-      const otHourlyRate = Math.round((emp.current_salary || 0) / effectiveStandardWorkDays / 8);
-
       await upsertKpiMonthly.mutateAsync({
         employee_id: emp.id,
         company_id: profile.companyId,
@@ -496,7 +506,6 @@ export const AdminKpiOtView: React.FC = () => {
         kpi_target: target,
         completion_percentage: completionPct,
         ot_hours: otHoursForEmp,
-        ot_hourly_rate: otHourlyRate,
         commission_rate_snapshot: commissionRate,
         performance_commission_amount: performanceCommissionAmount,
         qc_views: qcViews,
@@ -572,64 +581,103 @@ export const AdminKpiOtView: React.FC = () => {
     }
   };
 
-  // Calculate OT percentage & rate based on date or preset/custom input — driven by company_settings.
-  const getEffectiveOtPercentage = (): number => {
-    if (otPresetType === 'WEEKDAY') return companySettings?.ot_weekday_percent ?? 0;
-    if (otPresetType === 'WEEKEND') return companySettings?.ot_weekend_percent ?? 0;
-    if (otPresetType === 'HOLIDAY') return 300; // no company_settings column for holiday/Tết OT rate yet
-    if (otPresetType === 'CUSTOM') return customOtPercentage;
-
-    // AUTO calculation based on date
-    if (!otDate) return companySettings?.ot_weekday_percent ?? 0;
-    const d = new Date(otDate);
-    const day = d.getDay();
-    if (day === 0 || day === 6) return companySettings?.ot_weekend_percent ?? 0; // Weekend T7, CN
-    return companySettings?.ot_weekday_percent ?? 0; // Regular weekday
+  const openNewOtModal = () => {
+    setEditingOt(null);
+    setOtEmpId(employeeList[0]?.id || '');
+    setOtDate(new Date().toISOString().split('T')[0]);
+    setOtHours(4);
+    setOtViewsRender(0);
+    setOtReason('');
+    setOtStatus('Đã hoàn thành');
+    setIsNewOtModalOpen(true);
   };
 
-  // Handle Admin direct OT creation
+  const startEditOt = (ot: OtRecordRow) => {
+    setEditingOt(ot);
+    setOtEmpId(ot.employee_id);
+    setOtDate(ot.date);
+    setOtHours(ot.hours);
+    setOtViewsRender(ot.views_render_count || 0);
+    setOtReason(ot.reason || '');
+    setOtStatus((OT_STATUS_OPTIONS.some(option => option.value === ot.status) ? ot.status : 'Chờ duyệt') as OtStatus);
+    setIsNewOtModalOpen(true);
+  };
+
+  const resetOtForm = () => {
+    setEditingOt(null);
+    setOtEmpId('');
+    setOtDate(new Date().toISOString().split('T')[0]);
+    setOtHours(4);
+    setOtViewsRender(0);
+    setOtReason('');
+    setOtStatus('Đã hoàn thành');
+  };
+
   const handleAddOtSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetEmp = employeeList.find(emp => emp.id === otEmpId);
     if (!targetEmp) {
-      alert('Vui lòng chọn nhân viên');
+      showToast('Vui lòng chọn nhân viên.');
       return;
     }
-    if (!companySettings || !profile?.companyId) {
-      alert('Đang tải cấu hình công ty, vui lòng thử lại sau ít giây.');
+    if (!profile?.companyId) {
+      showToast('Không xác định được công ty của tài khoản. Vui lòng thử lại.');
       return;
     }
 
-    const hourly = Math.round((targetEmp.current_salary || 0) / effectiveStandardWorkDays / 8);
-    const effPct = getEffectiveOtPercentage();
-    const calcAmount = Math.round(otHours * hourly * (effPct / 100));
-
-    const payLabel = `Thanh toán ${effPct}% (${otPresetType === 'AUTO' ? (effPct === companySettings.ot_weekend_percent ? 'Cuối tuần' : 'Ngày thường') : 'Admin cấu hình'})`;
-
-    await createOtRecord.mutateAsync({
-      company_id: profile.companyId,
-      employee_id: targetEmp.id,
-      date: otDate,
-      hours: otHours,
-      views_render_count: otViewsRender,
-      reason: otReason,
-      pay_type: payLabel,
-      ot_percentage: effPct,
-      status: otStatus,
-      amount: calcAmount,
-    });
-
-    showToast('Đã đăng ký giờ làm OT tăng ca thành công!');
-    setOtReason('');
-    setIsNewOtModalOpen(false);
+    try {
+      if (editingOt) {
+        await updateOtRecord.mutateAsync({
+          id: editingOt.id,
+          updates: {
+            employee_id: targetEmp.id,
+            date: otDate,
+            hours: otHours,
+            views_render_count: otViewsRender,
+            reason: otReason.trim() || null,
+          },
+        });
+        showToast('Đã cập nhật thông tin OT.');
+      } else {
+        await createOtRecord.mutateAsync({
+          company_id: profile.companyId,
+          employee_id: targetEmp.id,
+          date: otDate,
+          hours: otHours,
+          views_render_count: otViewsRender,
+          reason: otReason.trim() || null,
+          status: otStatus,
+        });
+        showToast('Đã tạo giờ OT thành công.');
+      }
+      resetOtForm();
+      setIsNewOtModalOpen(false);
+    } catch (error) {
+      showToast(await getUserFacingError(error, editingOt ? 'Không thể cập nhật thông tin OT.' : 'Không thể tạo bản ghi OT.'));
+    }
   };
 
-  // Admin-only status update (approve/reject/etc — enforced by RLS on ot_records)
   const handleOtStatusChange = async (id: string, status: string) => {
-    await updateOtRecord.mutateAsync({
-      id,
-      updates: { status, approver_id: profile?.id },
-    });
+    try {
+      await updateOtRecord.mutateAsync({
+        id,
+        updates: { status, approver_id: profile?.id },
+      });
+      showToast('Đã cập nhật trạng thái OT.');
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể cập nhật trạng thái OT.'));
+    }
+  };
+
+  const handleDeleteOt = async () => {
+    if (!deletingOt) return;
+    try {
+      await deleteOtRecord.mutateAsync(deletingOt.id);
+      showToast('Đã xóa bản ghi OT.');
+      setDeletingOt(null);
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể xóa bản ghi OT.'));
+    }
   };
 
   return (
@@ -700,7 +748,7 @@ export const AdminKpiOtView: React.FC = () => {
               onChange={e => setSelectedMonth(Number(e.target.value))}
               className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
             >
-              {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                 <option key={m} value={m}>{t('common.month', { month: m })}</option>
               ))}
             </select>
@@ -1282,9 +1330,8 @@ export const AdminKpiOtView: React.FC = () => {
                     <p className="font-bold text-slate-900 text-xs truncate">{emp.full_name}</p>
                     {emp.kpi_level && <p className="text-[10px] text-primary-600 font-semibold truncate">{emp.kpi_level}</p>}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                    pct >= 100 ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-black ${pct >= 100 ? 'bg-success-100 text-success-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
                     {pct}%
                   </span>
                 </div>
@@ -1342,22 +1389,15 @@ export const AdminKpiOtView: React.FC = () => {
               <p className="text-xs text-slate-500">
                 {t('adminKpi.otDesc')}
               </p>
+              <p className="mt-1 text-[11px] font-semibold text-primary-700">
+                {t('adminKpi.otPermissionsNote')}
+              </p>
             </div>
           </div>
           {isAdmin && (
             <button
               type="button"
-              onClick={() => {
-                setOtEmpId(employeeList[0]?.id || '');
-                setOtDate(new Date().toISOString().split('T')[0]);
-                setOtHours(4);
-                setOtViewsRender(0);
-                setOtReason('');
-                setOtPresetType('AUTO');
-                setCustomOtPercentage(150);
-                setOtStatus('Đã hoàn thành');
-                setIsNewOtModalOpen(true);
-              }}
+              onClick={openNewOtModal}
               className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-primary-500/20 transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
@@ -1374,8 +1414,6 @@ export const AdminKpiOtView: React.FC = () => {
                 <th className="py-3 px-4">{t('adminKpi.colOtDate')}</th>
                 <th className="py-3 px-4">{t('adminKpi.colOtHoursViews')}</th>
                 <th className="py-3 px-4">{t('adminKpi.colOtReason')}</th>
-                <th className="py-3 px-4">{t('adminKpi.colOtRate')}</th>
-                <th className="py-3 px-4">{t('adminKpi.colOtPay')}</th>
                 <th className="py-3 px-4 text-center">{t('adminKpi.colOtStatus')}</th>
                 <th className="py-3 px-4 text-center">{t('adminKpi.colOtUpdate')}</th>
               </tr>
@@ -1383,7 +1421,7 @@ export const AdminKpiOtView: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {allOtRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
                     {t('adminKpi.noOtRecords')}
                   </td>
                 </tr>
@@ -1399,40 +1437,57 @@ export const AdminKpiOtView: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-medium">{ot.date}</td>
+                    <td className="py-3 px-4 font-medium">{formatDate(ot.date)}</td>
                     <td className="py-3 px-4 font-black text-primary-700">
                       {t('common.hours', { count: ot.hours })} {ot.views_render_count ? t('adminKpi.viewsInParens', { count: ot.views_render_count }) : ''}
                     </td>
                     <td className="py-3 px-4 max-w-[200px] truncate">{ot.reason}</td>
-                    <td className="py-3 px-4 font-semibold text-primary-700">
-                      {ot.pay_type}
-                    </td>
-                    <td className="py-3 px-4 font-bold text-success-600">{formatMoney(ot.amount || 0)}</td>
                     <td className="py-3 px-4 text-center">
-                      <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] ${
-                        ot.status === 'Đã hoàn thành' || ot.status === 'Đã duyệt'
+                      <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] ${ot.status === 'Đã hoàn thành' || ot.status === 'Đã duyệt'
                           ? 'bg-success-100 text-success-800 border border-success-300'
                           : ot.status === 'Đang thực hiện'
                             ? 'bg-primary-100 text-primary-800 border border-primary-300'
                             : ot.status === 'Upcoming'
                               ? 'bg-amber-100 text-amber-800 border border-amber-300'
                               : 'bg-slate-100 text-slate-700'
-                      }`}>
+                        }`}>
                         {value(ot.status)}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center space-x-1">
+                      <div className="flex items-center justify-center gap-1.5">
                         {isAdmin ? (
-                          <select
-                            value={ot.status}
-                            onChange={e => handleOtStatusChange(ot.id, e.target.value)}
-                            className="p-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
-                          >
-                            <option value="Chờ duyệt">{value('Chờ duyệt')}</option>
-                            <option value="Đã duyệt">{value('Đã duyệt')}</option>
-                            <option value="Từ chối">{value('Từ chối')}</option>
-                          </select>
+                          <>
+
+                            <select
+                              value={ot.status}
+                              onChange={e => handleOtStatusChange(ot.id, e.target.value)}
+                              className="p-1 bg-slate-50 border border-slate-200 rounded text-[11px] font-semibold text-slate-700 cursor-pointer"
+                              aria-label={t('adminKpi.otStatusLabel')}
+                            >
+                              {OT_STATUS_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{value(option.label)}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => startEditOt(ot)}
+                              className="rounded-lg p-1.5 text-primary-600 transition-colors hover:bg-primary-100 focus-visible:outline-2 focus-visible:outline-primary-600"
+                              title={t('adminKpi.editOtTooltip')}
+                              aria-label={t('adminKpi.editOtTooltip')}
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingOt(ot)}
+                              className="rounded-lg p-1.5 text-rose-600 transition-colors hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-rose-600"
+                              title={t('adminKpi.deleteOtTooltip')}
+                              aria-label={t('adminKpi.deleteOtTooltip')}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
                         ) : <span className="text-[11px] font-semibold text-slate-500">{t('adminKpi.adminApprovesStatus')}</span>}
                       </div>
                     </td>
@@ -1447,303 +1502,255 @@ export const AdminKpiOtView: React.FC = () => {
       {/* Modal Add / Edit KPI Job Item */}
       {isNewJobModalOpen && (
         <ModalPanel size="xl">
-            <h3 className="text-lg font-bold text-slate-900">
-              {editingJob ? t('adminKpi.modalEditJobTitle') : t('adminKpi.modalNewJobTitle')}
-            </h3>
+          <h3 className="text-lg font-bold text-slate-900">
+            {editingJob ? t('adminKpi.modalEditJobTitle') : t('adminKpi.modalNewJobTitle')}
+          </h3>
 
-            <form onSubmit={handleAddJobSubmit} className="space-y-3">
+          <form onSubmit={handleAddJobSubmit} className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {t('adminKpi.orderJobLabel')}
+              </label>
+              <input
+                type="text"
+                placeholder={t('adminKpi.orderJobPlaceholder')}
+                value={orderJob}
+                onChange={e => setOrderJob(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {t('adminKpi.orderJobLabel')}
+                  {t('adminKpi.subtaskLabel')}
                 </label>
                 <input
                   type="text"
-                  placeholder={t('adminKpi.orderJobPlaceholder')}
-                  value={orderJob}
-                  onChange={e => setOrderJob(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary-500"
+                  placeholder={t('adminKpi.subtaskPlaceholder')}
+                  value={subTask}
+                  onChange={e => setSubTask(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-primary-700"
+                />
+                <span className="text-[10px] text-slate-400 italic">{t('adminKpi.subtaskHint')}</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.assigneeLabel')}</label>
+                <SearchableSelect
+                  value={jobEmployeeId}
+                  onChange={setJobEmployeeId}
+                  options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code})` }))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.categoryLabel')}</label>
+                <select
+                  value={jobCategory}
+                  onChange={e => setJobCategory(e.target.value as 'new_render' | 'reprocess')}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                >
+                  {JOB_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.viewsLabel')}</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={viewsCount}
+                  onChange={e => setViewsCount(Number(e.target.value))}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    {t('adminKpi.subtaskLabel')}
-                  </label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.convertedKpiLabel')}</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={convertedKpi}
+                  onChange={e => setConvertedKpi(Number(e.target.value))}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-success-700"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.durationLabel')}</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={durationDays}
+                  onChange={e => setDurationDays(Number(e.target.value))}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  {t('adminKpi.deadlineLabel')}
+                </label>
+                <div className="space-y-1">
                   <input
                     type="text"
-                    placeholder={t('adminKpi.subtaskPlaceholder')}
-                    value={subTask}
-                    onChange={e => setSubTask(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-primary-700"
+                    placeholder={t('adminKpi.deadlinePlaceholder')}
+                    value={deadline}
+                    onChange={e => setDeadline(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-rose-700"
                   />
-                  <span className="text-[10px] text-slate-400 italic">{t('adminKpi.subtaskHint')}</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.assigneeLabel')}</label>
-                  <SearchableSelect
-                    value={jobEmployeeId}
-                    onChange={setJobEmployeeId}
-                    options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code})` }))}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.categoryLabel')}</label>
-                  <select
-                    value={jobCategory}
-                    onChange={e => setJobCategory(e.target.value as 'new_render' | 'reprocess')}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                  >
-                    {JOB_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.viewsLabel')}</label>
-                  <input
-                    type="number"
-                    step="1"
-                    value={viewsCount}
-                    onChange={e => setViewsCount(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.convertedKpiLabel')}</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={convertedKpi}
-                    onChange={e => setConvertedKpi(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-success-700"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.durationLabel')}</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={durationDays}
-                    onChange={e => setDurationDays(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    {t('adminKpi.deadlineLabel')}
-                  </label>
-                  <div className="space-y-1">
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] text-slate-400">{t('adminKpi.orChooseDate')}</span>
                     <input
-                      type="text"
-                      placeholder={t('adminKpi.deadlinePlaceholder')}
-                      value={deadline}
-                      onChange={e => setDeadline(e.target.value)}
-                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-rose-700"
+                      type="datetime-local"
+                      value={deadlineDateInput}
+                      onChange={e => {
+                        const dt = e.target.value;
+                        setDeadlineDateInput(dt);
+                        if (dt) {
+                          setDeadline(formatDeadlineFromDateStr(dt));
+                        }
+                      }}
+                      className="p-1 text-[11px] bg-slate-100 border rounded cursor-pointer"
                     />
-                    <div className="flex items-center space-x-1">
-                      <span className="text-[10px] text-slate-400">{t('adminKpi.orChooseDate')}</span>
-                      <input
-                        type="datetime-local"
-                        value={deadlineDateInput}
-                        onChange={e => {
-                          const dt = e.target.value;
-                          setDeadlineDateInput(dt);
-                          if (dt) {
-                            setDeadline(formatDeadlineFromDateStr(dt));
-                          }
-                        }}
-                        className="p-1 text-[11px] bg-slate-100 border rounded cursor-pointer"
-                      />
-                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.completedDateLabel')}</label>
-                  <input
-                    type="datetime-local"
-                    value={completedDateInput}
-                    onChange={e => setCompletedDateInput(e.target.value)}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
-                  />
-                </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewJobModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
-                >
-                  {t('adminKpi.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 cursor-pointer"
-                >
-                  {editingJob ? t('adminKpi.updateJobBtn') : t('adminKpi.saveJobBtn')}
-                </button>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.completedDateLabel')}</label>
+                <input
+                  type="datetime-local"
+                  value={completedDateInput}
+                  onChange={e => setCompletedDateInput(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                />
               </div>
-            </form>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsNewJobModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                {t('adminKpi.cancel')}
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 cursor-pointer"
+              >
+                {editingJob ? t('adminKpi.updateJobBtn') : t('adminKpi.saveJobBtn')}
+              </button>
+            </div>
+          </form>
         </ModalPanel>
       )}
 
       {/* Modal Add OT (Admin Direct Creation) */}
       {isNewOtModalOpen && (
         <ModalPanel size="xl">
-            <h3 className="text-lg font-bold text-slate-900">
-              {t('adminKpi.modalNewOtTitle')}
-            </h3>
+          <h3 className="text-lg font-bold text-slate-900">
+            {editingOt ? t('adminKpi.modalEditOtTitle') : t('adminKpi.modalNewOtTitle')}
+          </h3>
+          <p className="text-xs text-slate-500">{t('adminKpi.otManualPayHint')}</p>
 
-            <form onSubmit={handleAddOtSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otEmployeeLabel')}</label>
-                <SearchableSelect
-                  value={otEmpId}
-                  onChange={setOtEmpId}
-                  options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code}) - ${emp.job_title}` }))}
-                />
-              </div>
+          <form onSubmit={handleAddOtSubmit} className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otEmployeeLabel')}</label>
+              <SearchableSelect
+                value={otEmpId}
+                onChange={setOtEmpId}
+                options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code}) - ${emp.job_title}` }))}
+              />
+            </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otDateLabel')}</label>
+              <input
+                type="date"
+                value={otDate}
+                onChange={e => setOtDate(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otDateLabel')}</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otHoursLabel')}</label>
                 <input
-                  type="date"
-                  value={otDate}
-                  onChange={e => setOtDate(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                  type="number"
+                  min="1"
+                  max="16"
+                  value={otHours}
+                  onChange={e => setOtHours(Number(e.target.value))}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-primary-700"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otHoursLabel')}</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="16"
-                    value={otHours}
-                    onChange={e => setOtHours(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-primary-700"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otViewsLabel')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={otViewsRender}
-                    onChange={e => setOtViewsRender(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otRateLabel')}</label>
-                <select
-                  value={otPresetType}
-                  onChange={e => setOtPresetType(e.target.value as 'AUTO' | 'WEEKDAY' | 'WEEKEND' | 'HOLIDAY' | 'CUSTOM')}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-primary-800"
-                >
-                  <option value="AUTO">{t('adminKpi.otAutoOption', { weekday: companySettings?.ot_weekday_percent ?? '—', weekend: companySettings?.ot_weekend_percent ?? '—' })}</option>
-                  <option value="WEEKDAY">{t('adminKpi.otWeekdayOption', { percent: companySettings?.ot_weekday_percent ?? '—' })}</option>
-                  <option value="WEEKEND">{t('adminKpi.otWeekendOption', { percent: companySettings?.ot_weekend_percent ?? '—' })}</option>
-                  <option value="HOLIDAY">{t('adminKpi.otHolidayOption')}</option>
-                  <option value="CUSTOM">{t('adminKpi.otCustomOption')}</option>
-                </select>
-              </div>
-
-              {otPresetType === 'CUSTOM' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otCustomLabel')}</label>
-                  <input
-                    type="number"
-                    step="10"
-                    value={customOtPercentage}
-                    onChange={e => setCustomOtPercentage(Number(e.target.value))}
-                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-success-700"
-                    placeholder={t('adminKpi.otCustomPlaceholder')}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otStatusLabel')}</label>
-                <select
-                  value={otStatus}
-                  onChange={e => setOtStatus(e.target.value as 'Đã hoàn thành' | 'Đang thực hiện' | 'Upcoming')}
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otViewsLabel')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={otViewsRender}
+                  onChange={e => setOtViewsRender(Number(e.target.value))}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
-                >
-                  <option value="Đã hoàn thành">{value('Đã hoàn thành')}</option>
-                  <option value="Đang thực hiện">{value('Đang thực hiện')}</option>
-                  <option value="Upcoming">{t('adminKpi.otStatusUpcoming')}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otReasonLabel')}</label>
-                <textarea
-                  rows={2}
-                  value={otReason}
-                  onChange={e => setOtReason(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
-                  required
                 />
               </div>
+            </div>
 
-              {/* Realtime estimated OT Pay display */}
-              {(() => {
-                const targetEmp = employeeList.find(emp => emp.id === otEmpId);
-                const hourly = targetEmp && companySettings
-                  ? Math.round((targetEmp.current_salary || 0) / effectiveStandardWorkDays / 8)
-                  : 0;
-                const effPct = getEffectiveOtPercentage();
-                const calcAmt = Math.round(otHours * hourly * (effPct / 100));
+            {!editingOt && <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otStatusLabel')}</label>
+              <select
+                value={otStatus}
+                onChange={e => setOtStatus(e.target.value as OtStatus)}
+                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+              >
+                {OT_STATUS_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{value(option.label)}</option>
+                ))}
+              </select>
+            </div>}
 
-                return (
-                  <div className="p-3 bg-primary-50/70 rounded-xl border border-primary-200 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-slate-600 block">{t('adminKpi.otAutoCalcLabel', { percent: effPct })}</span>
-                      <span className="text-[11px] text-slate-500">{t('adminKpi.otHoursRate', { hours: otHours, rate: formatMoney(hourly) })}</span>
-                    </div>
-                    <span className="text-base font-black text-primary-700">{formatMoney(calcAmt)}</span>
-                  </div>
-                );
-              })()}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.otReasonLabel')}</label>
+              <textarea
+                rows={2}
+                value={otReason}
+                onChange={e => setOtReason(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
+                required
+              />
+            </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewOtModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
-                >
-                  {t('adminKpi.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 cursor-pointer"
-                >
-                  {t('adminKpi.confirmOtBtn')}
-                </button>
-              </div>
-            </form>
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsNewOtModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                {t('adminKpi.cancel')}
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold shadow-md shadow-primary-500/20 cursor-pointer"
+              >
+                {editingOt ? t('adminKpi.updateOtBtn') : t('adminKpi.confirmOtBtn')}
+              </button>
+            </div>
+          </form>
         </ModalPanel>
       )}
 
@@ -1770,6 +1777,22 @@ export const AdminKpiOtView: React.FC = () => {
         </label>
         <p className="mt-2 text-xs text-slate-500">{t('adminKpi.workdayCurrentCalendar', { days: monthWorkInfo.standardWorkDays })}</p>
       </ConfirmationDialog>
+
+      <ConfirmationDialog
+        open={deletingOt !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteOtRecord.isPending) setDeletingOt(null);
+        }}
+        title={t('adminKpi.deleteOtTitle')}
+        description={t('adminKpi.deleteOtDescription', {
+          employee: deletingOt?.employees?.full_name || 'nhân viên',
+          date: deletingOt?.date || '',
+        })}
+        confirmLabel={t('adminKpi.deleteOtBtn')}
+        onConfirm={() => void handleDeleteOt()}
+        isPending={deleteOtRecord.isPending}
+        variant="danger"
+      />
 
       <ConfirmationDialog
         open={kpiDecision !== null}

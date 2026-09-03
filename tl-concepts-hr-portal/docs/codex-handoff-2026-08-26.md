@@ -46,7 +46,7 @@ Không có backend Node/Express riêng. Logic tin cậy nằm ở Supabase Postg
 - TanStack Query; `react-hook-form` + Zod; Radix Dialog.
 - Supabase: Postgres 17, Auth, Storage, RLS, Edge Functions.
 - Excel import: `read-excel-file`.
-- Edge PDF: `pdf-lib` + Noto Sans Unicode font tải qua `PAYSLIP_FONT_URL`.
+- Edge PDF: `pdf-lib` + Inter variable font (đồng bộ với bảng lương) tải qua `PAYSLIP_FONT_URL`.
 
 ### Điểm vào chính
 

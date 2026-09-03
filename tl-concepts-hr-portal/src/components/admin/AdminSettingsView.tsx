@@ -31,6 +31,7 @@ const permissionsMatrix = [
   { feature: 'Xem và cập nhật hồ sơ nhân sự toàn công ty', admin: true, hr: true, employee: false },
   { feature: 'Nhập HĐLĐ, KPI và dữ liệu payroll', admin: true, hr: true, employee: false },
   { feature: 'Tạo yêu cầu phép, OT, WFH/đi trễ của chính mình', admin: false, hr: false, employee: true },
+  { feature: 'Quản lý OT toàn công ty (tạo/sửa/xóa/cập nhật trạng thái)', admin: true, hr: false, employee: false },
   { feature: 'Duyệt/từ chối yêu cầu phép, OT, WFH/đi trễ', admin: true, hr: false, employee: false },
   { feature: 'Gửi kỳ payroll sang chờ Admin duyệt', admin: true, hr: true, employee: false },
   { feature: 'Phê duyệt cuối cùng và phát hành phiếu lương', admin: true, hr: false, employee: false },

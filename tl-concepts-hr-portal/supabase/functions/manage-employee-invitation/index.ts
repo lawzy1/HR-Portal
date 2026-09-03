@@ -4,16 +4,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { logInternalError, publicError } from "../_shared/error-response.ts";
-import { brandedButton, brandedEmailHtml, escapeHtml } from "../_shared/email-template.ts";
+import {
+  EMPLOYEE_INVITATION_EXPIRY_MS,
+  sendEmployeeInvitationEmail,
+} from "../_shared/employee-invitation-email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const APP_URL = Deno.env.get("APP_URL")?.replace(/\/$/, "");
 const FALLBACK_ORIGIN = "http://127.0.0.1:3000";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const NOTIFICATION_FROM_EMAIL = Deno.env.get("NOTIFICATION_FROM_EMAIL");
-const INVITATION_EXPIRY_MS = 60 * 60 * 1000;
 const ALLOWED_ORIGINS = new Set(
   (Deno.env.get("ALLOWED_ORIGINS") ?? [APP_URL, FALLBACK_ORIGIN].filter(Boolean).join(","))
     .split(",")
@@ -41,30 +41,6 @@ function jsonResponse(request: Request, body: unknown, status: number) {
 
 function errorResponse(request: Request, options: Parameters<typeof publicError>[2]) {
   return publicError(request, corsHeaders(request), options);
-}
-
-async function sendEmail(to: string, employeeName: string, actionLink: string) {
-  if (!RESEND_API_KEY || !NOTIFICATION_FROM_EMAIL) {
-    return { delivered: false, error: "Chưa cấu hình RESEND_API_KEY hoặc NOTIFICATION_FROM_EMAIL" };
-  }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: NOTIFICATION_FROM_EMAIL,
-      to: [to],
-      subject: "[TL Concepts HR Portal] Link kích hoạt tài khoản mới",
-      html: brandedEmailHtml({
-        headerSubtitle: "Kích hoạt tài khoản nhân viên",
-        bodyHtml: `<p style="margin:0 0 14px">Chào <strong>${escapeHtml(employeeName)}</strong>,</p><p style="margin:0 0 14px;line-height:1.6">Admin đã gửi lại link kích hoạt tài khoản HR Portal cho bạn. Link có hiệu lực trong 1 giờ.</p><p style="margin:0 0 22px;line-height:1.6">Nếu bạn đã đặt mật khẩu trước đó, bạn cũng có thể đăng nhập trực tiếp để tiếp tục hồ sơ đang dang dở.</p>${brandedButton(actionLink, "Kích hoạt tài khoản")}`,
-        footerNote: "Nếu bạn không mong đợi email này, hãy liên hệ quản trị viên nội bộ.",
-      }),
-    }),
-  });
-  if (response.ok) return { delivered: true, error: null };
-  const body = await response.text();
-  return { delivered: false, error: `Resend trả về ${response.status}: ${body.slice(0, 500)}` };
 }
 
 interface Body {
@@ -154,12 +130,12 @@ Deno.serve(async (request) => {
   }
 
   const now = new Date();
-  const emailResult = await sendEmail(invitation.email, employee?.full_name ?? "bạn", link.properties.action_link);
+  const emailResult = await sendEmployeeInvitationEmail(invitation.email, employee?.full_name ?? "bạn", link.properties.action_link);
   const { error: updateError } = await admin
     .from("employee_invitations")
     .update({
       last_sent_at: now.toISOString(),
-      expires_at: new Date(now.getTime() + INVITATION_EXPIRY_MS).toISOString(),
+      expires_at: new Date(now.getTime() + EMPLOYEE_INVITATION_EXPIRY_MS).toISOString(),
       revoked_at: null,
       revoked_by: null,
       resend_count: invitation.resend_count + 1,

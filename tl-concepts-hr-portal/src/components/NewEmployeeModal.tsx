@@ -32,8 +32,10 @@ export const NewEmployeeModal: React.FC = () => {
     event.preventDefault();
     setError(null);
     try {
-      await createEmployee.mutateAsync({ employeeCode, fullName, email, department, jobTitle, startDate });
-      showToast(`Đã gửi lời mời kích hoạt tới ${email.trim().toLowerCase()}.`);
+      const result = await createEmployee.mutateAsync({ employeeCode, fullName, email, department, jobTitle, startDate });
+      showToast(result.emailDelivered
+        ? `Đã gửi lời mời kích hoạt tới ${email.trim().toLowerCase()}.`
+        : 'Đã tạo nhân viên nhưng email chưa được Resend chấp nhận. Hãy mở hồ sơ và bấm gửi lại link.');
       close();
     } catch (caught) {
       setError(await getUserFacingError(caught, 'Không thể gửi lời mời kích hoạt. Vui lòng thử lại.'));

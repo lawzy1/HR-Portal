@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { logInternalError, publicError } from "../_shared/error-response.ts";
-import { brandedButton, brandedEmailHtml } from "../_shared/email-template.ts";
+import { brandedButton, brandedEmailHtml, escapeHtml } from "../_shared/email-template.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -39,16 +39,21 @@ function errorResponse(request: Request, options: Parameters<typeof publicError>
   return publicError(request, corsHeaders(request), options);
 }
 
-async function sendEmail(recipients: string[], subject: string, html: string) {
+async function sendEmail(recipient: string, subject: string, html: string, text: string) {
   if (!RESEND_API_KEY || !NOTIFICATION_FROM_EMAIL) {
     return { delivered: false, error: "Chưa cấu hình RESEND_API_KEY hoặc NOTIFICATION_FROM_EMAIL" };
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: NOTIFICATION_FROM_EMAIL, to: recipients, subject, html }),
-  });
+  let response: Response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: NOTIFICATION_FROM_EMAIL, to: [recipient], subject, html, text }),
+    });
+  } catch (error) {
+    return { delivered: false, error: `Không kết nối được Resend: ${error instanceof Error ? error.message : "Lỗi không xác định"}` };
+  }
   if (response.ok) return { delivered: true, error: null };
   const responseBody = await response.text();
   return { delivered: false, error: `Resend trả về ${response.status}: ${responseBody.slice(0, 500)}` };
@@ -119,22 +124,38 @@ Deno.serve(async (request: Request) => {
   const employee = profile.employees as { full_name?: string; employee_code?: string } | null;
   const employeeName = employee?.full_name ?? "Nhân viên";
   const employeeCode = employee?.employee_code ?? "—";
-  const safeMessage = message.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-  const emailResult = await sendEmail(
-    recipients,
-    `[TL Concepts HR Portal] Yêu cầu thay đổi thông tin — ${employeeName}`,
-    brandedEmailHtml({
+  const safeEmployeeName = escapeHtml(employeeName);
+  const safeEmployeeCode = escapeHtml(employeeCode);
+  const safeMessage = escapeHtml(message);
+  const subject = `[TL Concepts HR Portal] Yêu cầu thay đổi thông tin — ${employeeName}`;
+  const html = brandedEmailHtml({
       headerSubtitle: "Yêu cầu thay đổi thông tin nhân viên",
-      bodyHtml: `<p style="margin:0 0 14px"><strong>${employeeName}</strong> (${employeeCode}) vừa gửi yêu cầu thay đổi thông tin.</p><p style="margin:0 0 6px"><strong>Nội dung:</strong></p><p style="margin:0 0 22px;line-height:1.6">${safeMessage.replaceAll("\n", "<br>")}</p>${APP_URL ? brandedButton(APP_URL, "Mở TL Concepts HR Portal") : ""}`,
-    }),
-  );
+      bodyHtml: `<p style="margin:0 0 14px"><strong>${safeEmployeeName}</strong> (${safeEmployeeCode}) vừa gửi yêu cầu thay đổi thông tin.</p><p style="margin:0 0 6px"><strong>Nội dung:</strong></p><p style="margin:0 0 22px;line-height:1.6">${safeMessage.replaceAll("\n", "<br>")}</p>${APP_URL ? brandedButton(APP_URL, "Mở TL Concepts HR Portal") : ""}`,
+    });
+  const text = `${employeeName} (${employeeCode}) vừa gửi yêu cầu thay đổi thông tin.\n\nNội dung:\n${message}${APP_URL ? `\n\nMở TL Concepts HR Portal: ${APP_URL}` : ""}`;
+
+  // Submit one request per mailbox so one suppressed or rejected recipient
+  // cannot be hidden behind a successful multi-recipient API request.
+  const recipientResults = await Promise.all(recipients.map(async (recipient) => ({
+    recipient,
+    result: await sendEmail(recipient, subject, html, text),
+  })));
+  const failedRecipients = recipientResults.filter(({ result }) => !result.delivered);
+  const allAccepted = failedRecipients.length === 0;
+  const notificationError = failedRecipients.length
+    ? failedRecipients.map(({ recipient, result }) => `${recipient}: ${result.error}`).join(" | ").slice(0, 2000)
+    : null;
 
   await admin
     .from("employee_profile_change_requests")
-    .update(emailResult.delivered
+    .update(allAccepted
       ? { notification_sent_at: new Date().toISOString(), notification_error: null }
-      : { notification_error: emailResult.error })
+      : { notification_error: notificationError })
     .eq("id", changeRequest.id);
 
-  return jsonResponse(request, { notificationDelivered: emailResult.delivered }, emailResult.delivered ? 201 : 202);
+  return jsonResponse(request, {
+    notificationDelivered: allAccepted,
+    acceptedRecipients: recipientResults.filter(({ result }) => result.delivered).map(({ recipient }) => recipient),
+    failedRecipients: failedRecipients.map(({ recipient }) => recipient),
+  }, allAccepted ? 201 : 202);
 });

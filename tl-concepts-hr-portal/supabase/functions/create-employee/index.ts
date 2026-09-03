@@ -4,6 +4,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { logInternalError, publicError } from "../_shared/error-response.ts";
+import { sendEmployeeInvitationEmail } from "../_shared/employee-invitation-email.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -102,13 +103,18 @@ Deno.serve(async (req: Request) => {
   }
   if (!isValidDate(body.startDate)) return errorResponse(req, { code: "VALIDATION_ERROR", message: "Ngày vào làm không hợp lệ.", status: 400, field: "startDate" });
 
-  // Auth owns the email and sends the invitation. No password is ever
-  // generated or returned by this endpoint.
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${APP_URL}/auth/activate`,
-    data: { invitation_source: "employee_admin_invite" },
+  // Generate the one-time Auth link without asking Supabase Auth SMTP to send
+  // a second, differently formatted message. Resend is the only mailer for
+  // both the first invitation and later reissues.
+  const { data: invited, error: inviteError } = await admin.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: {
+      redirectTo: `${APP_URL}/auth/activate`,
+      data: { invitation_source: "employee_admin_invite" },
+    },
   });
-  if (inviteError || !invited.user) {
+  if (inviteError || !invited?.user || !invited.properties?.action_link) {
     logInternalError("create-employee invite failed", inviteError);
     if (isDuplicateError(inviteError)) {
       return errorResponse(req, { code: "EMPLOYEE_EMAIL_EXISTS", message: "Email này đã được đăng ký.", status: 409, field: "email" });
@@ -138,5 +144,21 @@ Deno.serve(async (req: Request) => {
     return errorResponse(req, { code: "INTERNAL_ERROR", message: "Chưa thể tạo hồ sơ nhân viên. Vui lòng thử lại sau.", status: 500 });
   }
 
-  return jsonResponse(req, { employee }, 201);
+  const emailResult = await sendEmployeeInvitationEmail(
+    email,
+    body.fullName.trim(),
+    invited.properties.action_link,
+  );
+  const { error: invitationUpdateError } = await admin
+    .from("employee_invitations")
+    .update({ last_email_error: emailResult.error })
+    .eq("auth_user_id", invited.user.id);
+  if (invitationUpdateError) logInternalError("create-employee invitation email result update failed", invitationUpdateError);
+
+  if (!emailResult.delivered) logInternalError("create-employee Resend delivery request failed", emailResult.error);
+  return jsonResponse(req, {
+    employee,
+    emailDelivered: emailResult.delivered,
+    actionLink: emailResult.delivered ? null : invited.properties.action_link,
+  }, emailResult.delivered ? 201 : 202);
 });

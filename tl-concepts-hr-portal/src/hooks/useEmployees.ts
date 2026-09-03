@@ -90,6 +90,12 @@ interface CreateEmployeeInput {
   startDate: string;
 }
 
+interface CreateEmployeeResult {
+  employee: DbEmployee;
+  emailDelivered: boolean;
+  actionLink: string | null;
+}
+
 // Goes through the create-employee Edge Function (service role) — it also
 // invites the auth user and creates the matching `profiles` row, which a
 // plain client-side insert cannot do (no INSERT policy on profiles, by
@@ -98,11 +104,11 @@ export function useCreateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateEmployeeInput) => {
-      const { data, error } = await supabase.functions.invoke<{ employee: DbEmployee }>('create-employee', {
+      const { data, error } = await supabase.functions.invoke<CreateEmployeeResult>('create-employee', {
         body: input,
       });
       if (error) throw error;
-      return data!.employee;
+      return data!;
     },
     onSuccess: () => {
       refreshQueries(queryClient, [EMPLOYEES_KEY, ['profiles'], EMPLOYEE_INVITATIONS_KEY]);

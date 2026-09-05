@@ -10,8 +10,10 @@ import { useAllContracts } from '../hooks/useContracts';
 import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
+import { useAllProfileChangeRequests } from '../hooks/useProfileChangeRequests';
 import { useAllProfiles } from '../hooks/useProfiles';
 import { CONTRACT_EXPIRING_WINDOW_DAYS, employeeNeedsContract } from '../utils/contracts';
+import { useAuth } from './AuthContext';
 
 const DAY_MS = 86_400_000;
 const daysUntil = (date: string) => Math.ceil((new Date(`${date}T00:00:00`).getTime() - Date.now()) / DAY_MS);
@@ -43,6 +45,7 @@ interface HRContextType {
   pendingOnboardingCount: number;
   markReminderAsRead: (id: string) => void;
   resolveReminder: (id: string) => void;
+  markAllRemindersAsRead: () => void;
 
   // Modal states
   isNewLeaveModalOpen: boolean;
@@ -105,9 +108,30 @@ const persistTab = (storageKey: string, value: string) => {
   }
 };
 
+const readStoredReminderIds = (storageKey: string | null): string[] => {
+  if (typeof window === 'undefined' || !storageKey) return [];
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    const parsed: unknown = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) && parsed.every((id): id is string => typeof id === 'string') ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const persistReminderIds = (storageKey: string | null, ids: string[]) => {
+  if (typeof window === 'undefined' || !storageKey) return;
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(ids));
+  } catch {
+    // Reminder state remains usable in memory when storage is unavailable.
+  }
+};
+
 export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const { data: employeesData } = useEmployees();
   const employees = useMemo(() => employeesData || [], [employeesData]);
 
@@ -164,8 +188,22 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [isNewEmployeeModalOpen, setIsNewEmployeeModalOpen] = useState(false);
   const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
 
-  // Reminders list state
+  // Reminder read state is UI-only, but persists per signed-in account so a
+  // reload does not bring back every dismissed alert.
+  const reminderStorageKey = profile ? `tl-hr-read-reminders:${profile.companyId}:${profile.id}` : null;
   const [readReminderIds, setReadReminderIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setReadReminderIds(readStoredReminderIds(reminderStorageKey));
+  }, [reminderStorageKey]);
+
+  const updateReadReminderIds = (update: (current: string[]) => string[]) => {
+    setReadReminderIds((current) => {
+      const next = update(current);
+      persistReminderIds(reminderStorageKey, next);
+      return next;
+    });
+  };
 
   // Toast message
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -197,6 +235,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const allWorkEvents = useMemo(() => allWorkEventsData || [], [allWorkEventsData]);
   const { data: allPayrollData } = useAllPayrollHistory();
   const allPayroll = useMemo(() => allPayrollData || [], [allPayrollData]);
+  const { data: allProfileChangeRequestsData } = useAllProfileChangeRequests();
+  const allProfileChangeRequests = useMemo(() => allProfileChangeRequestsData || [], [allProfileChangeRequestsData]);
   const { data: allProfilesData } = useAllProfiles();
   const pendingOnboardingProfiles = useMemo(
     () => (allProfilesData || []).filter((profile) => profile.onboarding_status === 'submitted'),
@@ -377,16 +417,38 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       });
     });
 
+    // 7. Employee profile change requests pending review.
+    allProfileChangeRequests.forEach(req => {
+      if (req.status !== 'pending') return;
+      const empName = req.employees?.full_name || '';
+      generated.push({
+        id: `rem-pcr-${req.id}`,
+        category: 'profile_change_request',
+        title: 'Yêu cầu thay đổi thông tin hồ sơ',
+        message: `${empName} gửi yêu cầu: "${req.message}"`,
+        employeeId: req.employee_id,
+        employeeName: empName,
+        isRead: readReminderIds.includes(`rem-pcr-${req.id}`),
+        createdAt: req.created_at,
+        severity: 'medium',
+      });
+    });
+
     return generated;
-  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, readReminderIds]);
+  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, allProfileChangeRequests, readReminderIds]);
 
   const markReminderAsRead = (id: string) => {
-    setReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    updateReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
   };
 
   const resolveReminder = (id: string) => {
-    setReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    updateReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
     showToast('Đã đánh dấu đã đọc. Cảnh báo sẽ tự mất khi dữ liệu gốc được xử lý.');
+  };
+
+  const markAllRemindersAsRead = () => {
+    updateReadReminderIds(prev => [...new Set([...prev, ...reminders.map(r => r.id)])]);
+    showToast('Đã đánh dấu tất cả thông báo là đã đọc.');
   };
 
   return (
@@ -406,6 +468,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         pendingOnboardingCount: pendingOnboardingProfiles.length,
         markReminderAsRead,
         resolveReminder,
+        markAllRemindersAsRead,
         isNewLeaveModalOpen,
         setIsNewLeaveModalOpen,
         isEditProfileModalOpen,

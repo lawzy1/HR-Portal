@@ -54,20 +54,28 @@ export function useFileUpload() {
   return { uploadFile, isUploading, error };
 }
 
+type ImageTransform = { width: number; height: number; quality?: number };
+
+// Small fixed size for avatar thumbnails — avoids downloading full-resolution
+// originals for a ~40px circle. Supabase resizes/re-encodes on its CDN.
+export const AVATAR_TRANSFORM: ImageTransform = { width: 96, height: 96, quality: 60 };
+
 // Storage path -> short-lived signed URL, re-checked against RLS every call.
-export async function getSignedUrl(path: string | null | undefined): Promise<string | null> {
+// `transform` only applies to image files (ignored for PDFs etc.) — pass it
+// for thumbnails to cut payload size, omit it for full-resolution documents.
+export async function getSignedUrl(path: string | null | undefined, transform?: ImageTransform): Promise<string | null> {
   if (!path) return null;
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS, transform ? { transform } : undefined);
   if (error) return null;
   return data.signedUrl;
 }
 
 // React Query wrapper so the same path doesn't re-sign on every re-render —
 // cached for slightly less than the URL's own TTL.
-export function useSignedImageUrl(path: string | null | undefined) {
+export function useSignedImageUrl(path: string | null | undefined, transform?: ImageTransform) {
   return useQuery({
-    queryKey: ['signed-url', path],
-    queryFn: () => getSignedUrl(path),
+    queryKey: ['signed-url', path, transform],
+    queryFn: () => getSignedUrl(path, transform),
     enabled: !!path,
     staleTime: (SIGNED_URL_TTL_SECONDS - 60) * 1000,
   });

@@ -29,7 +29,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   EMAIL_DELIVERY_FAILED: 'Chưa thể gửi email. Vui lòng thử lại sau.',
   SERVICE_UNAVAILABLE: 'Hệ thống đang tạm thời không phản hồi. Vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Hệ thống đang gặp sự cố. Vui lòng thử lại sau.',
+  '22007': 'Ngày hoặc giá trị ngày không đúng định dạng. Vui lòng kiểm tra lại.',
+  '22P02': 'Một giá trị nhập vào không đúng định dạng. Vui lòng kiểm tra lại.',
+  '23502': 'Vui lòng nhập đủ các trường bắt buộc.',
   '23505': 'Dữ liệu này đã tồn tại. Vui lòng kiểm tra lại.',
+  '23503': 'Dữ liệu đang được tham chiếu ở nơi khác nên chưa thể cập nhật.',
+  '23514': 'Dữ liệu không đáp ứng quy tắc hợp lệ của hệ thống.',
   '42501': 'Bạn không có quyền thực hiện thao tác này.',
 };
 

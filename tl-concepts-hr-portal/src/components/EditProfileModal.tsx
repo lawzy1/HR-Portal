@@ -12,6 +12,8 @@ import {
 } from '../hooks/useEmployees';
 import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
 import { useRequestOwnProfileChange } from '../hooks/useProfileChangeRequest';
+import { useContracts, type DbContract } from '../hooks/useContracts';
+import { ContractEditorModal } from './admin/ContractEditorModal';
 import { getUserFacingError } from '../lib/userFacingError';
 import { CurrencyInput } from './CurrencyInput';
 import {
@@ -27,17 +29,12 @@ import {
   Camera,
   MapPin,
   Briefcase,
-  ShieldCheck,
-  HelpCircle,
   Smartphone,
-  Eye,
   Lock,
   Loader2,
   Award,
   Send,
 } from 'lucide-react';
-import { VneidGuideModal } from './VneidGuideModal';
-import { VNEID_SAMPLE_IMAGE } from '../constants/vneidSample';
 
 import { KPI_LEVEL_SUGGESTIONS } from '../constants/kpiLevels';
 
@@ -52,7 +49,8 @@ const ImageUploadSlot: React.FC<{
   onClear?: () => void;
   disabled?: boolean;
   heightClass?: string;
-}> = ({ label, path, pendingFile, onPick, onClear, disabled, heightClass = 'h-40' }) => {
+  objectFitClass?: 'object-cover' | 'object-contain';
+}> = ({ label, path, pendingFile, onPick, onClear, disabled, heightClass = 'h-40', objectFitClass = 'object-cover' }) => {
   const { data: signedUrl } = useSignedImageUrl(pendingFile ? null : path);
   const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : signedUrl;
 
@@ -61,7 +59,7 @@ const ImageUploadSlot: React.FC<{
       <p className="text-[11px] font-bold text-slate-700 mb-2">{label}</p>
       {previewUrl ? (
         <div className="relative">
-          <img src={previewUrl} alt={label} className={`w-full ${heightClass} object-cover rounded-xl border border-slate-200`} />
+          <img src={previewUrl} alt={label} className={`w-full ${heightClass} ${objectFitClass} rounded-xl border border-slate-200 bg-slate-100`} />
           {!disabled && (
             <label className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold cursor-pointer rounded-xl transition-opacity gap-1.5">
               <Upload className="w-6 h-6 text-success-400" />
@@ -115,6 +113,12 @@ export const EditProfileModal: React.FC = () => {
   const { data: employee } = useEmployee(targetEmployeeId);
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(targetEmployeeId);
   const { data: relativesData } = useEmployeeRelatives(targetEmployeeId);
+  const { data: employeeContracts } = useContracts(targetEmployeeId);
+  const [editingContract, setEditingContract] = useState<DbContract | null | undefined>(undefined);
+  const latestContract = useMemo(
+    () => [...(employeeContracts || [])].sort((a, b) => b.start_date.localeCompare(a.start_date))[0],
+    [employeeContracts]
+  );
 
   const updateEmployee = useUpdateEmployee();
   const upsertSensitiveInfo = useUpsertEmployeeSensitiveInfo();
@@ -124,8 +128,8 @@ export const EditProfileModal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'general' | 'employment' | 'contact' | 'documents' | 'bank' | 'relatives'>('general');
   const [isSaving, setIsSaving] = useState(false);
-  const [isVneidGuideOpen, setIsVneidGuideOpen] = useState(false);
   const [changeRequestMessage, setChangeRequestMessage] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Tab 1: General (avatar/dob/gender/marital self-editable; the rest is
   // admin-only — see the enforce_employee_self_edit_columns trigger)
@@ -321,8 +325,72 @@ export const EditProfileModal: React.FC = () => {
     setRelativesState(relatives.filter((r) => r.id !== id));
   };
 
+  const validateProfileForm = () => {
+    const errors: Record<string, string> = {};
+    const phonePattern = /^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/;
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const identifierPattern = /^[A-Za-z0-9]{6,20}$/;
+    const taxCodePattern = /^\d{10}(?:-\d{3})?$/;
+    const socialInsurancePattern = /^\d{10}$/;
+    const accountNumberPattern = /^\d{6,20}$/;
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (isAdmin && !fullName.trim()) errors.fullName = 'Vui lòng nhập họ và tên.';
+    if (isAdmin && !employeeCode.trim()) errors.employeeCode = 'Vui lòng nhập mã nhân viên.';
+    if (isAdmin && !jobTitle.trim()) errors.jobTitle = 'Vui lòng nhập chức danh công việc.';
+    if (!phone.trim()) errors.phone = 'Vui lòng nhập số điện thoại.';
+    else if (!phonePattern.test(phone.replace(/[\s.-]/g, ''))) errors.phone = 'Số điện thoại phải có dạng 0xxxxxxxxx hoặc +84xxxxxxxxx.';
+    if (isAdmin && email.trim() && !emailPattern.test(email.trim())) errors.email = 'Email không đúng định dạng.';
+    if (dob && dob > today) errors.dob = 'Ngày sinh không thể ở tương lai.';
+    if (isAdmin && startDate && startDate > today) errors.startDate = 'Ngày bắt đầu không thể ở tương lai.';
+    if (lastSalaryReviewDate && lastSalaryReviewDate > today) errors.lastSalaryReviewDate = 'Ngày review lương không thể ở tương lai.';
+
+    if (isAdmin) {
+      if (!Number.isFinite(currentSalary) || currentSalary < 0) errors.currentSalary = 'Mức lương phải là số không âm.';
+      if (kpiTargetPerDay !== '' && (!Number.isFinite(kpiTargetPerDay) || kpiTargetPerDay < 0)) errors.kpiTargetPerDay = 'Chỉ tiêu KPI phải là số không âm.';
+      if (performanceCommissionRate < 0) errors.performanceCommissionRate = 'Mức commission phải là số không âm.';
+      if (qcCommissionRate < 0) errors.qcCommissionRate = 'Mức commission phải là số không âm.';
+      if (guaranteedIncomeAmount < 0) errors.guaranteedIncomeAmount = 'Mức đảm bảo phải là số không âm.';
+    }
+
+    if (idCardNumber.trim() && !identifierPattern.test(idCardNumber.trim())) errors.idCardNumber = 'CCCD/Hộ chiếu chỉ gồm 6-20 ký tự chữ và số.';
+    if (idCardIssueDate && idCardIssueDate > today) errors.idCardIssueDate = 'Ngày cấp không thể ở tương lai.';
+    if (taxCode.trim() && !taxCodePattern.test(taxCode.trim())) errors.taxCode = 'MST phải gồm 10 số hoặc dạng 10 số-3 số.';
+    if (socialInsuranceCode.trim() && !socialInsurancePattern.test(socialInsuranceCode.trim())) errors.socialInsuranceCode = 'Mã BHXH phải gồm đúng 10 chữ số.';
+
+    const hasBankInfo = [bankName, accountNumber, accountHolder, bankBranch].some((value) => value.trim());
+    if (hasBankInfo && !bankName.trim()) errors.bankName = 'Đã nhập thông tin ngân hàng, cần bổ sung tên ngân hàng.';
+    if (hasBankInfo && !accountNumberPattern.test(accountNumber.trim())) errors.accountNumber = 'Số tài khoản phải gồm 6-20 chữ số.';
+    if (hasBankInfo && !accountHolder.trim()) errors.accountHolder = 'Vui lòng nhập tên chủ tài khoản.';
+
+    relatives.forEach((relative, index) => {
+      if (!relative.fullName.trim()) errors[`relative-${index}`] = `Vui lòng nhập họ tên người thân #${index + 1}.`;
+      if (relative.phone.trim() && !phonePattern.test(relative.phone.replace(/[\s.-]/g, ''))) {
+        errors[`relative-phone-${index}`] = `Số điện thoại người thân #${index + 1} không đúng định dạng.`;
+      }
+    });
+
+    const imageFiles = [
+      ['avatarFile', avatarFile],
+      ['idCardFrontFile', idCardFrontFile],
+      ['idCardBackFile', idCardBackFile],
+      ['vneidFile', vneidFile],
+    ] as const;
+    imageFiles.forEach(([field, file]) => {
+      if (file && !file.type.startsWith('image/')) errors[field] = 'Tệp phải là hình ảnh.';
+      else if (file && file.size > 10 * 1024 * 1024) errors[field] = 'Ảnh không được vượt quá 10 MB.';
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateProfileForm()) {
+      showToast('Vui lòng kiểm tra các trường đang báo lỗi trước khi lưu.');
+      return;
+    }
     setIsSaving(true);
 
     try {
@@ -413,14 +481,14 @@ export const EditProfileModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[min(92vh,760px)] max-h-[92vh] flex flex-col overflow-hidden border border-slate-200">
 
         {/* Header */}
-        <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-slate-900 text-white p-6 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center space-x-3">
             <ImageAvatarPreview path={avatarFile ? null : avatarPath} file={avatarFile} />
             <div>
-              <h2 className="text-base font-bold flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2">
                 <span>{isAdmin ? 'Chỉnh sửa Hồ sơ Nhân viên' : 'Hồ sơ của tôi'}</span>
                 <span className="text-xs bg-success-600/90 text-white font-mono font-bold px-2 py-0.5 rounded-md">
                   {employeeCode}
@@ -440,26 +508,40 @@ export const EditProfileModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Navigation Sub-Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-1 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'border-primary-600 text-primary-700 bg-white rounded-t-lg'
-                  : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          {/* Navigation Sub-Tabs */}
+          <nav className="shrink-0 border-b border-slate-200 bg-slate-50 p-3 md:w-64 md:border-b-0 md:border-r md:p-4">
+            <p className="mb-2 hidden px-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 md:block">Các mục hồ sơ</p>
+            <div className="flex gap-1 overflow-x-auto md:flex-col md:gap-1.5 md:overflow-visible">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3.5 py-3 text-sm font-bold transition-all cursor-pointer whitespace-nowrap md:w-full ${
+                    activeTab === tab.id
+                      ? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
 
-        <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-5">
+          <form onSubmit={handleSave} className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800" role="alert">
+              <p className="font-bold">Vui lòng kiểm tra các thông tin sau:</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                {Object.values(validationErrors).map((message) => <li key={message}>{message}</li>)}
+              </ul>
+            </div>
+          )}
 
           {!isAdmin && (activeTab === 'general' || activeTab === 'employment') && (
             <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
@@ -504,8 +586,9 @@ export const EditProfileModal: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Ngày sinh:</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.dob ? 'text-rose-600' : 'text-slate-700'}`}>Ngày sinh:</label>
                   <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputClass} />
+                  {validationErrors.dob && <ValidationMessage message={validationErrors.dob} />}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Giới tính:</label>
@@ -596,8 +679,10 @@ export const EditProfileModal: React.FC = () => {
                 path={avatarPath}
                 pendingFile={avatarFile}
                 onPick={setAvatarFile}
-                heightClass="h-32"
+                heightClass="h-40"
+                objectFitClass="object-contain"
               />
+              {validationErrors.avatarFile && <ValidationMessage message={validationErrors.avatarFile} />}
             </div>
           )}
 
@@ -628,6 +713,33 @@ export const EditProfileModal: React.FC = () => {
                   <input type="date" value={lastSalaryReviewDate} onChange={(e) => setLastSalaryReviewDate(e.target.value)} disabled={!isAdmin} className={inputClass} />
                 </LockableField>
               </div>
+
+              {isAdmin && (
+                <div className="p-4 bg-primary-50/60 rounded-2xl border border-primary-200 space-y-2">
+                  <p className="font-bold text-primary-900 text-xs">Hợp đồng lao động & trường tùy chỉnh</p>
+                  <p className="text-[11px] text-slate-500">
+                    Quản lý hợp đồng chi tiết, bao gồm các trường tùy chỉnh riêng cho từng hợp đồng, ngay tại đây.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingContract(null)}
+                      className="px-3.5 py-2 bg-white hover:bg-primary-50 border border-primary-300 text-primary-700 font-semibold rounded-xl text-xs cursor-pointer"
+                    >
+                      + Tạo hợp đồng mới
+                    </button>
+                    {latestContract && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingContract(latestContract)}
+                        className="px-3.5 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl text-xs cursor-pointer"
+                      >
+                        Chỉnh sửa hợp đồng hiện tại
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -636,11 +748,13 @@ export const EditProfileModal: React.FC = () => {
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Số điện thoại liên hệ *:</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.phone ? 'text-rose-600' : 'text-slate-700'}`}>Số điện thoại liên hệ *:</label>
                   <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className={`${inputClass} font-bold text-primary-700`} required />
+                  {validationErrors.phone && <ValidationMessage message={validationErrors.phone} />}
                 </div>
                 <LockableField label="Email công ty *" locked={!isAdmin}>
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!isAdmin} className={inputClass} required />
+                  {validationErrors.email && <ValidationMessage message={validationErrors.email} />}
                 </LockableField>
               </div>
               <div>
@@ -659,12 +773,14 @@ export const EditProfileModal: React.FC = () => {
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Số CCCD / Hộ chiếu *:</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.idCardNumber ? 'text-rose-600' : 'text-slate-700'}`}>Số CCCD / Hộ chiếu *:</label>
                   <input type="text" value={idCardNumber} onChange={(e) => setIdCardNumber(e.target.value)} className={`${inputClass} font-mono font-bold`} />
+                  {validationErrors.idCardNumber && <ValidationMessage message={validationErrors.idCardNumber} />}
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Ngày cấp:</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.idCardIssueDate ? 'text-rose-600' : 'text-slate-700'}`}>Ngày cấp:</label>
                   <input type="date" value={idCardIssueDate} onChange={(e) => setIdCardIssueDate(e.target.value)} className={inputClass} />
+                  {validationErrors.idCardIssueDate && <ValidationMessage message={validationErrors.idCardIssueDate} />}
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Nơi cấp:</label>
@@ -674,12 +790,14 @@ export const EditProfileModal: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mã số thuế cá nhân (MST):</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.taxCode ? 'text-rose-600' : 'text-slate-700'}`}>Mã số thuế cá nhân (MST):</label>
                   <input type="text" value={taxCode} onChange={(e) => setTaxCode(e.target.value)} className={`${inputClass} font-mono text-primary-700`} />
+                  {validationErrors.taxCode && <ValidationMessage message={validationErrors.taxCode} />}
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mã số Bảo hiểm xã hội (BHXH):</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.socialInsuranceCode ? 'text-rose-600' : 'text-slate-700'}`}>Mã số Bảo hiểm xã hội (BHXH):</label>
                   <input type="text" value={socialInsuranceCode} onChange={(e) => setSocialInsuranceCode(e.target.value)} className={`${inputClass} font-mono text-success-700`} />
+                  {validationErrors.socialInsuranceCode && <ValidationMessage message={validationErrors.socialInsuranceCode} />}
                 </div>
               </div>
 
@@ -692,24 +810,17 @@ export const EditProfileModal: React.FC = () => {
               </div>
 
               <div className="p-4 bg-gradient-to-br from-red-50/80 via-rose-50/50 to-orange-50/40 rounded-2xl border-2 border-red-200/90 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-red-200/70">
+                <div className="flex items-center gap-2 pb-2 border-b border-red-200/70">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-xs">
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
                     <div>
                       <h4 className="font-extrabold text-xs text-red-950">Ảnh chụp trang "Thông tin cư trú" (VNeID)</h4>
                       <p className="text-[11px] text-red-700">Xác thực địa chỉ thường trú, tạm trú</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setIsVneidGuideOpen(true)} className="self-start sm:self-auto px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 border border-red-300 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-                    <HelpCircle className="w-4 h-4 text-red-600" />
-                    <span>Xem ảnh mẫu hướng dẫn</span>
-                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start pt-1">
-                  <div className="md:col-span-7">
+                <div className="pt-1">
+                  <div>
                     {vneidPath || vneidFile ? (
                       <ImageUploadSlot label="" path={vneidPath} pendingFile={vneidFile} onPick={setVneidFile} onClear={() => setVneidPath(null)} heightClass="h-48" />
                     ) : (
@@ -725,26 +836,8 @@ export const EditProfileModal: React.FC = () => {
                       </label>
                     )}
                   </div>
-
-                  <div className="md:col-span-5 bg-white p-3.5 rounded-2xl border border-red-200 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-red-900 uppercase tracking-wide">Ảnh Mẫu Hướng Dẫn</span>
-                      <button type="button" onClick={() => setIsVneidGuideOpen(true)} className="text-[11px] text-red-600 font-bold hover:underline">
-                        Phóng to
-                      </button>
-                    </div>
-                    <div onClick={() => setIsVneidGuideOpen(true)} className="relative rounded-xl overflow-hidden bg-slate-900 h-32 border border-slate-700 cursor-pointer group flex items-center justify-center">
-                      <img src={VNEID_SAMPLE_IMAGE} alt="Ảnh mẫu VNeID" className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform" />
-                      <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                        <Eye className="w-4 h-4" />
-                        <span>Xem ảnh mẫu chi tiết</span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">
-                      Đăng nhập <strong>VNeID</strong> → <strong>Ví giấy tờ</strong> → <strong>Thông tin cư trú</strong> → Chụp toàn bộ màn hình.
-                    </p>
-                  </div>
                 </div>
+                {validationErrors.vneidFile && <ValidationMessage message={validationErrors.vneidFile} />}
               </div>
             </div>
           )}
@@ -753,17 +846,20 @@ export const EditProfileModal: React.FC = () => {
           {activeTab === 'bank' && (
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Tên Ngân hàng nhận lương *:</label>
+                <label className={`block font-bold mb-1 ${validationErrors.bankName ? 'text-rose-600' : 'text-slate-700'}`}>Tên Ngân hàng nhận lương *:</label>
                 <input type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="VD: Vietcombank, Techcombank, MB Bank..." className={`${inputClass} font-bold`} />
+                {validationErrors.bankName && <ValidationMessage message={validationErrors.bankName} />}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Số tài khoản nhận lương *:</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.accountNumber ? 'text-rose-600' : 'text-slate-700'}`}>Số tài khoản nhận lương *:</label>
                   <input type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className={`${inputClass} font-mono font-bold text-primary-700 text-sm`} />
+                  {validationErrors.accountNumber && <ValidationMessage message={validationErrors.accountNumber} />}
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tên chủ tài khoản (Viết hoa không dấu) *:</label>
+                  <label className={`block font-bold mb-1 ${validationErrors.accountHolder ? 'text-rose-600' : 'text-slate-700'}`}>Tên chủ tài khoản (Viết hoa không dấu) *:</label>
                   <input type="text" value={accountHolder} onChange={(e) => setAccountHolder(e.target.value.toUpperCase())} className={`${inputClass} font-mono font-bold uppercase`} />
+                  {validationErrors.accountHolder && <ValidationMessage message={validationErrors.accountHolder} />}
                 </div>
               </div>
               <div>
@@ -817,6 +913,8 @@ export const EditProfileModal: React.FC = () => {
                         <input type="text" placeholder="Số điện thoại" value={rel.phone} onChange={(e) => setRelativesState(relatives.map((r) => (r.id === rel.id ? { ...r, phone: e.target.value } : r)))} className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg font-mono" />
                         <input type="text" placeholder="Địa chỉ" value={rel.address} onChange={(e) => setRelativesState(relatives.map((r) => (r.id === rel.id ? { ...r, address: e.target.value } : r)))} className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg" />
                       </div>
+                      {validationErrors[`relative-${index}`] && <ValidationMessage message={validationErrors[`relative-${index}`]} />}
+                      {validationErrors[`relative-phone-${index}`] && <ValidationMessage message={validationErrors[`relative-phone-${index}`]} />}
                     </div>
                   ))}
                 </div>
@@ -824,8 +922,10 @@ export const EditProfileModal: React.FC = () => {
             </div>
           )}
 
-          {/* Modal Footer */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+            </div>
+
+            {/* Modal Footer */}
+            <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-4 sm:px-8 flex items-center justify-end gap-3">
             <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
               Hủy bỏ
             </button>
@@ -833,17 +933,26 @@ export const EditProfileModal: React.FC = () => {
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span>Lưu thay đổi hồ sơ</span>
             </button>
-          </div>
-        </form>
+            </div>
+          </form>
+        </div>
       </div>
 
-      <VneidGuideModal isOpen={isVneidGuideOpen} onClose={() => setIsVneidGuideOpen(false)} />
+      {editingContract !== undefined && employee && (
+        <ContractEditorModal
+          employee={employee}
+          employees={[employee]}
+          contract={editingContract}
+          existingContracts={employeeContracts || []}
+          onClose={() => setEditingContract(undefined)}
+        />
+      )}
     </div>
   );
 };
 
 const inputClass =
-  'w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed';
+  'w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed';
 
 const LockableField: React.FC<{ label: string; locked: boolean; children: React.ReactNode }> = ({ label, locked, children }) => (
   <div>
@@ -853,6 +962,10 @@ const LockableField: React.FC<{ label: string; locked: boolean; children: React.
     </label>
     {children}
   </div>
+);
+
+const ValidationMessage: React.FC<{ message: string }> = ({ message }) => (
+  <p className="mt-1 text-[11px] font-semibold text-rose-600" role="alert">{message}</p>
 );
 
 const ImageAvatarPreview: React.FC<{ path: string | null; file: File | null }> = ({ path, file }) => {

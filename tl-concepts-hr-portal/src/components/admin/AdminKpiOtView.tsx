@@ -13,14 +13,16 @@ import {
   Send,
   ShieldCheck,
   RotateCcw,
+  Users,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useI18n } from '../../context/I18nContext';
 import { useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useAuth } from '../../context/AuthContext';
-import { useEmployees } from '../../hooks/useEmployees';
-import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { useEmployees, useUpdateEmployee } from '../../hooks/useEmployees';
+import { useAllProfiles } from '../../hooks/useProfiles';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
 import {
   useAllKpiJobItems,
   useCreateKpiJobItem,
@@ -36,13 +38,13 @@ import {
   useUpsertCompanyWorkdayOverride,
 } from '../../hooks/useKpi';
 import { useAllOtRecords, useCreateOtRecord, useDeleteOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
-import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { useAllLeaveRequests, useCompanyHolidays } from '../../hooks/useLeave';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../../utils/workDays';
 import { formatDate } from '../../utils/formatters';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { ModalPanel } from '../ui/ModalPanel';
+import { MonthYearFilter } from '../ui/MonthYearFilter';
 
 const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
   { value: 'new_render', label: 'New Render' },
@@ -51,8 +53,8 @@ const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
 
 const categoryBadge = (category: string) =>
   category === 'reprocess'
-    ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Re Process</span>
-    : <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-success-100 text-success-800 border border-success-300">New Render</span>;
+    ? <span className="inline-flex whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Re Process</span>
+    : <span className="inline-flex whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-success-100 text-success-800 border border-success-300">New Render</span>;
 
 // employee_id is a required FK on kpi_job_items now — job assignment is a real
 // employee picker, no more fuzzy assigneeName string matching against full_name.
@@ -77,9 +79,9 @@ interface JobGroup {
 }
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
-  const { data: url } = useSignedImageUrl(path);
+  const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
   return url ? (
-    <img src={url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" />
+    <img src={url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" loading="lazy" width={40} height={40} />
   ) : (
     <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 shrink-0" />
   );
@@ -98,17 +100,19 @@ export const AdminKpiOtView: React.FC = () => {
   const { t, value } = useI18n();
 
   const { data: employees } = useEmployees();
-  const { data: companySettings } = useCompanySettings();
   const { data: holidays } = useCompanyHolidays();
   const { data: allLeaveRequests } = useAllLeaveRequests();
+  const { data: allProfiles } = useAllProfiles();
+  const updateEmployee = useUpdateEmployee();
   const employeeList = useMemo(() => employees || [], [employees]);
+  const backofficeEmployeeIds = useMemo(
+    () => new Set((allProfiles || []).filter(p => p.role === 'admin' || p.role === 'hr').map(p => p.employee_id)),
+    [allProfiles]
+  );
+  const kpiEligibleEmployees = useMemo(() => employeeList.filter(e => e.include_in_kpi), [employeeList]);
 
   const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
-  const yearOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 12 }, (_, index) => currentYear - 1 + index);
-  }, []);
 
   const holidayDatesInMonth = useMemo(
     () => (holidays || []).filter((h) => h.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`)).map((h) => h.date),
@@ -215,7 +219,7 @@ export const AdminKpiOtView: React.FC = () => {
   const delayLabel = (job: KpiJobRow) => {
     if (!job.deadline_at || !job.completed_at) return null;
     const minutes = Math.ceil((new Date(job.completed_at).getTime() - new Date(job.deadline_at).getTime()) / 60000);
-    if (minutes <= 0) return { text: t('adminKpi.onTime'), late: false };
+    if (minutes <= 0) return null;
     const hours = Math.floor(minutes / 60);
     return { text: t('adminKpi.lateBy', { hours, minutes: minutes % 60 }), late: true };
   };
@@ -242,8 +246,18 @@ export const AdminKpiOtView: React.FC = () => {
       map.get(key)!.push(job);
     });
 
+    groups.sort((a, b) => a.orderJob.localeCompare(b.orderJob, undefined, { numeric: true }));
     return groups;
   }, [currentMonthJobs]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapsed = (orderJob: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(orderJob)) next.delete(orderJob); else next.add(orderJob);
+      return next;
+    });
+  };
 
   // Handle Add / Edit Job Submit
   const handleAddJobSubmit = async (e: React.FormEvent) => {
@@ -454,8 +468,30 @@ export const AdminKpiOtView: React.FC = () => {
   };
 
   // Sync KPI points directly to employee records & payroll (kpi_monthly upsert)
+  const handleToggleIncludeInKpi = async (emp: DbEmployeeRow) => {
+    try {
+      await updateEmployee.mutateAsync({ id: emp.id, updates: { include_in_kpi: !emp.include_in_kpi } });
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể cập nhật danh sách nhận KPI. Vui lòng thử lại.'));
+    }
+  };
+
+  const handleExcludeBackoffice = async () => {
+    const toExclude = employeeList.filter(e => backofficeEmployeeIds.has(e.id) && e.include_in_kpi);
+    if (!toExclude.length) {
+      showToast('Không có tài khoản Admin/HR nào đang nằm trong danh sách nhận KPI.');
+      return;
+    }
+    try {
+      await Promise.all(toExclude.map(e => updateEmployee.mutateAsync({ id: e.id, updates: { include_in_kpi: false } })));
+      showToast(`Đã loại ${toExclude.length} tài khoản Admin/HR khỏi bản nháp KPI tháng.`);
+    } catch (error) {
+      showToast(await getUserFacingError(error, 'Không thể cập nhật danh sách nhận KPI. Vui lòng thử lại.'));
+    }
+  };
+
   const handleSyncKpiToProfiles = async () => {
-    if (!companySettings || !profile?.companyId) {
+    if (!profile?.companyId) {
       showToast('Đang tải cấu hình công ty, vui lòng thử lại sau ít giây.');
       return;
     }
@@ -464,7 +500,7 @@ export const AdminKpiOtView: React.FC = () => {
       return;
     }
 
-    await Promise.all(employeeList.map(async (emp) => {
+    await Promise.all(kpiEligibleEmployees.map(async (emp) => {
       // Real employee_id FK match — no more fuzzy assigneeName string matching.
       const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
 
@@ -476,20 +512,11 @@ export const AdminKpiOtView: React.FC = () => {
       const target = getEmployeeKpiTarget(emp);
       const completionPct = target ? Math.round((totalKpiPoints / target) * 100) : 0;
 
-      // Commission is configured per employee. Legacy company settings remain
-      // a fallback until the employee's current contract/addendum has a rate.
-      const commissionRate = emp.performance_commission_rate || companySettings.kpi_bonus_per_point;
-      const performanceCommissionAmount = Math.round(totalKpiPoints * commissionRate);
-      // Guaranteed income is treated as a monthly floor for base salary plus
-      // performance commission. The delta is stored separately for auditability.
+      // Money fields (commission, QC, guaranteed-income topup) are no longer
+      // auto-calculated from rates/formulas — HR types them in directly on
+      // the row below. Re-running the draft sync must not wipe out whatever
+      // they already entered, so carry the existing record's values forward.
       const existingMonthly = monthlyKpi.find(record => record.employee_id === emp.id);
-      const qcViews = Number(existingMonthly?.qc_views || 0);
-      const qcRate = Number(existingMonthly?.qc_rate_snapshot || emp.qc_commission_rate || 0);
-      const qcCommissionAmount = Math.round(qcViews * qcRate);
-      const guaranteedIncomeTopup = Math.max(
-        0,
-        Math.round((emp.guaranteed_income_amount || 0) - (emp.current_salary || 0) - performanceCommissionAmount - qcCommissionAmount),
-      );
 
       // Real OT hours actually logged by this employee in the period — not a flat placeholder.
       const otHoursForEmp = allOtRecords
@@ -506,52 +533,49 @@ export const AdminKpiOtView: React.FC = () => {
         kpi_target: target,
         completion_percentage: completionPct,
         ot_hours: otHoursForEmp,
-        commission_rate_snapshot: commissionRate,
-        performance_commission_amount: performanceCommissionAmount,
-        qc_views: qcViews,
-        qc_rate_snapshot: qcRate,
-        qc_commission_amount: qcCommissionAmount,
-        guaranteed_income_topup: guaranteedIncomeTopup,
-        bonus_amount: performanceCommissionAmount + qcCommissionAmount + guaranteedIncomeTopup,
+        commission_rate_snapshot: existingMonthly?.commission_rate_snapshot || 0,
+        performance_commission_amount: existingMonthly?.performance_commission_amount || 0,
+        qc_views: existingMonthly?.qc_views || 0,
+        qc_rate_snapshot: existingMonthly?.qc_rate_snapshot || 0,
+        qc_commission_amount: existingMonthly?.qc_commission_amount || 0,
+        guaranteed_income_topup: existingMonthly?.guaranteed_income_topup || 0,
+        bonus_amount: existingMonthly?.bonus_amount || 0,
         publish_status: 'draft',
-        // No real "benefit" data source in this phase — left at 0 for admin to fill in
-        // manually, rather than fabricating a plausible-looking number.
-        benefit_amount: 0,
-        notes: `Tính từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${getEmployeeWorkDays(emp.id)} công (quy chuẩn ${effectiveStandardWorkDays}, đã trừ ${approvedLeaveDaysByEmployee.get(emp.id) || 0} ngày phép đã duyệt) = ${target} view; commission ${commissionRate.toLocaleString('vi-VN')} VNĐ/view; bù đảm bảo thu nhập ${guaranteedIncomeTopup.toLocaleString('vi-VN')} VNĐ. QC commission được HR nhập khi có số liệu QC thực tế.`,
+        benefit_amount: existingMonthly?.benefit_amount || 0,
+        notes: `Ghi nhận từ ${empJobs.length} bài/dự án; chỉ tiêu ${emp.kpi_target_per_day || 0} view/ngày × ${getEmployeeWorkDays(emp.id)} công (quy chuẩn ${effectiveStandardWorkDays}, đã trừ ${approvedLeaveDaysByEmployee.get(emp.id) || 0} ngày phép đã duyệt) = ${target} view. Commission/thưởng do HR nhập tay ở bảng bên dưới.`,
       });
     }));
 
     showToast(`Đã tạo bản nháp KPI tháng ${selectedMonth}/${selectedYear}. Kiểm tra số liệu trước khi gửi Admin duyệt.`);
   };
 
-  const handleQcViewsUpdate = async (record: KpiMonthlyRow, rawViews: number) => {
+  // Every money field on the monthly commission row is now a plain manual
+  // entry — HR types the number, the system just records it. The total is
+  // still auto-summed since it's trivial arithmetic of what was just typed,
+  // not a derived formula from performance data.
+  const handleMoneyFieldUpdate = async (
+    record: KpiMonthlyRow,
+    field: 'performance_commission_amount' | 'qc_views' | 'qc_commission_amount' | 'guaranteed_income_topup',
+    rawValue: number,
+  ) => {
     if (!['draft', 'rejected'].includes(record.publish_status)) return;
-    const qcViews = Number.isFinite(rawViews) ? Math.max(0, rawViews) : 0;
-    const qcCommissionAmount = Math.round(qcViews * Number(record.qc_rate_snapshot || 0));
-    const employee = employeeList.find(item => item.id === record.employee_id);
-    const guaranteedIncomeTopup = Math.max(
-      0,
-      Math.round(
-        Number(employee?.guaranteed_income_amount || 0)
-        - Number(employee?.current_salary || 0)
-        - Number(record.performance_commission_amount || 0)
-        - qcCommissionAmount,
-      ),
-    );
+    const value = Number.isFinite(rawValue) ? Math.max(0, rawValue) : 0;
+    if (value === Number(record[field] || 0)) return;
+    const performanceCommission = field === 'performance_commission_amount' ? value : Number(record.performance_commission_amount || 0);
+    const qcCommission = field === 'qc_commission_amount' ? value : Number(record.qc_commission_amount || 0);
+    const guaranteedTopup = field === 'guaranteed_income_topup' ? value : Number(record.guaranteed_income_topup || 0);
 
     try {
       await updateKpiMonthly.mutateAsync({
         id: record.id,
         updates: {
-          qc_views: qcViews,
-          qc_commission_amount: qcCommissionAmount,
-          guaranteed_income_topup: guaranteedIncomeTopup,
-          bonus_amount: Number(record.performance_commission_amount || 0) + qcCommissionAmount + guaranteedIncomeTopup,
+          [field]: value,
+          bonus_amount: performanceCommission + qcCommission + guaranteedTopup,
         },
       });
-      showToast(`Đã cập nhật QC commission cho ${record.employees?.full_name || 'nhân viên'}.`);
+      showToast(`Đã cập nhật cho ${record.employees?.full_name || 'nhân viên'}.`);
     } catch (error) {
-      showToast(await getUserFacingError(error, 'Không thể cập nhật QC commission. Vui lòng thử lại.'));
+      showToast(await getUserFacingError(error, 'Không thể cập nhật. Vui lòng thử lại.'));
     }
   };
 
@@ -743,24 +767,11 @@ export const AdminKpiOtView: React.FC = () => {
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
             <span className="text-xs font-bold text-slate-500">{t('adminKpi.periodLabel')}</span>
-            <select
-              value={selectedMonth}
-              onChange={e => setSelectedMonth(Number(e.target.value))}
-              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                <option key={m} value={m}>{t('common.month', { month: m })}</option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={e => setSelectedYear(Number(e.target.value))}
-              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none"
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>{t('common.year', { year })}</option>
-              ))}
-            </select>
+            <MonthYearFilter
+              month={selectedMonth}
+              year={selectedYear}
+              onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y); }}
+            />
           </div>
 
           <span className="text-xs text-slate-500">
@@ -880,13 +891,24 @@ export const AdminKpiOtView: React.FC = () => {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {backofficeEmployeeIds.size > 0 && (
+              <button
+                onClick={() => void handleExcludeBackoffice()}
+                disabled={updateEmployee.isPending || hasPendingKpi || hasPublishedKpi}
+                className="px-3 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                title="Bỏ chọn các tài khoản Admin/HR khỏi bản nháp KPI tháng này"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Loại Admin/HR</span>
+              </button>
+            )}
             <button
               onClick={handleSyncKpiToProfiles}
-              disabled={upsertKpiMonthly.isPending || hasPendingKpi || hasPublishedKpi}
+              disabled={upsertKpiMonthly.isPending || hasPendingKpi || hasPublishedKpi || !kpiEligibleEmployees.length}
               className="px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-60 shadow-md shadow-success-600/20"
             >
               <Calculator className="w-4 h-4" />
-              <span>{t('adminKpi.createDraft')}</span>
+              <span>{t('adminKpi.createDraft')} ({kpiEligibleEmployees.length})</span>
             </button>
             {hasEditableKpi && (
               <button onClick={() => void handleSubmitKpiApproval()} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5">
@@ -911,6 +933,7 @@ export const AdminKpiOtView: React.FC = () => {
           <table className="w-full text-left text-xs text-slate-700 border-collapse">
             <thead className="bg-slate-100 text-slate-800 uppercase text-[11px] font-bold border-b border-slate-300">
               <tr>
+                <th className="py-3 px-3 text-center border-r border-slate-200 w-14" title="Có tính vào bản nháp KPI tháng khi bấm 'Tạo bản nháp'">Nhận KPI</th>
                 <th className="py-3 px-4 min-w-[220px] border-r border-slate-200">{t('adminKpi.colEmployee')}</th>
                 <th className="py-3 px-4 min-w-[180px] border-r border-slate-200">{t('adminKpi.colLevel')}</th>
                 <th className="py-3 px-3 text-center border-r border-slate-200">{t('adminKpi.colTarget')}</th>
@@ -920,15 +943,26 @@ export const AdminKpiOtView: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {employeeList.length === 0 ? (
-                <tr><td colSpan={5} className="py-8 text-center text-slate-400">{t('adminKpi.noEmployees')}</td></tr>
+                <tr><td colSpan={6} className="py-8 text-center text-slate-400">{t('adminKpi.noEmployees')}</td></tr>
               ) : employeeList.map((emp) => (
-                <tr key={emp.id} className="hover:bg-slate-50">
+                <tr key={emp.id} className={`hover:bg-slate-50 ${!emp.include_in_kpi ? 'opacity-50' : ''}`}>
+                  <td className="py-3 px-3 text-center border-r border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={emp.include_in_kpi}
+                      onChange={() => void handleToggleIncludeInKpi(emp)}
+                      disabled={updateEmployee.isPending || hasPendingKpi || hasPublishedKpi}
+                      className="w-4 h-4 cursor-pointer disabled:cursor-not-allowed"
+                      title={emp.include_in_kpi ? 'Bỏ khỏi bản nháp KPI tháng' : 'Đưa lại vào bản nháp KPI tháng'}
+                    />
+                  </td>
                   <td className="py-3 px-4 border-r border-slate-200">
                     <div className="flex items-center gap-2.5">
                       <RowAvatar path={emp.avatar_url} />
                       <div>
                         <p className="font-bold text-slate-900">{emp.full_name}</p>
                         <p className="text-[10px] text-slate-400 font-mono">{emp.employee_code} • {emp.department}</p>
+                        {!emp.include_in_kpi && <p className="text-[10px] font-bold text-amber-600">Không tính vào KPI tháng</p>}
                       </div>
                     </div>
                   </td>
@@ -972,7 +1006,6 @@ export const AdminKpiOtView: React.FC = () => {
                   <th className="p-3">{t('adminKpi.colEmployeeShort')}</th>
                   <th className="p-3 text-right">{t('adminKpi.colPerformanceCommission')}</th>
                   <th className="p-3 text-center">{t('adminKpi.colQcViews')}</th>
-                  <th className="p-3 text-right">{t('adminKpi.colQcRate')}</th>
                   <th className="p-3 text-right">{t('adminKpi.colQcCommission')}</th>
                   <th className="p-3 text-right">{t('adminKpi.colGuaranteedTopup')}</th>
                   <th className="p-3 text-right">{t('adminKpi.colTotalBonus')}</th>
@@ -980,34 +1013,29 @@ export const AdminKpiOtView: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {monthlyKpi.map(record => {
-                  const canEditQc = ['draft', 'rejected'].includes(record.publish_status) && record.qc_rate_snapshot > 0;
+                  const canEdit = ['draft', 'rejected'].includes(record.publish_status);
+                  const moneyInput = (field: 'performance_commission_amount' | 'qc_views' | 'qc_commission_amount' | 'guaranteed_income_topup', value: number) => (
+                    <input
+                      key={`${record.id}-${field}-${value}`}
+                      type="number"
+                      min="0"
+                      step={field === 'qc_views' ? 0.5 : 1000}
+                      defaultValue={value}
+                      disabled={!canEdit || updateKpiMonthly.isPending}
+                      onBlur={event => void handleMoneyFieldUpdate(record, field, Number(event.target.value || 0))}
+                      className="w-28 rounded-lg border border-slate-300 p-1.5 text-right font-mono disabled:bg-slate-100"
+                    />
+                  );
                   return (
                     <tr key={record.id}>
                       <td className="p-3 font-bold text-slate-900">
                         {record.employees?.full_name}
                         <span className="block font-mono text-[10px] font-normal text-slate-400">{record.employees?.employee_code}</span>
                       </td>
-                      <td className="p-3 text-right font-mono">{formatMoney(record.performance_commission_amount)}</td>
-                      <td className="p-3 text-center">
-                        {record.qc_rate_snapshot > 0 ? (
-                          <input
-                            key={`${record.id}-${record.qc_views}`}
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            defaultValue={record.qc_views}
-                            disabled={!canEditQc || updateKpiMonthly.isPending}
-                            onBlur={event => {
-                              const value = Number(event.target.value || 0);
-                              if (value !== record.qc_views) void handleQcViewsUpdate(record, value);
-                            }}
-                            className="w-24 rounded-lg border border-slate-300 p-1.5 text-right font-mono disabled:bg-slate-100"
-                          />
-                        ) : <span className="text-slate-400">{t('adminKpi.notApplicable')}</span>}
-                      </td>
-                      <td className="p-3 text-right font-mono">{record.qc_rate_snapshot > 0 ? formatMoney(record.qc_rate_snapshot) : '—'}</td>
-                      <td className="p-3 text-right font-mono text-primary-700">{formatMoney(record.qc_commission_amount)}</td>
-                      <td className="p-3 text-right font-mono">{formatMoney(record.guaranteed_income_topup)}</td>
+                      <td className="p-3 text-right">{moneyInput('performance_commission_amount', record.performance_commission_amount)}</td>
+                      <td className="p-3 text-center">{moneyInput('qc_views', record.qc_views)}</td>
+                      <td className="p-3 text-right">{moneyInput('qc_commission_amount', record.qc_commission_amount)}</td>
+                      <td className="p-3 text-right">{moneyInput('guaranteed_income_topup', record.guaranteed_income_topup)}</td>
                       <td className="p-3 text-right font-mono font-bold text-success-700">{formatMoney(record.bonus_amount || 0)}</td>
                     </tr>
                   );
@@ -1157,7 +1185,7 @@ export const AdminKpiOtView: React.FC = () => {
                         </td>
                         <td className="py-3 px-3 text-center font-bold text-rose-700 bg-rose-50/40 border-r border-slate-300">
                           {job.deadline || '—'}
-                          {delayLabel(job) && <span className={`block text-[10px] ${delayLabel(job)?.late ? 'text-rose-700' : 'text-success-700'}`}>{delayLabel(job)?.text}</span>}
+                          {delayLabel(job) && <span className="block text-[10px] text-rose-700">{delayLabel(job)?.text}</span>}
                         </td>
                         <td className="py-3 px-3 text-center">
                           <div className="flex items-center justify-center space-x-1">
@@ -1189,6 +1217,7 @@ export const AdminKpiOtView: React.FC = () => {
                   }
 
                   // CASE 2: Order has Sub-tasks (Parent Order header row + sub-task rows)
+                  const isCollapsed = collapsedGroups.has(group.orderJob);
                   return (
                     <React.Fragment key={`group-${groupIdx}`}>
                       {/* Main Order Header Row */}
@@ -1197,7 +1226,15 @@ export const AdminKpiOtView: React.FC = () => {
                           {groupIdx + 1}
                         </td>
                         <td className="py-3 px-4 font-black text-slate-900 text-sm border-r border-slate-300" colSpan={1}>
-                          {group.orderJob}
+                          <button
+                            type="button"
+                            onClick={() => toggleGroupCollapsed(group.orderJob)}
+                            className="flex items-center gap-1.5 cursor-pointer hover:text-primary-700"
+                            title={isCollapsed ? t('adminKpi.expandGroup') : t('adminKpi.collapseGroup')}
+                          >
+                            <span className={`inline-block transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
+                            {group.orderJob}
+                          </button>
                         </td>
                         <td className="py-3 px-3 text-center border-r border-slate-300">
                           {new Set(group.items.map(i => i.category)).size === 1 ? categoryBadge(group.items[0].category) : <span className="text-[10px] text-slate-400 italic">{t('adminKpi.multipleCategories')}</span>}
@@ -1223,7 +1260,7 @@ export const AdminKpiOtView: React.FC = () => {
                       </tr>
 
                       {/* Sub-task Rows */}
-                      {group.items.map((item) => (
+                      {!isCollapsed && group.items.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50 border-b border-slate-200">
                           {/* Blank STT cell */}
                           <td className="py-2.5 px-3 border-r border-slate-300 bg-slate-50/40"></td>
@@ -1257,7 +1294,7 @@ export const AdminKpiOtView: React.FC = () => {
 
                           <td className="py-2 px-3 text-center font-bold text-rose-700 border-r border-slate-300">
                             {item.deadline || '—'}
-                            {delayLabel(item) && <span className={`block text-[10px] ${delayLabel(item)?.late ? 'text-rose-700' : 'text-success-700'}`}>{delayLabel(item)?.text}</span>}
+                            {delayLabel(item) && <span className="block text-[10px] text-rose-700">{delayLabel(item)?.text}</span>}
                           </td>
 
                           <td className="py-2 px-3 text-center">

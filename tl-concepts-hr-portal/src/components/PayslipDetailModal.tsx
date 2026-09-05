@@ -137,7 +137,7 @@ export const PayslipDetailModal: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-5 gap-4">
             <div>
               <div className="flex items-center gap-2 text-success-700 font-extrabold text-base mb-1">
-                <img src="/favicon.ico" alt="" aria-hidden="true" className="h-8 w-8 object-contain" />
+                <img src="/apple-touch-icon.png" alt="" aria-hidden="true" className="h-8 w-8 object-contain" />
                 <span>TL CONCEPTS</span>
               </div>
             </div>

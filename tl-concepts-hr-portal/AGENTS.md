@@ -1,6 +1,6 @@
 # AGENTS.md — TL Concepts HR Portal
 
-Hướng dẫn cho AI agent (Claude Code hoặc tương tự) khi làm việc trên repo này. Đọc file này trước khi code. Xem [codebase.md](codebase.md) để biết trạng thái hiện tại / thay đổi gần nhất.
+Hướng dẫn cho AI agent (Claude Code hoặc tương tự) khi làm việc trên repo này. Đọc file này trước khi code. Xem [codebase.md](codebase.md) để biết trạng thái hiện tại / thay đổi gần nhất và [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md) để biết kết quả đối chiếu code, GitHub và Supabase remote gần nhất.
 
 ## 1. Dự án này là gì
 
@@ -90,3 +90,5 @@ Không có test suite (không có `npm test`). Verify = typecheck + build + clic
 5. **Nút "Chỉnh sửa hồ sơ" (`AdminEmployeeListView`) chỉ mở được modal nếu đã chọn nhân viên trong list bên trái trước** (`selectedEmployeeIdForAdmin` phải có giá trị) — dễ tưởng nhầm là bug UI khi test tự động click thẳng vào nút mà chưa click chọn dòng nhân viên trước.
 6. Muốn login test bằng tài khoản admin thật trong Supabase (không phải tạo mới) → **hỏi user xin mật khẩu qua chat**, không tự ý reset password người dùng qua SQL (xem safety rule "Explicit permission required" — đổi mật khẩu = account settings change). User/HR/Admin tự đổi mật khẩu trong profile; HR không reset/đổi mật khẩu tài khoản khác.
 7. Sau khi test xong bằng data giả (contract/holiday/KPI test), **luôn `DELETE`/reset lại bằng `execute_sql` để không để rác trong DB thật** của user — dev DB này có data thật (nhân viên thật, không phải seed database).
+8. **Không lưu GitHub PAT/token trong URL remote Git.** Audit 2026-09-05 phát hiện `origin` có credential nhúng trong URL; phải rotate token bị lộ và dùng URL không chứa credential + credential manager của hệ điều hành.
+9. Trước khi báo migration local/remote đã đồng bộ, phải chạy cả `supabase migration list --linked` và `supabase db push --linked --dry-run`. Audit 2026-09-05 phát hiện bốn migration local cũ trùng nội dung với version đã deploy nhưng vẫn làm dry-run bị chặn; xem danh sách chính xác trong [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md).

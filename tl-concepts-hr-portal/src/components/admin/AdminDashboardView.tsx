@@ -14,15 +14,15 @@ import { useHR } from '../../context/HRContext';
 import { useEmployees, useAllEmployeeSensitiveInfo } from '../../hooks/useEmployees';
 import { useAllContracts } from '../../hooks/useContracts';
 import { useAllLeaveRequests } from '../../hooks/useLeave';
-import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
 import { getContractLifecycleStatus, latestContractsByEmployee } from '../../utils/contracts';
 import { formatDate } from '../../utils/formatters';
 import { useI18n } from '../../context/I18nContext';
 
 const RowAvatar: React.FC<{ path: string | null | undefined; alt: string }> = ({ path, alt }) => {
-  const { data: url } = useSignedImageUrl(path);
+  const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
   return url ? (
-    <img src={url} alt={alt} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
+    <img src={url} alt={alt} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" loading="lazy" width={32} height={32} />
   ) : (
     <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 shrink-0" />
   );

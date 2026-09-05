@@ -7,7 +7,9 @@ import {
   Sliders,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
+import { useAuth } from '../../context/AuthContext';
 import { getUserFacingError } from '../../lib/userFacingError';
+import { supabase } from '../../lib/supabaseClient';
 import {
   useCompany,
   useCompanySettings,
@@ -15,12 +17,13 @@ import {
   useUpdateCompanySettings,
 } from '../../hooks/useCompanySettings';
 import { useAllProfiles, useUpdateProfileRole } from '../../hooks/useProfiles';
-import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
+import { ConfirmationDialog } from '../ConfirmationDialog';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
-  const { data: url } = useSignedImageUrl(path);
+  const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
   return url ? (
-    <img src={url} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200" />
+    <img src={url} alt="" className="w-8 h-8 rounded-full object-cover border border-slate-200" loading="lazy" width={32} height={32} />
   ) : (
     <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200" />
   );
@@ -39,8 +42,15 @@ const permissionsMatrix = [
   { feature: 'Quản lý tài khoản, phân quyền và audit', admin: true, hr: false, employee: false },
 ];
 
+const ROLE_LABEL: Record<'admin' | 'hr' | 'employee', string> = {
+  admin: 'Admin / Ban Giám Đốc',
+  hr: 'HR / Kế toán',
+  employee: 'Employee / Nhân viên',
+};
+
 export const AdminSettingsView: React.FC = () => {
   const { showToast } = useHR();
+  const { session } = useAuth();
 
   const { data: companySettings } = useCompanySettings();
   const { data: company } = useCompany();
@@ -50,6 +60,55 @@ export const AdminSettingsView: React.FC = () => {
   const { data: profilesData } = useAllProfiles();
   const profiles = profilesData || [];
   const updateProfileRole = useUpdateProfileRole();
+
+  const [pendingRoleChange, setPendingRoleChange] = useState<{
+    profileId: string;
+    employeeName: string;
+    fromRole: 'admin' | 'hr' | 'employee';
+    toRole: 'admin' | 'hr' | 'employee';
+  } | null>(null);
+  const [roleChangePassword, setRoleChangePassword] = useState('');
+  const [roleChangeError, setRoleChangeError] = useState('');
+  const [isVerifyingRoleChange, setIsVerifyingRoleChange] = useState(false);
+
+  const closeRoleChangeDialog = () => {
+    setPendingRoleChange(null);
+    setRoleChangePassword('');
+    setRoleChangeError('');
+  };
+
+  const confirmRoleChange = async () => {
+    if (!pendingRoleChange) return;
+    const email = session?.user.email;
+    if (!email) {
+      setRoleChangeError('Không xác định được tài khoản hiện tại.');
+      return;
+    }
+    if (!roleChangePassword) {
+      setRoleChangeError('Vui lòng nhập mật khẩu để xác nhận.');
+      return;
+    }
+
+    setIsVerifyingRoleChange(true);
+    setRoleChangeError('');
+    const { error: reauthError } = await supabase.auth.signInWithPassword({ email, password: roleChangePassword });
+    setIsVerifyingRoleChange(false);
+    if (reauthError) {
+      setRoleChangeError(await getUserFacingError(reauthError, 'Mật khẩu không đúng.'));
+      return;
+    }
+
+    updateProfileRole.mutate(
+      { profileId: pendingRoleChange.profileId, role: pendingRoleChange.toRole },
+      {
+        onSuccess: () => {
+          showToast('Đã cập nhật vai trò phân quyền mới cho nhân viên.');
+          closeRoleChangeDialog();
+        },
+        onError: async (error) => setRoleChangeError(await getUserFacingError(error)),
+      }
+    );
+  };
 
   // Company parameter form state — seeded from the real row once it loads.
   const [bhxhEmployeeRate, setBhxhEmployeeRate] = useState(8);
@@ -72,13 +131,16 @@ export const AdminSettingsView: React.FC = () => {
     setCompanyTaxCode(company.tax_code || '');
   }, [company]);
 
-  const handleRoleChange = (profileId: string, newRole: 'admin' | 'hr' | 'employee') => {
-    updateProfileRole.mutate(
-      { profileId, role: newRole },
-      {
-        onSuccess: () => showToast('Đã cập nhật vai trò phân quyền mới cho nhân viên.'),
-      }
-    );
+  const handleRoleChange = (
+    profileId: string,
+    fromRole: 'admin' | 'hr' | 'employee',
+    newRole: 'admin' | 'hr' | 'employee',
+    employeeName: string
+  ) => {
+    if (newRole === fromRole) return;
+    setPendingRoleChange({ profileId, fromRole, toRole: newRole, employeeName });
+    setRoleChangePassword('');
+    setRoleChangeError('');
   };
 
   const handleSaveParams = async (e: React.FormEvent) => {
@@ -289,7 +351,7 @@ export const AdminSettingsView: React.FC = () => {
                       <div className="flex items-center justify-center">
                         <select
                           value={profile.role}
-                          onChange={e => handleRoleChange(profile.id, e.target.value as 'admin' | 'hr' | 'employee')}
+                          onChange={e => handleRoleChange(profile.id, profile.role, e.target.value as 'admin' | 'hr' | 'employee', emp?.full_name || 'Nhân viên')}
                           disabled={updateProfileRole.isPending}
                           className="px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 disabled:opacity-60"
                         >
@@ -306,6 +368,36 @@ export const AdminSettingsView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <ConfirmationDialog
+        open={!!pendingRoleChange}
+        onOpenChange={(open) => !open && closeRoleChangeDialog()}
+        title="Xác nhận đổi vai trò phân quyền"
+        description={
+          pendingRoleChange
+            ? `Đổi vai trò của ${pendingRoleChange.employeeName} từ "${ROLE_LABEL[pendingRoleChange.fromRole]}" sang "${ROLE_LABEL[pendingRoleChange.toRole]}". Nhập mật khẩu tài khoản của bạn để xác nhận.`
+            : ''
+        }
+        confirmLabel="Xác nhận đổi vai trò"
+        variant="danger"
+        isPending={isVerifyingRoleChange || updateProfileRole.isPending}
+        isConfirmDisabled={!roleChangePassword}
+        onConfirm={confirmRoleChange}
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-slate-700">Mật khẩu của bạn</label>
+          <input
+            type="password"
+            autoFocus
+            value={roleChangePassword}
+            onChange={(e) => { setRoleChangePassword(e.target.value); setRoleChangeError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && confirmRoleChange()}
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            placeholder="••••••••"
+          />
+          {roleChangeError && <p className="text-xs font-semibold text-rose-600">{roleChangeError}</p>}
+        </div>
+      </ConfirmationDialog>
     </div>
   );
 };

@@ -15,6 +15,7 @@ export const adminRemindersMessages = {
     'adminReminders.catOtRequest': 'Yêu cầu OT',
     'adminReminders.catWorkEvent': 'WFH / Đi muộn',
     'adminReminders.catPayroll': 'Lương & Payroll',
+    'adminReminders.catProfileChangeRequest': 'Yêu cầu thay đổi hồ sơ',
     'adminReminders.severityLabel': 'Mức độ:',
     'adminReminders.allSeverities': 'Tất cả Mức độ',
     'adminReminders.sevHigh': 'Khẩn cấp / Mức cao',
@@ -28,6 +29,7 @@ export const adminRemindersMessages = {
     'adminReminders.dueDate': 'Mốc thời hạn: {{date}}',
     'adminReminders.actionNow': 'Xử lý ngay',
     'adminReminders.markAsRead': 'Đã đọc',
+    'adminReminders.markAllAsRead': 'Đánh dấu đã đọc tất cả ({{count}})',
   },
   en: {
     'adminReminders.title': 'Automated HR Alerts & Reminders Center',
@@ -45,6 +47,7 @@ export const adminRemindersMessages = {
     'adminReminders.catOtRequest': 'OT Requests',
     'adminReminders.catWorkEvent': 'WFH / Late Arrivals',
     'adminReminders.catPayroll': 'Payroll & Compensation',
+    'adminReminders.catProfileChangeRequest': 'Profile Change Requests',
     'adminReminders.severityLabel': 'Severity:',
     'adminReminders.allSeverities': 'All Severities',
     'adminReminders.sevHigh': 'Urgent / High Priority',
@@ -58,5 +61,6 @@ export const adminRemindersMessages = {
     'adminReminders.dueDate': 'Due date: {{date}}',
     'adminReminders.actionNow': 'Take action',
     'adminReminders.markAsRead': 'Mark as read',
+    'adminReminders.markAllAsRead': 'Mark all as read ({{count}})',
   },
 } as const;

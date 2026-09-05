@@ -14,6 +14,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { AdminSidebar } from './components/admin/AdminSidebar';
 import { Toast } from './components/Toast';
+import { useSidebarLayout } from './hooks/useSidebarLayout';
 
 // User Views
 import { DashboardView } from './components/DashboardView';
@@ -61,13 +62,19 @@ function MainContent() {
   const { activeTab, adminTab } = useHR();
   const isAdmin = profile?.role === 'admin';
   const isBackoffice = isAdmin || profile?.role === 'hr';
+  const sidebarLayout = useSidebarLayout();
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 grid grid-cols-1 md:grid-cols-[16rem_1fr] md:grid-rows-[auto_1fr] font-sans antialiased selection:bg-primary-500 selection:text-white">
-      <Header />
+    <div
+      className="min-h-screen bg-slate-100/70 text-slate-800 grid grid-cols-1 md:grid-cols-[var(--sidebar-w)_1fr] md:grid-rows-[auto_1fr] font-sans antialiased selection:bg-primary-500 selection:text-white"
+      style={{ ['--sidebar-w' as string]: `${sidebarLayout.effectiveWidth}px` }}
+    >
+      <Header onMenuClick={sidebarLayout.toggleMobile} />
 
       {/* Render Sidebar based on the authenticated user's role (Supabase profile, not client-toggleable). Spans the full height alongside the header on desktop. */}
-      {isBackoffice ? <AdminSidebar /> : <Sidebar />}
+      {isBackoffice
+        ? <AdminSidebar {...sidebarLayout} />
+        : <Sidebar {...sidebarLayout} />}
 
       {/* Main Workspace Area */}
       <main className="md:col-start-2 md:row-start-2 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">

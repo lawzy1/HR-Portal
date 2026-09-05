@@ -33,7 +33,14 @@ export const AdminContractSalaryView: React.FC = () => {
   const { data: salaryHistory } = useSalaryHistory(selectedId);
   const { data: legalWarnings } = useContractLegalWarnings(selectedId);
   const { data: payslipsData } = useEmployeePayrollHistory(selectedId);
-  const payslips = payslipsData || [];
+  const allPayslips = payslipsData || [];
+  const payslipYears = useMemo(() => {
+    const years = new Set(allPayslips.map((ps) => ps.year));
+    years.add(new Date().getFullYear());
+    return [...years].sort((a, b) => b - a);
+  }, [allPayslips]);
+  const [payslipYear, setPayslipYear] = useState(() => new Date().getFullYear());
+  const payslips = useMemo(() => allPayslips.filter((ps) => ps.year === payslipYear), [allPayslips, payslipYear]);
   const [editingContract, setEditingContract] = useState<DbContract | null | undefined>(undefined);
   const [decision, setDecision] = useState<{ action: 'approve' | 'reject'; contract: DbContract } | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -89,7 +96,6 @@ export const AdminContractSalaryView: React.FC = () => {
       <ContractDirectory
         contracts={allContractsData || []}
         onOpen={handleSelectEmployee}
-        onCreate={handleCreateContract}
       />
 
       {/* 2. Employee Contract & Salary Detail Section (Bottom Section) */}
@@ -261,6 +267,15 @@ export const AdminContractSalaryView: React.FC = () => {
                 <Receipt className="w-5 h-5 text-primary-600" />
                 <span>{t('contract.section3', { name: selectedEmp.full_name })}</span>
               </h3>
+              <select
+                value={payslipYear}
+                onChange={(e) => setPayslipYear(Number(e.target.value))}
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+              >
+                {payslipYears.map((y) => (
+                  <option key={y} value={y}>Năm {y}</option>
+                ))}
+              </select>
             </div>
 
             <div className="overflow-x-auto">
@@ -377,8 +392,7 @@ type DirectoryContract = DbContract & {
 const ContractDirectory: React.FC<{
   contracts: DirectoryContract[];
   onOpen: (employeeId: string) => void;
-  onCreate?: () => void;
-}> = ({ contracts, onOpen, onCreate }) => {
+}> = ({ contracts, onOpen }) => {
   const { t, value: translateValue } = useI18n();
   const { formatMoney } = useMoneyVisibility();
   const [query, setQuery] = useState('');
@@ -419,11 +433,6 @@ const ContractDirectory: React.FC<{
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{t('contract.dirTitle')}</h1>
             <p className="mt-1 text-sm text-slate-500">{t('contract.dirSubtitle')}</p>
           </div>
-          {onCreate && (
-            <button onClick={onCreate} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-primary-700">
-              <Plus className="h-4 w-4" /> {t('contract.createContract')}
-            </button>
-          )}
         </div>
         <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <SummaryPill icon={<FileCheck className="h-4 w-4" />} label={translateValue('Đang hiệu lực')} value={activeCount} tone="success" />
@@ -447,9 +456,9 @@ const ContractDirectory: React.FC<{
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[21rem] overflow-y-auto overflow-x-auto">
           <table className="w-full min-w-[920px] text-left">
-            <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-5 py-3.5">Nhân viên</th>
                 <th className="px-4 py-3.5">{t('dashboard.contractShort')}</th>

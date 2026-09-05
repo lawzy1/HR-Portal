@@ -12,7 +12,7 @@ import { useHR } from '../../context/HRContext';
 import { getUserFacingError } from '../../lib/userFacingError';
 import { useAuth } from '../../context/AuthContext';
 import { useEmployees } from '../../hooks/useEmployees';
-import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
 import {
   useAllLeaveRequests,
   useUpdateLeaveStatus,
@@ -33,9 +33,9 @@ import { SearchableSelect } from '../ui/SearchableSelect';
 import { ModalPanel } from '../ui/ModalPanel';
 
 const RowAvatar: React.FC<{ path: string | null | undefined }> = ({ path }) => {
-  const { data: url } = useSignedImageUrl(path);
+  const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
   return url ? (
-    <img src={url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" />
+    <img src={url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0" loading="lazy" width={40} height={40} />
   ) : (
     <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 shrink-0" />
   );

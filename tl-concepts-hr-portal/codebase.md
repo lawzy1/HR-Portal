@@ -1,6 +1,6 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-09-02**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết.
+Cập nhật lần cuối: **2026-09-05**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết và [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md) cho audit đầy đủ.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
@@ -30,6 +30,14 @@ Cập nhật lần cuối: **2026-09-02**. File này tóm tắt trạng thái re
 - `company_settings.kpi_rate_per_day` không còn được dùng ở đâu (cột mồ côi).
 
 **Gap đã biết, chưa fix (xem thảo luận 2026-08-25):**
+- OT đã bỏ toàn bộ tiền dự kiến khỏi UI/query, nhưng Supabase remote vẫn còn ba cột legacy `ot_records.pay_type`, `ot_percentage`, `amount`; policy INSERT của employee còn tham chiếu các cột này.
+- PDF phiếu lương remote chưa nhúng logo hình ảnh; modal vẫn dùng `/favicon.ico`. Git local dùng font Inter nhưng Edge Function production version 6 vẫn dùng Noto Sans.
+- Tab “Thông tin công việc” trong chỉnh sửa hồ sơ vẫn là snapshot cố định, chưa mở trình quản lý hợp đồng/custom fields.
+- KPI chưa natural-sort theo số đầu tên dự án, chưa collapse/expand từng project, category badge chưa chống vỡ chữ trên màn hình hẹp và cột deadline vẫn hiện nhãn “Đúng hạn”.
+- Đổi role vẫn update trực tiếp từ dropdown, chưa có confirmation và chưa re-auth bằng mật khẩu hiện tại.
+- `employee_profile_change_requests` chưa được query vào Dashboard/Reminders; Edge Function chỉ gửi email tới `role = admin`, chưa gửi HR; chưa có Supabase Realtime, chuông/toast realtime, âm thanh hoặc read-state lưu DB.
+- Migration history local/remote chưa sạch: bốn file migration local cũ trùng nội dung với version đã deploy làm `supabase db push --linked --dry-run` bị chặn. Không dùng `--include-all`; đối chiếu và bỏ các bản local trùng theo audit 2026-09-05.
+- Git `origin` đang chứa credential trong URL. Rotate credential và đổi remote về URL không chứa token.
 - Bảng quỹ phép đang hiển thị `total_accumulated` (phép đã tích lũy đến thời điểm hiện tại), không phải toàn bộ `annual_entitlement`; tên “Tổng quỹ” dễ gây hiểu nhầm. Đã chốt `remaining_days` phải là số khả dụng `max(total_accumulated - used_days - pending_days, 0)` và backend phải chặn đơn phép năm vượt số này; chưa apply migration.
 - Export Excel bảng KPI (`AdminKpiOtView.handleDownloadExcel`) chưa có cột "Phân loại" (New Render/Re Process).
 - Chưa có bảng xếp hạng/đánh giá hiệu suất riêng cho ban lãnh đạo (hiện chỉ có card tiến độ %/nhân viên, chưa xếp loại Xuất sắc/Đạt/Chưa đạt hay ranking toàn công ty).
@@ -43,6 +51,14 @@ Cập nhật lần cuối: **2026-09-02**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-09-05 — Audit yêu cầu bổ sung với code, GitHub và Supabase remote
+
+- `main` local sạch và trùng GitHub tại commit `1908e9d`; Supabase DB lint không phát hiện lỗi schema.
+- Xác nhận đã hoàn thành: SearchableSelect chọn nhân viên khi tạo hợp đồng; custom fields từng hợp đồng; Admin sửa/xóa OT với RLS; bỏ tiền OT dự kiến khỏi UI; bỏ mã phiếu; xóa phiếu nháp/bị trả lại qua RPC.
+- Xác nhận chưa hoàn thành hoặc mới một phần: custom fields trong chỉnh sửa hồ sơ; drop ba cột OT legacy; logo hình ảnh trong PDF; đồng bộ font PDF local/remote; toàn bộ yêu cầu KPI mới; confirmation + mật khẩu khi đổi role; cảnh báo request trên UI/email HR/realtime sound.
+- Phát hiện migration drift gồm bốn file local trùng version đã deploy và credential bị nhúng trong URL `origin`; cần xử lý trước lần deploy tiếp theo.
+- Báo cáo và bằng chứng chi tiết: [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md).
 
 ### 2026-09-02 — Đồng nhất cảnh báo hợp đồng sắp hết hạn trên Dashboard
 

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert, TablesUpdate } from '../lib/database.types';
 import { refreshQueries } from '../lib/queryRefresh';
@@ -20,6 +20,7 @@ export function useContracts(employeeId: string | undefined) {
       return data;
     },
     enabled: !!employeeId,
+    placeholderData: keepPreviousData,
   });
 }
 

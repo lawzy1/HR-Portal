@@ -682,6 +682,7 @@ export type Database = {
           gender: string | null
           guaranteed_income_amount: number
           id: string
+          include_in_kpi: boolean
           job_title: string | null
           kpi_level: string | null
           kpi_target_per_day: number | null
@@ -711,6 +712,7 @@ export type Database = {
           gender?: string | null
           guaranteed_income_amount?: number
           id?: string
+          include_in_kpi?: boolean
           job_title?: string | null
           kpi_level?: string | null
           kpi_target_per_day?: number | null
@@ -740,6 +742,7 @@ export type Database = {
           gender?: string | null
           guaranteed_income_amount?: number
           id?: string
+          include_in_kpi?: boolean
           job_title?: string | null
           kpi_level?: string | null
           kpi_target_per_day?: number | null
@@ -1257,7 +1260,6 @@ export type Database = {
       }
       ot_records: {
         Row: {
-          amount: number | null
           approver_id: string | null
           company_id: string
           created_at: string
@@ -1265,14 +1267,11 @@ export type Database = {
           employee_id: string
           hours: number
           id: string
-          ot_percentage: number | null
-          pay_type: string | null
           reason: string | null
           status: string
           views_render_count: number | null
         }
         Insert: {
-          amount?: number | null
           approver_id?: string | null
           company_id: string
           created_at?: string
@@ -1280,14 +1279,11 @@ export type Database = {
           employee_id: string
           hours: number
           id?: string
-          ot_percentage?: number | null
-          pay_type?: string | null
           reason?: string | null
           status?: string
           views_render_count?: number | null
         }
         Update: {
-          amount?: number | null
           approver_id?: string | null
           company_id?: string
           created_at?: string
@@ -1295,8 +1291,6 @@ export type Database = {
           employee_id?: string
           hours?: number
           id?: string
-          ot_percentage?: number | null
-          pay_type?: string | null
           reason?: string | null
           status?: string
           views_render_count?: number | null
@@ -1733,10 +1727,6 @@ export type Database = {
           severity: string
         }[]
       }
-      delete_payroll_record: {
-        Args: { p_payroll_id: string }
-        Returns: string
-      }
       create_employee_invitation: {
         Args: {
           p_actor_id: string
@@ -1762,6 +1752,7 @@ export type Database = {
           gender: string | null
           guaranteed_income_amount: number
           id: string
+          include_in_kpi: boolean
           job_title: string | null
           kpi_level: string | null
           kpi_target_per_day: number | null
@@ -1787,6 +1778,7 @@ export type Database = {
       current_company_id: { Args: never; Returns: string }
       current_employee_id: { Args: never; Returns: string }
       current_onboarding_employee_id: { Args: never; Returns: string }
+      delete_payroll_record: { Args: { p_payroll_id: string }; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_backoffice: { Args: never; Returns: boolean }
       is_employee: { Args: never; Returns: boolean }
@@ -1816,6 +1808,7 @@ export type Database = {
           gender: string | null
           guaranteed_income_amount: number
           id: string
+          include_in_kpi: boolean
           job_title: string | null
           kpi_level: string | null
           kpi_target_per_day: number | null

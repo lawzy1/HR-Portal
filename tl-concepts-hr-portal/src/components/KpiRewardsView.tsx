@@ -4,8 +4,9 @@ import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useCompanyWorkdayOverride, useKpiJobItems, useKpiMonthly } from '../hooks/useKpi';
 import { useCompanyHolidays, useLeaveRequests } from '../hooks/useLeave';
-import { useSignedImageUrl } from '../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../utils/workDays';
+import { MonthYearFilter } from './ui/MonthYearFilter';
 import {
   Award,
   Calendar,
@@ -24,8 +25,8 @@ interface UserJobGroup {
 }
 
 const AssigneeAvatar: React.FC<{ path: string | null | undefined; className: string }> = ({ path, className }) => {
-  const { data: url } = useSignedImageUrl(path);
-  return url ? <img src={url} alt="" className={className} /> : <div className={`${className} bg-slate-200`} />;
+  const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
+  return url ? <img src={url} alt="" className={className} loading="lazy" width={40} height={40} /> : <div className={`${className} bg-slate-200`} />;
 };
 
 export const KpiRewardsView: React.FC = () => {
@@ -36,10 +37,6 @@ export const KpiRewardsView: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const yearOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 12 }, (_, index) => currentYear - 1 + index);
-  }, []);
 
   const { data: employee } = useEmployee(employeeId);
   const { data: jobs } = useKpiJobItems(employeeId, selectedMonth, selectedYear);
@@ -98,8 +95,18 @@ export const KpiRewardsView: React.FC = () => {
       map.get(key)!.push(job);
     });
 
+    groups.sort((a, b) => a.orderJob.localeCompare(b.orderJob, undefined, { numeric: true }));
     return groups;
   }, [filteredAssignedJobs]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupCollapsed = (orderJob: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(orderJob)) next.delete(orderJob); else next.add(orderJob);
+      return next;
+    });
+  };
 
   const totalActualViews = useMemo(() => {
     if (assignedJobs.length > 0) return assignedJobs.reduce((sum, item) => sum + (item.views_count || 0), 0);
@@ -138,24 +145,11 @@ export const KpiRewardsView: React.FC = () => {
 
         <div className="flex items-center gap-2 bg-slate-50 p-1.5 border border-slate-200 rounded-xl">
           <Calendar className="w-4 h-4 text-slate-400 ml-2" />
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-success-500 cursor-pointer"
-          >
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
-              <option key={m} value={m}>Tháng {m < 10 ? '0' + m : m}</option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-white text-xs font-bold text-slate-800 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-success-500 cursor-pointer"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          <MonthYearFilter
+            month={selectedMonth}
+            year={selectedYear}
+            onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y); }}
+          />
         </div>
       </div>
 
@@ -314,7 +308,7 @@ export const KpiRewardsView: React.FC = () => {
                         <td className="py-3.5 px-3 text-center font-medium text-slate-600 border-r border-slate-300">{job.duration_days ? `${job.duration_days} ngày` : '—'}</td>
                         <td className="py-3.5 px-3 text-center font-bold text-rose-700 bg-rose-50/40 border-r border-slate-300">{job.deadline || '—'}</td>
                         <td className="py-3.5 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-success-100 text-success-800">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-success-100 text-success-800 whitespace-nowrap">
                             <CheckCircle2 className="w-3 h-3 text-success-600" />
                             <span>Đã giao việc</span>
                           </span>
@@ -323,15 +317,22 @@ export const KpiRewardsView: React.FC = () => {
                     );
                   }
 
+                  const isCollapsed = collapsedGroups.has(group.orderJob);
                   return (
                     <React.Fragment key={`group-${groupIdx}`}>
                       <tr className="bg-slate-50/90 font-bold border-b border-slate-300">
                         <td className="py-3 px-3 text-center font-black text-slate-900 border-r border-slate-300 bg-slate-100">{groupIdx + 1}</td>
                         <td className="py-3 px-4 font-black text-slate-900 text-sm border-r border-slate-300">
-                          <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleGroupCollapsed(group.orderJob)}
+                            className="flex items-center gap-2 cursor-pointer hover:text-primary-700"
+                            title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
+                          >
                             <FolderGit2 className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                            <span className={`inline-block transition-transform ${isCollapsed ? '-rotate-90' : ''}`}>▾</span>
                             <span>{group.orderJob}</span>
-                          </div>
+                          </button>
                         </td>
                         <td className="py-3 px-4 font-semibold text-slate-600 text-xs border-r border-slate-300">
                           <div className="flex items-center gap-1.5">
@@ -344,11 +345,11 @@ export const KpiRewardsView: React.FC = () => {
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-50 text-primary-700 border border-primary-200">Order Tổng</span>
+                          <span className="inline-flex whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-primary-50 text-primary-700 border border-primary-200">Order Tổng</span>
                         </td>
                       </tr>
 
-                      {group.items.map((item) => (
+                      {!isCollapsed && group.items.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50 border-b border-slate-200 transition-colors">
                           <td className="py-2.5 px-3 border-r border-slate-300 bg-slate-50/30"></td>
                           <td className="py-2 px-4 border-r border-slate-300">
@@ -367,7 +368,7 @@ export const KpiRewardsView: React.FC = () => {
                           <td className="py-2 px-3 text-center text-slate-600 border-r border-slate-300">{item.duration_days ? `${item.duration_days} ngày` : '—'}</td>
                           <td className="py-2 px-3 text-center font-bold text-rose-700 border-r border-slate-300">{item.deadline || '—'}</td>
                           <td className="py-2 px-3 text-center">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-success-50 text-success-700 border border-success-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-success-50 text-success-700 border border-success-200 whitespace-nowrap">
                               <Check className="w-3 h-3 text-success-600" />
                               <span>Được giao</span>
                             </span>

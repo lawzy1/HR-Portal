@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee, useEmployeeSensitiveInfo, useEmployeeRelatives } from '../hooks/useEmployees';
-import { useSignedImageUrl } from '../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
 import { formatDate } from '../utils/formatters';
 import {
   User,
@@ -64,7 +64,7 @@ export const ProfileView: React.FC = () => {
   const { data: employee } = useEmployee(profile?.employeeId ?? undefined);
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(profile?.employeeId ?? undefined);
   const { data: relatives } = useEmployeeRelatives(profile?.employeeId ?? undefined);
-  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
+  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url, AVATAR_TRANSFORM);
   const { data: vneidUrl } = useSignedImageUrl(sensitiveInfo?.vneid_residency_url);
 
   if (!employee) {
@@ -82,7 +82,7 @@ export const ProfileView: React.FC = () => {
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={employee.full_name} className="w-20 h-20 rounded-2xl object-cover ring-4 ring-success-500/30 shadow-md" />
+            <img src={avatarUrl} alt={employee.full_name} className="w-20 h-20 rounded-2xl object-cover ring-4 ring-success-500/30 shadow-md" loading="lazy" width={80} height={80} />
           ) : (
             <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center ring-4 ring-success-500/30">
               <User className="w-8 h-8 text-slate-400" />

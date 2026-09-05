@@ -17,7 +17,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useMoneyVisibility } from '../../context/MoneyVisibilityContext';
 import { useEmployee } from '../../hooks/useEmployees';
-import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
 import { AccountSecurityCard } from '../AccountSecurityCard';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { CurrencyInput } from '../CurrencyInput';
@@ -33,7 +33,7 @@ export const AdminProfileView: React.FC = () => {
   const { showToast } = useHR();
   const { formatMoney } = useMoneyVisibility();
   const { data: employee } = useEmployee(profile?.employeeId ?? undefined);
-  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
+  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url, AVATAR_TRANSFORM);
 
   const roleLabel = profile?.role ? translateValue(profile.role === 'admin' ? 'Admin' : profile.role === 'hr' ? 'HR / Kế toán' : 'User') : translateValue('Chưa xác định');
 
@@ -116,7 +116,7 @@ export const AdminProfileView: React.FC = () => {
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={employee?.full_name || 'Avatar'} className="w-20 h-20 rounded-2xl object-cover ring-4 ring-primary-500/20 shadow-md" />
+            <img src={avatarUrl} alt={employee?.full_name || 'Avatar'} className="w-20 h-20 rounded-2xl object-cover ring-4 ring-primary-500/20 shadow-md" loading="lazy" width={80} height={80} />
           ) : (
             <div className="w-20 h-20 rounded-2xl bg-primary-50 flex items-center justify-center ring-4 ring-primary-500/20">
               <UserCircle className="w-10 h-10 text-primary-600" />

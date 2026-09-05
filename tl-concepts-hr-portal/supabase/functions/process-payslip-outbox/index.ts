@@ -2,6 +2,14 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import { LOGO_PNG_BASE64 } from "./logo-asset.ts";
+
+function base64ToBytes(base64: string) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 function publicError(code: string, message: string, status: number) {
   return Response.json({ error: { code, message } }, { status });
@@ -62,6 +70,8 @@ async function createPayslipPdf(record: PayrollRecord) {
   // retry the job instead of creating a PDF with broken glyphs.
   const fontBytes = await getFontBytes();
   const font = await document.embedFont(fontBytes, { subset: true });
+  const logoImage = await document.embedPng(base64ToBytes(LOGO_PNG_BASE64));
+  const logoSize = 26;
   const page = document.addPage([595.28, 841.89]);
   const { width, height } = page.getSize();
   const teal = rgb(0.08, 0.39, 0.39);
@@ -103,11 +113,13 @@ async function createPayslipPdf(record: PayrollRecord) {
     y -= 34;
   };
 
-  draw((record.companies?.name ?? "CÔNG TY TNHH TL CONCEPTS").toUpperCase(), 42, 13, teal);
+  page.drawImage(logoImage, { x: 42, y: y - logoSize + 14, width: logoSize, height: logoSize });
+  const headerTextX = 42 + logoSize + 10;
+  draw((record.companies?.name ?? "CÔNG TY TNHH TL CONCEPTS").toUpperCase(), headerTextX, 13, teal);
   y -= 18;
-  draw(`Trụ sở: ${fit(record.companies?.address, width - 84, 8)}`, 42, 8, muted);
+  draw(`Trụ sở: ${fit(record.companies?.address, width - 84 - logoSize - 10, 8)}`, headerTextX, 8, muted);
   y -= 15;
-  draw(`Mã số thuế (MST): ${record.companies?.tax_code ?? '—'}`, 42, 8, muted);
+  draw(`Mã số thuế (MST): ${record.companies?.tax_code ?? '—'}`, headerTextX, 8, muted);
   y -= 30;
   const title = "PHIẾU LƯƠNG NHÂN VIÊN";
   draw(title, (width - font.widthOfTextAtSize(title, 20)) / 2, 20, teal);

@@ -105,7 +105,7 @@ Deno.serve(async (request: Request) => {
     .from("profiles")
     .select("id")
     .eq("company_id", profile.company_id)
-    .eq("role", "admin")
+    .in("role", ["admin", "hr"])
     .eq("is_active", true);
 
   if (adminsError || !adminProfiles?.length) {

@@ -28,7 +28,7 @@ import { getUserFacingError } from '../../lib/userFacingError';
 import { useEmployees, useEmployee, useEmployeeInvitations, useManageEmployeeInvitation, useOffboardEmployee, useDeleteOffboardedEmployee, type DbEmployee, type DbEmployeeInvitation } from '../../hooks/useEmployees';
 import { useEmployeeSensitiveInfo, useEmployeeRelatives, useUpsertEmployeeSensitiveInfo } from '../../hooks/useEmployees';
 import { useAuth } from '../../context/AuthContext';
-import { useSignedImageUrl } from '../../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
 import { VneidGuideModal } from '../VneidGuideModal';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { VNEID_SAMPLE_IMAGE } from '../../constants/vneidSample';
@@ -36,9 +36,9 @@ import { useRecordAuditEvent } from '../../hooks/useAuditLogs';
 import { useAllProfiles, useReviewEmployeeOnboarding } from '../../hooks/useProfiles';
 
 const Avatar: React.FC<{ path: string | null; alt: string; className: string }> = ({ path, alt, className }) => {
-  const { data: url } = useSignedImageUrl(path);
+  const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
   return url ? (
-    <img src={url} alt={alt} className={className} />
+    <img src={url} alt={alt} className={className} loading="lazy" width={96} height={96} />
   ) : (
     <div className={`${className} bg-slate-100 flex items-center justify-center`}>
       <User className="w-1/2 h-1/2 text-slate-400" />

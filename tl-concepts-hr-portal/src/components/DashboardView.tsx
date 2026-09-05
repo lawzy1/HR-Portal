@@ -3,7 +3,7 @@ import { useHR } from '../context/HRContext';
 import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
-import { useSignedImageUrl } from '../hooks/useFileUpload';
+import { useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
 import { useContracts } from '../hooks/useContracts';
 import { useLeaveBalance, useLeaveRequests } from '../hooks/useLeave';
 import { useKpiMonthly } from '../hooks/useKpi';
@@ -41,7 +41,7 @@ export const DashboardView: React.FC = () => {
   const currentYear = now.getFullYear();
 
   const { data: employee } = useEmployee(employeeId);
-  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url);
+  const { data: avatarUrl } = useSignedImageUrl(employee?.avatar_url, AVATAR_TRANSFORM);
   const { data: contracts } = useContracts(employeeId);
   const { data: leaveBalance } = useLeaveBalance(employeeId, currentYear);
   const { data: leaveRequestsData } = useLeaveRequests(employeeId);
@@ -71,6 +71,9 @@ export const DashboardView: React.FC = () => {
                 src={avatarUrl}
                 alt={employee.full_name}
                 className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-success-500/40 shadow-lg"
+                loading="lazy"
+                width={80}
+                height={80}
               />
             ) : (
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-700 ring-4 ring-success-500/40 shadow-lg" />

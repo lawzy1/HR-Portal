@@ -13,10 +13,11 @@ import { useI18n } from '../../context/I18nContext';
 
 export const AdminRemindersView: React.FC = () => {
   const { t, value: translateValue } = useI18n();
-  const { 
-    reminders, 
-    resolveReminder, 
-    setAdminTab, 
+  const {
+    reminders,
+    resolveReminder,
+    markAllRemindersAsRead,
+    setAdminTab,
     setSelectedEmployeeIdForAdmin,
     pendingOnboardingCount,
   } = useHR();
@@ -29,6 +30,8 @@ export const AdminRemindersView: React.FC = () => {
     const matchSev = filterSeverity === 'ALL' || rem.severity === filterSeverity;
     return matchCat && matchSev;
   });
+
+  const unreadCount = reminders.filter(rem => !rem.isRead).length;
 
   return (
     <div className="space-y-6">
@@ -52,6 +55,15 @@ export const AdminRemindersView: React.FC = () => {
           <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs">
             {t('adminReminders.activeAlertsCount', { count: reminders.length })}
           </span>
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllRemindersAsRead}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs cursor-pointer"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{t('adminReminders.markAllAsRead', { count: unreadCount })}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -75,6 +87,7 @@ export const AdminRemindersView: React.FC = () => {
               <option value="ot_request">{t('adminReminders.catOtRequest')}</option>
               <option value="work_event">{t('adminReminders.catWorkEvent')}</option>
               <option value="payroll">{t('adminReminders.catPayroll')}</option>
+              <option value="profile_change_request">{t('adminReminders.catProfileChangeRequest')}</option>
             </select>
           </div>
 

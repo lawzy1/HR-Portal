@@ -12,6 +12,7 @@ import {
 } from '../hooks/useEmployees';
 import { useFileUpload, useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
 import { useRequestOwnProfileChange } from '../hooks/useProfileChangeRequest';
+import { useAllProfileChangeRequests, useApproveProfileChangeRequest } from '../hooks/useProfileChangeRequests';
 import { useContracts, type DbContract } from '../hooks/useContracts';
 import { ContractEditorModal } from './admin/ContractEditorModal';
 import { getUserFacingError } from '../lib/userFacingError';
@@ -37,6 +38,29 @@ import {
 } from 'lucide-react';
 
 import { KPI_LEVEL_SUGGESTIONS } from '../constants/kpiLevels';
+import { buildProfileChangeProposal, hasProfileChanges, type ProfileChangeProposal } from '../utils/profileChangeProposal';
+
+const PROFILE_CHANGE_FIELD_LABELS: Record<string, string> = {
+  avatar_url: 'Ảnh đại diện',
+  dob: 'Ngày sinh',
+  gender: 'Giới tính',
+  marital_status: 'Tình trạng hôn nhân',
+  phone: 'Số điện thoại',
+  permanent_address: 'Địa chỉ thường trú',
+  temporary_address: 'Địa chỉ tạm trú',
+  id_card_number: 'Số CCCD / Hộ chiếu',
+  id_card_issue_date: 'Ngày cấp CCCD',
+  id_card_issue_place: 'Nơi cấp CCCD',
+  tax_code: 'Mã số thuế',
+  social_insurance_code: 'Mã BHXH',
+  id_card_front_url: 'Ảnh mặt trước CCCD',
+  id_card_back_url: 'Ảnh mặt sau CCCD',
+  vneid_residency_url: 'Ảnh thông tin cư trú VNeID',
+  bank_name: 'Ngân hàng',
+  bank_account_number: 'Số tài khoản',
+  bank_account_holder: 'Tên chủ tài khoản',
+  bank_branch: 'Chi nhánh ngân hàng',
+};
 
 // Renders a stored Storage path as a signed preview, or a freshly-picked
 // local file before it's uploaded — one component instead of repeating the
@@ -110,11 +134,19 @@ const ImageUploadSlot: React.FC<{
 };
 
 export const EditProfileModal: React.FC = () => {
-  const { selectedEmployeeIdForAdmin, isEditProfileModalOpen, setIsEditProfileModalOpen, showToast } = useHR();
+  const {
+    selectedEmployeeIdForAdmin,
+    isEditProfileModalOpen,
+    setIsEditProfileModalOpen,
+    selectedProfileChangeRequestId,
+    setSelectedProfileChangeRequestId,
+    showToast,
+  } = useHR();
   const { profile } = useAuth();
   // Back-office screens are shared by Admin and HR/Kế toán. RLS still keeps
   // account management and final approvals Admin-only.
   const isAdmin = profile?.role === 'admin' || profile?.role === 'hr';
+  const canApproveProfileChange = profile?.role === 'admin';
 
   // Which employee this modal is editing: an admin edits whoever they
   // selected in the employee list; a non-admin only ever edits themselves.
@@ -124,6 +156,10 @@ export const EditProfileModal: React.FC = () => {
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(targetEmployeeId);
   const { data: relativesData } = useEmployeeRelatives(targetEmployeeId);
   const { data: employeeContracts } = useContracts(targetEmployeeId);
+  const { data: profileChangeRequests } = useAllProfileChangeRequests();
+  const reviewRequest = profileChangeRequests?.find((request) => request.id === selectedProfileChangeRequestId);
+  const reviewProposal = reviewRequest?.proposed_changes as ProfileChangeProposal | undefined;
+  const hasStructuredReview = !!reviewProposal && hasProfileChanges(reviewProposal);
   const [editingContract, setEditingContract] = useState<DbContract | null | undefined>(undefined);
   const latestContract = useMemo(
     () => [...(employeeContracts || [])].sort((a, b) => b.start_date.localeCompare(a.start_date))[0],
@@ -135,6 +171,7 @@ export const EditProfileModal: React.FC = () => {
   const setRelatives = useSetEmployeeRelatives();
   const { uploadFile } = useFileUpload();
   const requestProfileChange = useRequestOwnProfileChange();
+  const approveProfileChange = useApproveProfileChangeRequest();
 
   const [activeTab, setActiveTab] = useState<'general' | 'employment' | 'contact' | 'documents' | 'bank' | 'relatives'>('general');
   const [isSaving, setIsSaving] = useState(false);
@@ -193,6 +230,33 @@ export const EditProfileModal: React.FC = () => {
 
   // Tab 6: Relatives (self-editable)
   const [relatives, setRelativesState] = useState<(RelativeInput & { id: string })[]>([]);
+
+  const proposedFieldLabels = useMemo(() => {
+    if (!reviewProposal) return [];
+    const keys = [...Object.keys(reviewProposal.employee || {}), ...Object.keys(reviewProposal.sensitive || {})];
+    return [...keys.map((key) => PROFILE_CHANGE_FIELD_LABELS[key] || key), ...(reviewProposal.relatives ? ['Người thân & liên hệ khẩn cấp'] : [])];
+  }, [reviewProposal]);
+  const proposedTabs = useMemo(() => {
+    const result = new Set<typeof activeTab>();
+    const employeeKeys = Object.keys(reviewProposal?.employee || {});
+    const sensitiveKeys = Object.keys(reviewProposal?.sensitive || {});
+    if (employeeKeys.some((key) => ['avatar_url', 'dob', 'gender', 'marital_status'].includes(key))) result.add('general');
+    if (employeeKeys.some((key) => ['phone', 'permanent_address', 'temporary_address'].includes(key))) result.add('contact');
+    if (sensitiveKeys.some((key) => key.startsWith('bank_'))) result.add('bank');
+    if (sensitiveKeys.some((key) => !key.startsWith('bank_'))) result.add('documents');
+    if (reviewProposal?.relatives) result.add('relatives');
+    return result;
+  }, [reviewProposal]);
+
+  useEffect(() => {
+    if (isEditProfileModalOpen) {
+      setActiveTab('general');
+      setChangeRequestMessage('');
+      setValidationErrors({});
+      return;
+    }
+    setSelectedProfileChangeRequestId(null);
+  }, [isEditProfileModalOpen, setSelectedProfileChangeRequestId]);
 
   useEffect(() => {
     if (!isEditProfileModalOpen || !employee) return;
@@ -257,69 +321,72 @@ export const EditProfileModal: React.FC = () => {
     );
   }, [relativesData, isEditProfileModalOpen]);
 
+  useEffect(() => {
+    if (!isEditProfileModalOpen || !reviewProposal) return;
+    const employeeChanges = reviewProposal.employee;
+    const sensitiveChanges = reviewProposal.sensitive;
+
+    if (employeeChanges) {
+      if ('avatar_url' in employeeChanges) setAvatarPath(employeeChanges.avatar_url ?? null);
+      if ('dob' in employeeChanges) setDob(employeeChanges.dob ?? '');
+      if ('gender' in employeeChanges) setGender(employeeChanges.gender as 'Nam' | 'Nữ' | 'Khác');
+      if ('marital_status' in employeeChanges) setMaritalStatus(employeeChanges.marital_status as 'Độc thân' | 'Đã kết hôn');
+      if ('phone' in employeeChanges) setPhone(employeeChanges.phone ?? '');
+      if ('permanent_address' in employeeChanges) setPermanentAddress(employeeChanges.permanent_address ?? '');
+      if ('temporary_address' in employeeChanges) setTemporaryAddress(employeeChanges.temporary_address ?? '');
+    }
+    if (sensitiveChanges) {
+      if ('id_card_number' in sensitiveChanges) setIdCardNumber(sensitiveChanges.id_card_number ?? '');
+      if ('id_card_issue_date' in sensitiveChanges) setIdCardIssueDate(sensitiveChanges.id_card_issue_date ?? '');
+      if ('id_card_issue_place' in sensitiveChanges) setIdCardIssuePlace(sensitiveChanges.id_card_issue_place ?? '');
+      if ('tax_code' in sensitiveChanges) setTaxCode(sensitiveChanges.tax_code ?? '');
+      if ('social_insurance_code' in sensitiveChanges) setSocialInsuranceCode(sensitiveChanges.social_insurance_code ?? '');
+      if ('id_card_front_url' in sensitiveChanges) setIdCardFrontPath(sensitiveChanges.id_card_front_url ?? null);
+      if ('id_card_back_url' in sensitiveChanges) setIdCardBackPath(sensitiveChanges.id_card_back_url ?? null);
+      if ('vneid_residency_url' in sensitiveChanges) setVneidPath(sensitiveChanges.vneid_residency_url ?? null);
+      if ('bank_name' in sensitiveChanges) setBankName(sensitiveChanges.bank_name ?? '');
+      if ('bank_account_number' in sensitiveChanges) setAccountNumber(sensitiveChanges.bank_account_number ?? '');
+      if ('bank_account_holder' in sensitiveChanges) setAccountHolder(sensitiveChanges.bank_account_holder ?? '');
+      if ('bank_branch' in sensitiveChanges) setBankBranch(sensitiveChanges.bank_branch ?? '');
+    }
+    if (reviewProposal.relatives) {
+      setRelativesState(reviewProposal.relatives.map((relative, index) => ({
+        id: `proposed-${index}`,
+        fullName: relative.full_name,
+        relationship: relative.relationship,
+        phone: relative.phone,
+        address: relative.address,
+        isEmergencyContact: relative.is_emergency_contact,
+      })));
+    }
+
+    if (employeeChanges && Object.keys(employeeChanges).some((key) => ['avatar_url', 'dob', 'gender', 'marital_status'].includes(key))) setActiveTab('general');
+    else if (employeeChanges) setActiveTab('contact');
+    else if (sensitiveChanges && Object.keys(sensitiveChanges).some((key) => key.startsWith('bank_'))) setActiveTab('bank');
+    else if (sensitiveChanges) setActiveTab('documents');
+    else if (reviewProposal.relatives) setActiveTab('relatives');
+  }, [isEditProfileModalOpen, reviewProposal, employee, sensitiveInfo, relativesData]);
+
   const targetLabel = useMemo(() => employee?.full_name || '...', [employee]);
 
   if (!isEditProfileModalOpen) return null;
 
-  if (!targetEmployeeId || !employee) {
+  if (!targetEmployeeId || !employee || employee.id !== targetEmployeeId || (selectedProfileChangeRequestId && !reviewRequest)) {
     return (
       <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border border-slate-200">
           <Loader2 className="w-7 h-7 mx-auto mb-3 text-primary-600 animate-spin" />
           <p className="text-sm font-semibold text-slate-800">
-            {targetEmployeeId ? 'Đang tải hồ sơ nhân viên...' : 'Không xác định được nhân viên cần chỉnh sửa.'}
+            {targetEmployeeId ? 'Đang tải hồ sơ và nội dung đề xuất...' : 'Không xác định được nhân viên cần chỉnh sửa.'}
           </p>
-          {!targetEmployeeId && (
-            <button
-              type="button"
-              onClick={() => setIsEditProfileModalOpen(false)}
-              className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold cursor-pointer"
-            >
-              Đóng
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsEditProfileModalOpen(false)}
+            className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold cursor-pointer"
+          >
+            Đóng
+          </button>
         </div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    const submitChangeRequest = async (event: React.FormEvent) => {
-      event.preventDefault();
-      try {
-        const result = await requestProfileChange.mutateAsync(changeRequestMessage);
-        showToast(result?.notificationDelivered
-          ? 'Đã gửi yêu cầu thay đổi tới Admin/HR qua email.'
-          : 'Đã lưu yêu cầu, nhưng email thông báo chưa được cấu hình.');
-        setChangeRequestMessage('');
-        setIsEditProfileModalOpen(false);
-      } catch (error) {
-        showToast(await getUserFacingError(error, 'Không thể gửi yêu cầu thay đổi. Vui lòng thử lại.'));
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-        <form onSubmit={submitChangeRequest} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-black text-slate-900">Yêu cầu thay đổi thông tin</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Hồ sơ đã hoàn tất onboarding nên chỉ Admin/HR mới có thể cập nhật. Hãy nêu thông tin cần đổi để gửi yêu cầu kèm email thông báo.</p>
-            </div>
-            <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng"><X className="h-5 w-5" /></button>
-          </div>
-          <label className="mt-5 block text-xs font-bold text-slate-700">
-            Nội dung cần thay đổi
-            <textarea value={changeRequestMessage} onChange={(event) => setChangeRequestMessage(event.target.value)} minLength={5} maxLength={2000} required rows={6} placeholder="Ví dụ: Tôi cần đổi số tài khoản ngân hàng từ … sang … vì …" className="mt-1.5 w-full resize-y rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15" />
-          </label>
-          <div className="mt-5 flex justify-end gap-3">
-            <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
-            <button type="submit" disabled={requestProfileChange.isPending} className="inline-flex items-center gap-2 rounded-xl bg-success-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-success-800 disabled:opacity-60">
-              {requestProfileChange.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Gửi yêu cầu
-            </button>
-          </div>
-        </form>
       </div>
     );
   }
@@ -345,6 +412,7 @@ export const EditProfileModal: React.FC = () => {
     const accountNumberPattern = /^\d{6,20}$/;
     const today = new Date().toISOString().slice(0, 10);
 
+    if (!isAdmin && changeRequestMessage.trim().length < 5) errors.changeRequestMessage = 'Vui lòng nhập lý do thay đổi từ 5 ký tự.';
     if (isAdmin && !fullName.trim()) errors.fullName = 'Vui lòng nhập họ và tên.';
     if (isAdmin && !employeeCode.trim()) errors.employeeCode = 'Vui lòng nhập mã nhân viên.';
     if (isAdmin && !jobTitle.trim()) errors.jobTitle = 'Vui lòng nhập chức danh công việc.';
@@ -397,6 +465,21 @@ export const EditProfileModal: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (reviewRequest) {
+      if (!canApproveProfileChange || !hasStructuredReview) return;
+      setIsSaving(true);
+      try {
+        await approveProfileChange.mutateAsync(reviewRequest.id);
+        showToast('Đã duyệt và áp dụng thông tin đề xuất vào hồ sơ nhân viên.');
+        setIsEditProfileModalOpen(false);
+      } catch (error) {
+        showToast(await getUserFacingError(error, 'Không thể duyệt yêu cầu thay đổi. Vui lòng thử lại.'));
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     if (!validateProfileForm()) {
       showToast('Vui lòng kiểm tra các trường đang báo lỗi trước khi lưu.');
       return;
@@ -411,10 +494,92 @@ export const EditProfileModal: React.FC = () => {
       let resolvedBackPath = idCardBackPath;
       let resolvedVneidPath = vneidPath;
 
+      // ponytail: failed/rejected proposals can leave unused timestamped files;
+      // add scheduled cleanup only if storage growth becomes measurable.
       if (avatarFile) resolvedAvatarPath = await uploadFile(avatarFile, companyId, targetEmployeeId, 'avatar');
       if (idCardFrontFile) resolvedFrontPath = await uploadFile(idCardFrontFile, companyId, targetEmployeeId, 'cccd-front');
       if (idCardBackFile) resolvedBackPath = await uploadFile(idCardBackFile, companyId, targetEmployeeId, 'cccd-back');
       if (vneidFile) resolvedVneidPath = await uploadFile(vneidFile, companyId, targetEmployeeId, 'vneid');
+
+      if (!isAdmin) {
+        const normalizeRelatives = (items: typeof relatives) => items.map((relative) => ({
+          full_name: relative.fullName.trim(),
+          relationship: relative.relationship.trim(),
+          phone: relative.phone.trim(),
+          address: relative.address.trim(),
+          is_emergency_contact: relative.isEmergencyContact,
+        }));
+        const proposal = buildProfileChangeProposal({
+          employee: {
+            avatar_url: employee.avatar_url ?? null,
+            dob: employee.dob ?? null,
+            gender: employee.gender || 'Nam',
+            marital_status: employee.marital_status || 'Độc thân',
+            phone: employee.phone || '',
+            permanent_address: employee.permanent_address || '',
+            temporary_address: employee.temporary_address || '',
+          },
+          sensitive: {
+            id_card_number: sensitiveInfo?.id_card_number || '',
+            id_card_issue_date: sensitiveInfo?.id_card_issue_date ?? null,
+            id_card_issue_place: sensitiveInfo?.id_card_issue_place || '',
+            tax_code: sensitiveInfo?.tax_code || '',
+            social_insurance_code: sensitiveInfo?.social_insurance_code || '',
+            id_card_front_url: sensitiveInfo?.id_card_front_url ?? null,
+            id_card_back_url: sensitiveInfo?.id_card_back_url ?? null,
+            vneid_residency_url: sensitiveInfo?.vneid_residency_url ?? null,
+            bank_name: sensitiveInfo?.bank_name || '',
+            bank_account_number: sensitiveInfo?.bank_account_number || '',
+            bank_account_holder: sensitiveInfo?.bank_account_holder || '',
+            bank_branch: sensitiveInfo?.bank_branch || '',
+          },
+          relatives: normalizeRelatives((relativesData || []).map((relative) => ({
+            id: relative.id,
+            fullName: relative.full_name,
+            relationship: relative.relationship || '',
+            phone: relative.phone || '',
+            address: relative.address || '',
+            isEmergencyContact: relative.is_emergency_contact,
+          }))),
+        }, {
+          employee: {
+            avatar_url: resolvedAvatarPath,
+            dob: dob || null,
+            gender,
+            marital_status: maritalStatus,
+            phone: phone.trim(),
+            permanent_address: permanentAddress.trim(),
+            temporary_address: temporaryAddress.trim(),
+          },
+          sensitive: {
+            id_card_number: idCardNumber.trim(),
+            id_card_issue_date: idCardIssueDate || null,
+            id_card_issue_place: idCardIssuePlace.trim(),
+            tax_code: taxCode.trim(),
+            social_insurance_code: socialInsuranceCode.trim(),
+            id_card_front_url: resolvedFrontPath,
+            id_card_back_url: resolvedBackPath,
+            vneid_residency_url: resolvedVneidPath,
+            bank_name: bankName.trim(),
+            bank_account_number: accountNumber.trim(),
+            bank_account_holder: accountHolder.trim().toUpperCase(),
+            bank_branch: bankBranch.trim(),
+          },
+          relatives: normalizeRelatives(relatives),
+        });
+
+        if (!hasProfileChanges(proposal)) {
+          showToast('Bạn chưa thay đổi trường thông tin nào.');
+          return;
+        }
+
+        const result = await requestProfileChange.mutateAsync({ message: changeRequestMessage.trim(), proposedChanges: proposal });
+        showToast(result?.notificationDelivered
+          ? 'Đã gửi đề xuất thay đổi tới Admin/HR qua email.'
+          : 'Đã lưu đề xuất, nhưng email thông báo chưa được cấu hình.');
+        setIsEditProfileModalOpen(false);
+        return;
+      }
 
       const employeeUpdates: Record<string, unknown> = {
         avatar_url: resolvedAvatarPath,
@@ -499,13 +664,13 @@ export const EditProfileModal: React.FC = () => {
             <ImageAvatarPreview path={avatarFile ? null : avatarPath} file={avatarFile} />
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <span>{isAdmin ? 'Chỉnh sửa Hồ sơ Nhân viên' : 'Hồ sơ của tôi'}</span>
+                <span>{reviewRequest ? 'Duyệt đề xuất thay đổi hồ sơ' : isAdmin ? 'Chỉnh sửa Hồ sơ Nhân viên' : 'Đề xuất thay đổi hồ sơ'}</span>
                 <span className="text-xs bg-success-600/90 text-white font-mono font-bold px-2 py-0.5 rounded-md">
                   {employeeCode}
                 </span>
               </h2>
               <p className="text-xs text-slate-300">
-                Đang chỉnh sửa cho: <strong className="text-success-400">{targetLabel}</strong>
+                {reviewRequest ? 'Đề xuất của' : isAdmin ? 'Đang chỉnh sửa cho' : 'Hồ sơ của'}: <strong className="text-success-400">{targetLabel}</strong>
               </p>
             </div>
           </div>
@@ -536,13 +701,36 @@ export const EditProfileModal: React.FC = () => {
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
+                  {proposedTabs.has(tab.id) && <span className={`ml-auto h-2 w-2 rounded-full ${activeTab === tab.id ? 'bg-white' : 'bg-amber-500'}`} title="Có thông tin đề xuất" />}
                 </button>
               ))}
             </div>
           </nav>
 
           <form onSubmit={handleSave} className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+            <fieldset disabled={!!reviewRequest} className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+
+          {reviewRequest ? (
+            <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
+              <p className="font-bold">Nội dung nhân viên gửi</p>
+              <p className="mt-1 whitespace-pre-wrap leading-5">{reviewRequest.message}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {proposedFieldLabels.map((label) => (
+                  <span key={label} className="rounded-lg border border-amber-200 bg-white px-2 py-1 font-semibold text-amber-800">{label}</span>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] text-amber-800">{hasStructuredReview ? 'Các giá trị đề xuất đã được điền sẵn bên dưới. Hồ sơ hiện tại chưa thay đổi.' : 'Đây là yêu cầu cũ chỉ có nội dung mô tả; không thể duyệt tự động.'}</p>
+            </div>
+          ) : !isAdmin ? (
+            <div className="mb-5 rounded-2xl border border-success-200 bg-success-50 p-4 text-xs text-success-950">
+              <p className="font-bold">Chỉ gửi bản đề xuất — hồ sơ hiện tại sẽ không thay đổi cho tới khi Admin duyệt.</p>
+              <label className="mt-3 block font-bold text-slate-700">
+                Lý do thay đổi *
+                <textarea value={changeRequestMessage} onChange={(event) => setChangeRequestMessage(event.target.value)} minLength={5} maxLength={2000} required rows={3} placeholder="Ví dụ: Tôi vừa đổi tài khoản nhận lương." className="mt-1.5 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-success-700 focus:ring-2 focus:ring-success-700/15" />
+              </label>
+              {validationErrors.changeRequestMessage && <ValidationMessage message={validationErrors.changeRequestMessage} />}
+            </div>
+          ) : null}
 
           {Object.keys(validationErrors).length > 0 && (
             <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800" role="alert">
@@ -556,7 +744,7 @@ export const EditProfileModal: React.FC = () => {
           {!isAdmin && (activeTab === 'general' || activeTab === 'employment') && (
             <div className="flex items-center gap-2 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
               <Lock className="w-3.5 h-3.5" />
-              <span>Các trường có khóa chỉ Admin/HR mới sửa được — theo đúng phân quyền hệ thống.</span>
+              <span>Các trường có khóa chỉ Admin/HR mới sửa được.</span>
             </div>
           )}
 
@@ -719,7 +907,7 @@ export const EditProfileModal: React.FC = () => {
                 <LockableField label="Mức lương cơ bản (VND)" locked={!isAdmin}>
                   <CurrencyInput value={currentSalary} onValueChange={(value) => setCurrentSalary(Number(value || 0))} disabled={!isAdmin} className={`${inputClass} font-bold text-success-700`} />
                 </LockableField>
-                <LockableField label="Ngày review lương gần nhất" locked={!isAdmin}>
+                <LockableField label="Ngày review gần nhất" locked={!isAdmin}>
                   <input type="date" value={lastSalaryReviewDate} onChange={(e) => setLastSalaryReviewDate(e.target.value)} disabled={!isAdmin} className={inputClass} />
                 </LockableField>
               </div>
@@ -932,17 +1120,19 @@ export const EditProfileModal: React.FC = () => {
             </div>
           )}
 
-            </div>
+            </fieldset>
 
             {/* Modal Footer */}
             <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-4 sm:px-8 flex items-center justify-end gap-3">
             <button type="button" onClick={() => setIsEditProfileModalOpen(false)} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer">
-              Hủy bỏ
+              {reviewRequest ? 'Đóng' : 'Hủy bỏ'}
             </button>
-            <button type="submit" disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 rounded-xl transition-colors shadow-md shadow-primary-600/20 cursor-pointer">
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>Lưu thay đổi hồ sơ</span>
-            </button>
+            {(!reviewRequest || (canApproveProfileChange && hasStructuredReview)) && (
+              <button type="submit" disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white disabled:opacity-60 rounded-xl transition-colors shadow-md cursor-pointer ${reviewRequest || !isAdmin ? 'bg-success-700 hover:bg-success-800 shadow-success-700/20' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/20'}`}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : reviewRequest || !isAdmin ? <Send className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                <span>{reviewRequest ? 'Duyệt & áp dụng' : isAdmin ? 'Lưu thay đổi hồ sơ' : 'Gửi đề xuất thay đổi'}</span>
+              </button>
+            )}
             </div>
           </form>
         </div>

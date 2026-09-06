@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       audit_logs: {
@@ -469,6 +494,7 @@ export type Database = {
           message: string
           notification_error: string | null
           notification_sent_at: string | null
+          proposed_changes: Json
           requested_by: string
           resolved_at: string | null
           resolved_by: string | null
@@ -482,6 +508,7 @@ export type Database = {
           message: string
           notification_error?: string | null
           notification_sent_at?: string | null
+          proposed_changes?: Json
           requested_by: string
           resolved_at?: string | null
           resolved_by?: string | null
@@ -495,6 +522,7 @@ export type Database = {
           message?: string
           notification_error?: string | null
           notification_sent_at?: string | null
+          proposed_changes?: Json
           requested_by?: string
           resolved_at?: string | null
           resolved_by?: string | null
@@ -1712,6 +1740,10 @@ export type Database = {
     Functions: {
       activate_own_backoffice_account: { Args: never; Returns: undefined }
       approve_contract: { Args: { p_contract_id: string }; Returns: string }
+      approve_employee_profile_change_request: {
+        Args: { p_request_id: string }
+        Returns: string
+      }
       approve_kpi_month: {
         Args: { p_month: number; p_year: number }
         Returns: number
@@ -2010,6 +2042,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       user_role: ["admin", "employee", "hr"],

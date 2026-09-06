@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useHR } from '../context/HRContext';
-import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
+import { MoneyVisibilityToggle, useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { usePayrollRecords } from '../hooks/usePayroll';
@@ -66,7 +66,10 @@ export const PayslipsView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-success-900 to-teal-950 text-white p-5 rounded-2xl shadow-md space-y-1">
           <span className="text-[11px] uppercase font-bold text-success-300 tracking-wider">{t('payslips.netYear', { year: selectedYear })}</span>
-          <p className="text-2xl font-black tabular-nums text-white">{formatMoney(totalNetAnnual)}</p>
+          <p className="inline-flex items-center gap-1 text-2xl font-black tabular-nums text-white">
+            {formatMoney(totalNetAnnual)}
+            <MoneyVisibilityToggle />
+          </p>
           <p className="text-[10px] text-success-200">{t('payslips.netHelp')}</p>
         </div>
 

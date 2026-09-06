@@ -170,6 +170,7 @@ export interface HrReminder {
   message: string;
   employeeId?: string;
   employeeName?: string;
+  profileChangeRequestId?: string;
   dueDate?: string;
   isRead: boolean;
   createdAt: string;

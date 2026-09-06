@@ -4,11 +4,12 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Calendar, 
+  Clock3,
   ArrowRight,
   ShieldAlert
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatDateTime } from '../../utils/formatters';
 import { useI18n } from '../../context/I18nContext';
 
 export const AdminRemindersView: React.FC = () => {
@@ -19,17 +20,21 @@ export const AdminRemindersView: React.FC = () => {
     markAllRemindersAsRead,
     setAdminTab,
     setSelectedEmployeeIdForAdmin,
+    setSelectedProfileChangeRequestId,
+    setIsEditProfileModalOpen,
     pendingOnboardingCount,
   } = useHR();
 
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
 
-  const filteredReminders = reminders.filter(rem => {
-    const matchCat = filterCategory === 'ALL' || rem.category === filterCategory;
-    const matchSev = filterSeverity === 'ALL' || rem.severity === filterSeverity;
-    return matchCat && matchSev;
-  });
+  const filteredReminders = reminders
+    .filter(rem => {
+      const matchCat = filterCategory === 'ALL' || rem.category === filterCategory;
+      const matchSev = filterSeverity === 'ALL' || rem.severity === filterSeverity;
+      return matchCat && matchSev;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const unreadCount = reminders.filter(rem => !rem.isRead).length;
 
@@ -163,6 +168,11 @@ export const AdminRemindersView: React.FC = () => {
                       {translateValue(rem.message)}
                     </p>
 
+                    <p className="text-[11px] font-medium text-slate-500 mt-1 flex items-center space-x-1">
+                      <Clock3 className="w-3 h-3 text-slate-400" />
+                      <time dateTime={rem.createdAt}>{t('adminReminders.createdAt', { date: formatDateTime(rem.createdAt) })}</time>
+                    </p>
+
                     {rem.dueDate && (
                       <p className="text-[11px] font-medium text-slate-500 mt-1 flex items-center space-x-1">
                         <Calendar className="w-3 h-3 text-slate-400" />
@@ -177,7 +187,10 @@ export const AdminRemindersView: React.FC = () => {
                     <button
                       onClick={() => {
                         setSelectedEmployeeIdForAdmin(rem.employeeId!);
-                        if (rem.category === 'contract' || rem.category === 'contract_missing' || rem.category === 'salary_review') {
+                        if (rem.category === 'profile_change_request' && rem.profileChangeRequestId) {
+                          setSelectedProfileChangeRequestId(rem.profileChangeRequestId);
+                          setIsEditProfileModalOpen(true);
+                        } else if (rem.category === 'contract' || rem.category === 'contract_missing' || rem.category === 'salary_review') {
                           setAdminTab('admin-contracts');
                         } else if (rem.category === 'leave_request') {
                           setAdminTab('admin-leaves');

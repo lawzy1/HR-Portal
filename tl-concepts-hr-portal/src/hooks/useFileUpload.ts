@@ -66,7 +66,7 @@ export function useFileUpload() {
       const path = `${companyId}/${employeeId}/${label}-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, upload, {
-        upsert: true,
+        upsert: false,
         contentType: upload.type,
         cacheControl: '31536000',
       });

@@ -53,6 +53,8 @@ interface HRContextType {
   setIsNewLeaveModalOpen: (open: boolean) => void;
   isEditProfileModalOpen: boolean;
   setIsEditProfileModalOpen: (open: boolean) => void;
+  selectedProfileChangeRequestId: string | null;
+  setSelectedProfileChangeRequestId: (id: string | null) => void;
   isImportKpiModalOpen: boolean;
   setIsImportKpiModalOpen: (open: boolean) => void;
   isNewEmployeeModalOpen: boolean;
@@ -185,6 +187,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // Modals
   const [isNewLeaveModalOpen, setIsNewLeaveModalOpen] = useState(false);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [selectedProfileChangeRequestId, setSelectedProfileChangeRequestId] = useState<string | null>(null);
   const [isImportKpiModalOpen, setIsImportKpiModalOpen] = useState(false);
   const [isNewEmployeeModalOpen, setIsNewEmployeeModalOpen] = useState(false);
   const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
@@ -481,6 +484,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         message: `${empName} gửi yêu cầu: "${req.message}"`,
         employeeId: req.employee_id,
         employeeName: empName,
+        profileChangeRequestId: req.id,
         isRead: readReminderIds.includes(`rem-pcr-${req.id}`),
         createdAt: req.created_at,
         severity: 'medium',
@@ -526,6 +530,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setIsNewLeaveModalOpen,
         isEditProfileModalOpen,
         setIsEditProfileModalOpen,
+        selectedProfileChangeRequestId,
+        setSelectedProfileChangeRequestId,
         isImportKpiModalOpen,
         setIsImportKpiModalOpen,
         isNewEmployeeModalOpen,

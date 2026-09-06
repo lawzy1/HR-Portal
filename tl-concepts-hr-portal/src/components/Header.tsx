@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../context/I18nContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { MoneyVisibilityToggle } from '../context/MoneyVisibilityContext';
 import { startTabAlert, stopTabAlert } from '../lib/tabNotification';
 
 interface HeaderProps {
@@ -130,6 +131,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 </span>
               )}
             </button>
+          )}
+
+          {!isBackoffice && (
+            <MoneyVisibilityToggle
+              showLabel
+              className="border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700"
+            />
           )}
 
           <LanguageSwitcher />

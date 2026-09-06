@@ -424,7 +424,7 @@ export const AdminPayrollView: React.FC = () => {
       if (nameMatches.length === 1 && !codeMatch) {
         warning = `MSNV ${employeeCode || '(trống)'} chưa khớp mã hồ sơ; đã khớp duy nhất theo họ tên.`;
       } else if (nameMatches.length === 1 && codeMatch && codeMatch.id !== nameMatches[0].id) {
-        error = `Tên nhân viên và MSNV đang trỏ tới hai hồ sơ khác nhau; cần sửa file trước khi lưu.`;
+        error = `Tên ${importedEmployeeName} khớp hồ sơ ${nameMatches[0].employee_code}, nhưng MSNV ${employeeCode} thuộc hồ sơ ${codeMatch.full_name}; cần sửa file trước khi lưu.`;
       } else if (!employee && nameMatches.length > 1) {
         error = `Họ tên trong file trùng nhiều nhân viên, cần bổ sung MSNV đúng.`;
       }
@@ -515,6 +515,12 @@ export const AdminPayrollView: React.FC = () => {
     setPreview(next);
   };
 
+  const selectPeriod = (month: number, year: number) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    if (preview.length) buildPreview(paste, sourceName, { month, year });
+  };
+
   // File selection can finish before the employee query. Re-run the preview
   // once the master list arrives so a valid workbook is not incorrectly shown
   // as "Không tìm thấy mã nhân viên" simply because the query was still loading.
@@ -598,15 +604,17 @@ export const AdminPayrollView: React.FC = () => {
     try {
       if (approvalDialog === 'approve') {
         await approvePayroll.mutateAsync({ month: selectedMonth, year: selectedYear });
-        try {
-          const delivery = await processNotifications.mutateAsync({ limit: 25 });
+        setApprovalDialog(null);
+        setRejectionReason('');
+        void processNotifications.mutateAsync({ limit: 25 }).then((delivery) => {
           const failed = delivery?.results.filter((result) => result.status === 'failed').length ?? 0;
           showToast(failed > 0
             ? `Đã phát hành payroll; ${failed} phiếu chưa xử lý được và đã vào hàng đợi retry.`
             : `Đã duyệt, phát hành và xử lý ${delivery?.processed ?? 0} phiếu lương.`);
-        } catch {
+        }).catch(() => {
           showToast('Đã phát hành payroll. Hàng đợi PDF/email chưa chạy được; Admin có thể bấm gửi lại sau.');
-        }
+        });
+        return;
       } else {
         await rejectPayroll.mutateAsync({ month: selectedMonth, year: selectedYear, reason: rejectionReason.trim() });
         showToast(`Đã trả lại payroll Tháng ${selectedMonth}/${selectedYear} cho HR/Kế toán.`);
@@ -666,10 +674,10 @@ export const AdminPayrollView: React.FC = () => {
           >
             <Plus className="h-4 w-4" /> {t('payroll.add')}
           </button>
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="p-2 border rounded-xl text-sm">
+          <select value={selectedMonth} onChange={(e) => selectPeriod(Number(e.target.value), selectedYear)} className="p-2 border rounded-xl text-sm">
             {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{t('common.month', { month })}</option>)}
           </select>
-          <input type="number" value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="w-24 p-2 border rounded-xl text-sm" />
+          <input type="number" value={selectedYear} onChange={(e) => selectPeriod(selectedMonth, Number(e.target.value))} className="w-24 p-2 border rounded-xl text-sm" />
         </div>
       </div>
 
@@ -750,6 +758,13 @@ export const AdminPayrollView: React.FC = () => {
             <p className="text-xs text-slate-500">{t('payroll.previewHelp')}</p>
           </div>
         </div>
+        <fieldset className="flex flex-wrap items-end gap-2">
+          <legend className="mb-1 text-xs font-bold text-slate-700">{t('payroll.importPeriod')}</legend>
+          <select value={selectedMonth} onChange={(e) => selectPeriod(Number(e.target.value), selectedYear)} className="rounded-xl border border-slate-300 bg-white p-2 text-sm">
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{t('common.month', { month })}</option>)}
+          </select>
+          <input type="number" value={selectedYear} onChange={(e) => selectPeriod(selectedMonth, Number(e.target.value))} className="w-24 rounded-xl border border-slate-300 bg-white p-2 text-sm" aria-label={t('common.year', { year: selectedYear })} />
+        </fieldset>
         <textarea
           rows={7}
           value={paste}

@@ -209,7 +209,10 @@ export const ContractSalaryView: React.FC = () => {
                           ].map(([label, value]) => (
                             <div key={label} className="rounded-xl border border-success-100 bg-success-50/60 p-3">
                               <p className="text-[10px] font-bold text-slate-500">{label}</p>
-                              <p className="mt-1 break-words font-mono text-xs font-black text-success-800">{value}</p>
+                              <p className="mt-1 inline-flex items-center gap-1 break-words font-mono text-xs font-black text-success-800">
+                                {value}
+                                {label === t('contract.salary') && <MoneyVisibilityToggle />}
+                              </p>
                             </div>
                           ))}
                         </div>

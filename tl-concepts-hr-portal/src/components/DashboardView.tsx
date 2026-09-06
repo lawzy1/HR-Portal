@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useHR } from '../context/HRContext';
-import { useMoneyVisibility } from '../context/MoneyVisibilityContext';
+import { MoneyVisibilityToggle, useMoneyVisibility } from '../context/MoneyVisibilityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEmployee } from '../hooks/useEmployees';
 import { useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
@@ -129,8 +129,9 @@ export const DashboardView: React.FC = () => {
               <CreditCard className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+          <p className="inline-flex items-center gap-1 text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
             {formatMoney(employee.current_salary || 0)}
+            <MoneyVisibilityToggle />
           </p>
           <p className="text-[11px] text-slate-500 mt-1.5 flex items-center justify-between">
             <span>{t('dashboard.latestReview')}: {employee.last_salary_review_date ? formatDate(employee.last_salary_review_date) : t('common.none')}</span>

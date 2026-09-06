@@ -10,6 +10,9 @@ const APP_URL = Deno.env.get("APP_URL")?.replace(/\/$/, "");
 const FALLBACK_ORIGIN = "http://127.0.0.1:3000";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const NOTIFICATION_FROM_EMAIL = Deno.env.get("NOTIFICATION_FROM_EMAIL");
+const EMPLOYEE_FIELDS = new Set(["avatar_url", "dob", "gender", "marital_status", "phone", "permanent_address", "temporary_address"]);
+const SENSITIVE_FIELDS = new Set(["id_card_number", "id_card_issue_date", "id_card_issue_place", "tax_code", "social_insurance_code", "id_card_front_url", "id_card_back_url", "vneid_residency_url", "bank_name", "bank_account_number", "bank_account_holder", "bank_branch"]);
+const RELATIVE_FIELDS = new Set(["full_name", "relationship", "phone", "address", "is_emergency_contact"]);
 const ALLOWED_ORIGINS = new Set(
   (Deno.env.get("ALLOWED_ORIGINS") ?? [APP_URL, FALLBACK_ORIGIN].filter(Boolean).join(","))
     .split(",")
@@ -37,6 +40,43 @@ function jsonResponse(request: Request, body: unknown, status: number) {
 
 function errorResponse(request: Request, options: Parameters<typeof publicError>[2]) {
   return publicError(request, corsHeaders(request), options);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidProposal(value: unknown): value is Record<string, unknown> {
+  if (!isObject(value) || !Object.keys(value).length || Object.keys(value).some((key) => !["employee", "sensitive", "relatives"].includes(key))) return false;
+  if (JSON.stringify(value).length > 50_000) return false;
+
+  for (const [section, allowedFields] of [["employee", EMPLOYEE_FIELDS], ["sensitive", SENSITIVE_FIELDS]] as const) {
+    const changes = value[section];
+    if (changes === undefined) continue;
+    if (!isObject(changes) || !Object.keys(changes).length) return false;
+    if (Object.entries(changes).some(([key, fieldValue]) => !allowedFields.has(key) || (fieldValue !== null && typeof fieldValue !== "string") || (typeof fieldValue === "string" && fieldValue.length > 2_000))) return false;
+  }
+
+  const employee = isObject(value.employee) ? value.employee : {};
+  const sensitive = isObject(value.sensitive) ? value.sensitive : {};
+  if (employee.gender !== undefined && !["Nam", "Nữ", "Khác"].includes(employee.gender as string)) return false;
+  if (employee.marital_status !== undefined && !["Độc thân", "Đã kết hôn"].includes(employee.marital_status as string)) return false;
+  if (employee.phone !== undefined && !/^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/.test(String(employee.phone).replace(/[\s.-]/g, ""))) return false;
+  for (const dateValue of [employee.dob, sensitive.id_card_issue_date]) {
+    if (dateValue !== undefined && dateValue !== null && !/^\d{4}-\d{2}-\d{2}$/.test(dateValue as string)) return false;
+  }
+
+  if (value.relatives !== undefined) {
+    if (!Array.isArray(value.relatives) || value.relatives.length > 20) return false;
+    for (const relative of value.relatives) {
+      if (!isObject(relative) || Object.keys(relative).some((key) => !RELATIVE_FIELDS.has(key))) return false;
+      if (typeof relative.full_name !== "string" || !relative.full_name.trim() || relative.full_name.length > 200) return false;
+      if (["relationship", "phone", "address"].some((key) => typeof relative[key] !== "string" || (relative[key] as string).length > 500)) return false;
+      if (typeof relative.is_emergency_contact !== "boolean") return false;
+    }
+  }
+
+  return true;
 }
 
 async function sendEmail(recipient: string, subject: string, html: string, text: string) {
@@ -73,10 +113,13 @@ Deno.serve(async (request: Request) => {
   const { data: { user }, error: userError } = await callerClient.auth.getUser();
   if (userError || !user) return errorResponse(request, { code: "UNAUTHENTICATED", message: "Phiên đăng nhập đã hết hạn.", status: 401 });
 
-  const body = await request.json().catch(() => null) as { message?: unknown } | null;
+  const body = await request.json().catch(() => null) as { message?: unknown; proposedChanges?: unknown } | null;
   const message = typeof body?.message === "string" ? body.message.trim() : "";
   if (message.length < 5 || message.length > 2000) {
     return errorResponse(request, { code: "VALIDATION_ERROR", message: "Nội dung yêu cầu phải từ 5 đến 2.000 ký tự.", status: 400, field: "message" });
+  }
+  if (!isValidProposal(body?.proposedChanges)) {
+    return errorResponse(request, { code: "VALIDATION_ERROR", message: "Yêu cầu phải có ít nhất một trường thay đổi hợp lệ.", status: 400, field: "proposedChanges" });
   }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -91,9 +134,17 @@ Deno.serve(async (request: Request) => {
     return errorResponse(request, { code: "FORBIDDEN", message: "Bạn chưa thể gửi yêu cầu thay đổi thông tin.", status: 403 });
   }
 
+  const pathPrefix = `${profile.company_id}/${profile.employee_id}/`;
+  const sensitiveChanges = isObject(body.proposedChanges.sensitive) ? body.proposedChanges.sensitive : {};
+  const employeeChanges = isObject(body.proposedChanges.employee) ? body.proposedChanges.employee : {};
+  const proposedPaths = [employeeChanges.avatar_url, sensitiveChanges.id_card_front_url, sensitiveChanges.id_card_back_url, sensitiveChanges.vneid_residency_url];
+  if (proposedPaths.some((path) => typeof path === "string" && !path.startsWith(pathPrefix))) {
+    return errorResponse(request, { code: "VALIDATION_ERROR", message: "Tệp đề xuất không thuộc hồ sơ của bạn.", status: 400, field: "proposedChanges" });
+  }
+
   const { data: changeRequest, error: insertError } = await admin
     .from("employee_profile_change_requests")
-    .insert({ company_id: profile.company_id, employee_id: profile.employee_id, requested_by: user.id, message })
+    .insert({ company_id: profile.company_id, employee_id: profile.employee_id, requested_by: user.id, message, proposed_changes: body.proposedChanges })
     .select("id")
     .single();
   if (insertError || !changeRequest) {

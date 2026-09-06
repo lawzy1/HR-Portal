@@ -1,6 +1,6 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-09-05**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết và [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md) cho audit đầy đủ.
+Cập nhật lần cuối: **2026-09-06**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết và [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md) cho audit đầy đủ.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
@@ -10,6 +10,8 @@ Cập nhật lần cuối: **2026-09-05**. File này tóm tắt trạng thái re
 - Auth 3 role (`admin`/`hr`/`employee`), multi-tenant RLS qua `company_id`. HR/Kế toán vận hành dữ liệu nhưng không quản lý account/role hoặc final approve; Admin là role duy nhất làm các thao tác này.
 - Auth self-service: User/HR/Admin đều có thể xem hồ sơ tài khoản và đổi mật khẩu của chính mình; màn Login có luồng Quên mật khẩu gửi email reset qua Supabase Auth.
 - Hồ sơ nhân viên đầy đủ (thông tin chung, CCCD/MST/BHXH, ngân hàng, người thân, upload ảnh) + **chỉ tiêu KPI theo level/ngày riêng từng người** (mới).
+- Nhân viên đề xuất thay đổi trực tiếp trên form hồ sơ dùng chung; dữ liệu thật chỉ đổi khi Admin mở cảnh báo và bấm `Duyệt & áp dụng`. Đề xuất có thể gồm thông tin cá nhân, giấy tờ/ảnh, ngân hàng và người thân; HR chỉ xem.
+- Portal nhân viên mặc định che toàn bộ số tiền; toggle trên header đổi ẩn/hiện đồng bộ ở mọi màn.
 - Hợp đồng lao động + lịch sử tăng lương + **phụ lục hợp đồng** (mới) + cảnh báo pháp lý Điều 20 BLLĐ 2019.
 - Nghỉ phép: quỹ phép theo năm, đơn xin nghỉ, duyệt, ngày lễ công ty (`company_holidays`), WFH/đi trễ; Admin có thể ghi nhận trực tiếp đã duyệt và sửa hạn dùng quỹ phép, có calendar nguồn lực theo tháng/toàn công ty; range ngày lễ được tách thành từng ngày để dùng trong công thức ngày công.
 - KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công cá nhân (đã trừ lễ/Tết và phép đã duyệt)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT; Admin tạo trực tiếp OT cho nhân viên được.
@@ -35,8 +37,6 @@ Cập nhật lần cuối: **2026-09-05**. File này tóm tắt trạng thái re
 - Tab “Thông tin công việc” trong chỉnh sửa hồ sơ vẫn là snapshot cố định, chưa mở trình quản lý hợp đồng/custom fields.
 - KPI chưa natural-sort theo số đầu tên dự án, chưa collapse/expand từng project, category badge chưa chống vỡ chữ trên màn hình hẹp và cột deadline vẫn hiện nhãn “Đúng hạn”.
 - Đổi role vẫn update trực tiếp từ dropdown, chưa có confirmation và chưa re-auth bằng mật khẩu hiện tại.
-- `employee_profile_change_requests` chưa được query vào Dashboard/Reminders; Edge Function chỉ gửi email tới `role = admin`, chưa gửi HR; chưa có Supabase Realtime, chuông/toast realtime, âm thanh hoặc read-state lưu DB.
-- Migration history local/remote chưa sạch: bốn file migration local cũ trùng nội dung với version đã deploy làm `supabase db push --linked --dry-run` bị chặn. Không dùng `--include-all`; đối chiếu và bỏ các bản local trùng theo audit 2026-09-05.
 - Git `origin` đang chứa credential trong URL. Rotate credential và đổi remote về URL không chứa token.
 - Bảng quỹ phép đang hiển thị `total_accumulated` (phép đã tích lũy đến thời điểm hiện tại), không phải toàn bộ `annual_entitlement`; tên “Tổng quỹ” dễ gây hiểu nhầm. Đã chốt `remaining_days` phải là số khả dụng `max(total_accumulated - used_days - pending_days, 0)` và backend phải chặn đơn phép năm vượt số này; chưa apply migration.
 - Export Excel bảng KPI (`AdminKpiOtView.handleDownloadExcel`) chưa có cột "Phân loại" (New Render/Re Process).
@@ -51,6 +51,24 @@ Cập nhật lần cuối: **2026-09-05**. File này tóm tắt trạng thái re
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-09-06 — Duyệt yêu cầu thay đổi ngay tại hồ sơ nhân viên
+
+- Hồ sơ nhân viên hiển thị số yêu cầu thay đổi đang chờ duyệt cạnh nút chỉnh sửa và mở thẳng đề xuất mới nhất để Admin xem, duyệt.
+- Trung tâm cảnh báo mặc định sắp xếp thông báo mới nhất trước và hiển thị thời điểm tạo trên từng thông báo.
+
+### 2026-09-06 — Mặc định ẩn số tiền trên Portal nhân viên
+
+- Tài khoản `employee` luôn bắt đầu phiên với các khoản lương, thưởng, khấu trừ và thực lĩnh được che; toggle ẩn/hiện đặt trên header và ngay cạnh lương Dashboard, lương trong chi tiết hợp đồng, tổng thực lĩnh trên Phiếu lương.
+- Admin/HR giữ nguyên cơ chế ghi nhớ lựa chọn hiển thị hiện có; toàn bộ màn employee tiếp tục dùng formatter tiền chung nên đổi trạng thái đồng bộ tức thời.
+
+### 2026-09-06 — Đề xuất và duyệt thay đổi hồ sơ có cấu trúc
+
+- `EditProfileModal` dùng chung cho Admin/HR/User: User sửa các trường self-service dưới dạng đề xuất, hồ sơ hiện tại không đổi; Admin mở đúng request từ `Thông báo & Cảnh báo`, xem các giá trị đã điền sẵn và duyệt một lần; HR chỉ xem.
+- `employee_profile_change_requests.proposed_changes jsonb` lưu đúng các trường đổi. RPC `approve_employee_profile_change_request` áp dụng hồ sơ, dữ liệu nhạy cảm và người thân trong một transaction, chỉ Admin gọi được.
+- Ảnh đề xuất được upload thành object mới đúng thư mục công ty/nhân viên; Edge Function giới hạn field, payload và đường dẫn trước khi dùng service role.
+- Migration `20260906114047_structured_profile_change_approval.sql` và Edge Function `request-profile-change` đã deploy. Bốn migration local duplicate từ audit 2026-09-05 đã bỏ; `migration list` đồng bộ, `db push --dry-run` up-to-date và `db lint --linked --level warning` không có lỗi.
+- Verify local: check proposal bằng `node:assert`, `npm run lint`, `npm run typecheck`, `npm run build` đều không có error (còn warning cũ của repo và cảnh báo chunk lớn).
 
 ### 2026-09-05 — Audit yêu cầu bổ sung với code, GitHub và Supabase remote
 

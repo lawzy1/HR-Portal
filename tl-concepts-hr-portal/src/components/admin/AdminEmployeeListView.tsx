@@ -34,6 +34,7 @@ import { ConfirmationDialog } from '../ConfirmationDialog';
 import { VNEID_SAMPLE_IMAGE } from '../../constants/vneidSample';
 import { useRecordAuditEvent } from '../../hooks/useAuditLogs';
 import { useAllProfiles, useReviewEmployeeOnboarding } from '../../hooks/useProfiles';
+import { useAllProfileChangeRequests } from '../../hooks/useProfileChangeRequests';
 
 const Avatar: React.FC<{ path: string | null; alt: string; className: string }> = ({ path, alt, className }) => {
   const { data: url } = useSignedImageUrl(path, AVATAR_TRANSFORM);
@@ -88,6 +89,7 @@ export const AdminEmployeeListView: React.FC = () => {
     setSelectedEmployeeIdForAdmin,
     setIsNewEmployeeModalOpen,
     setIsEditProfileModalOpen,
+    setSelectedProfileChangeRequestId,
     showToast,
   } = useHR();
   const { profile } = useAuth();
@@ -97,6 +99,7 @@ export const AdminEmployeeListView: React.FC = () => {
   const { data: employees } = useEmployees();
   const { data: invitations } = useEmployeeInvitations();
   const { data: profiles } = useAllProfiles();
+  const { data: profileChangeRequests } = useAllProfileChangeRequests();
   const offboardEmployee = useOffboardEmployee();
   const deleteOffboardedEmployee = useDeleteOffboardedEmployee();
   const manageInvitation = useManageEmployeeInvitation();
@@ -142,6 +145,9 @@ export const AdminEmployeeListView: React.FC = () => {
   const selectedOnboardingProfile = isAdmin && selectedEmp
     ? (profiles || []).find((candidate) => candidate.employee_id === selectedEmp.id && candidate.onboarding_status === 'submitted')
     : undefined;
+  const selectedPendingProfileChangeRequests = selectedEmp
+    ? (profileChangeRequests || []).filter((request) => request.employee_id === selectedEmp.id && request.status === 'pending')
+    : [];
 
   useEffect(() => {
     if (!sensitiveInfo?.employee_id) return;
@@ -165,6 +171,15 @@ export const AdminEmployeeListView: React.FC = () => {
   const openSelectedEmployeeEditor = () => {
     if (!selectedEmp) return;
     setSelectedEmployeeIdForAdmin(selectedEmp.id);
+    setSelectedProfileChangeRequestId(null);
+    setIsEditProfileModalOpen(true);
+  };
+
+  const openSelectedProfileChangeRequest = () => {
+    const request = selectedPendingProfileChangeRequests[0];
+    if (!selectedEmp || !request) return;
+    setSelectedEmployeeIdForAdmin(selectedEmp.id);
+    setSelectedProfileChangeRequestId(request.id);
     setIsEditProfileModalOpen(true);
   };
 
@@ -374,7 +389,17 @@ export const AdminEmployeeListView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {isAdmin && selectedPendingProfileChangeRequests.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={openSelectedProfileChangeRequest}
+                      className="px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
+                    >
+                      <MessageSquareWarning className="w-3.5 h-3.5" />
+                      <span>{t('adminEmployees.reviewProfileChanges', { count: selectedPendingProfileChangeRequests.length })}</span>
+                    </button>
+                  )}
                   <button
                     onClick={openSelectedEmployeeEditor}
                     className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"

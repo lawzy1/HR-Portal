@@ -47,20 +47,17 @@ const Avatar: React.FC<{ path: string | null; alt: string; className: string }> 
 };
 
 const DocPreview: React.FC<{ path: string | null | undefined; label: string; emptyHint: string }> = ({ path, label, emptyHint }) => {
-  const { data: url } = useSignedImageUrl(path);
+  const { data: originalUrl } = useSignedImageUrl(path);
   const { t } = useI18n();
   return (
     <div className="space-y-2">
       <span className="text-xs font-semibold text-slate-700 block">{label}:</span>
-      {url ? (
-        <div className="relative rounded-lg overflow-hidden border border-slate-200 group h-36">
-          <img src={url} alt={label} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-            <a href={url} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-white text-slate-900 rounded-lg text-xs font-bold flex items-center space-x-1">
-              <span>{t('adminEmployees.viewOriginal')}</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
+      {path ? (
+        <div className="h-36 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center">
+          <a href={originalUrl ?? undefined} target="_blank" rel="noreferrer" className="px-3 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-xs font-bold flex items-center space-x-1">
+            <span>{t('adminEmployees.viewOriginal')}</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
         </div>
       ) : (
         <div className="h-36 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center p-4 text-center">

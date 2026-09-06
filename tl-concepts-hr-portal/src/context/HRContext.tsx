@@ -11,6 +11,7 @@ import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
 import { useAllProfileChangeRequests } from '../hooks/useProfileChangeRequests';
+import { useAllPendingKpiMonthly } from '../hooks/useKpi';
 import { useAllProfiles } from '../hooks/useProfiles';
 import { CONTRACT_EXPIRING_WINDOW_DAYS, employeeNeedsContract } from '../utils/contracts';
 import { useAuth } from './AuthContext';
@@ -237,6 +238,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const allPayroll = useMemo(() => allPayrollData || [], [allPayrollData]);
   const { data: allProfileChangeRequestsData } = useAllProfileChangeRequests();
   const allProfileChangeRequests = useMemo(() => allProfileChangeRequestsData || [], [allProfileChangeRequestsData]);
+  const { data: allPendingKpiMonthlyData } = useAllPendingKpiMonthly();
+  const allPendingKpiMonthly = useMemo(() => allPendingKpiMonthlyData || [], [allPendingKpiMonthlyData]);
   const { data: allProfilesData } = useAllProfiles();
   const pendingOnboardingProfiles = useMemo(
     () => (allProfilesData || []).filter((profile) => profile.onboarding_status === 'submitted'),
@@ -400,20 +403,70 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       });
     });
 
-    // 6. Payroll not yet published or paid.
+    // 6. Payroll — split "chờ Admin duyệt" (actionable now) from "đã phát
+    // hành nhưng chưa thanh toán" (a different, non-approval task). Drafts
+    // and rejected records are excluded — HR hasn't asked Admin for anything yet.
     allPayroll.forEach(record => {
-      if (record.publish_status === 'published' && record.payment_status === 'Đã thanh toán') return;
+      const empName = record.employees?.full_name || '';
+      if (record.publish_status === 'pending_approval') {
+        generated.push({
+          id: `rem-pay-approve-${record.id}`,
+          category: 'payroll',
+          title: 'Phiếu lương chờ Admin duyệt',
+          message: `Phiếu lương tháng ${record.month}/${record.year} của ${empName} đang chờ Admin duyệt và phát hành.`,
+          employeeId: record.employee_id,
+          employeeName: empName,
+          isRead: readReminderIds.includes(`rem-pay-approve-${record.id}`),
+          createdAt: record.created_at,
+          severity: 'medium',
+        });
+        return;
+      }
+      if (record.publish_status === 'published' && record.payment_status !== 'Đã thanh toán') {
+        generated.push({
+          id: `rem-pay-${record.id}`,
+          category: 'payroll',
+          title: 'Phiếu lương chưa thanh toán',
+          message: `Phiếu lương tháng ${record.month}/${record.year} của ${empName} đang ở trạng thái ${record.payment_status}.`,
+          employeeId: record.employee_id,
+          employeeName: empName,
+          isRead: readReminderIds.includes(`rem-pay-${record.id}`),
+          createdAt: record.created_at,
+          severity: 'high',
+        });
+      }
+    });
+
+    // 8. Contracts pending Admin approval.
+    allContracts.forEach(c => {
+      if (c.publish_status !== 'pending_approval') return;
+      const empName = c.employees?.full_name || '';
+      generated.push({
+        id: `rem-ctr-approve-${c.id}`,
+        category: 'contract',
+        title: 'Hợp đồng chờ Admin duyệt',
+        message: `Hợp đồng ${c.contract_code} của ${empName} đang chờ Admin duyệt và áp dụng. Nhân viên chưa thấy được hợp đồng này cho đến khi được duyệt.`,
+        employeeId: c.employee_id,
+        employeeName: empName,
+        isRead: readReminderIds.includes(`rem-ctr-approve-${c.id}`),
+        createdAt: c.created_at,
+        severity: 'medium',
+      });
+    });
+
+    // 9. KPI tháng chờ Admin duyệt.
+    allPendingKpiMonthly.forEach(record => {
       const empName = record.employees?.full_name || '';
       generated.push({
-        id: `rem-pay-${record.id}`,
-        category: 'payroll',
-        title: record.publish_status === 'published' ? 'Phiếu lương chưa thanh toán' : 'Phiếu lương chưa phát hành',
-        message: `Phiếu lương tháng ${record.month}/${record.year} của ${empName} đang ở trạng thái ${record.payment_status}.`,
+        id: `rem-kpi-approve-${record.id}`,
+        category: 'kpi',
+        title: 'KPI tháng chờ Admin duyệt',
+        message: `Bảng KPI tháng ${record.month}/${record.year} của ${empName} đang chờ Admin duyệt và phát hành.`,
         employeeId: record.employee_id,
         employeeName: empName,
-        isRead: readReminderIds.includes(`rem-pay-${record.id}`),
+        isRead: readReminderIds.includes(`rem-kpi-approve-${record.id}`),
         createdAt: record.created_at,
-        severity: record.publish_status === 'published' ? 'high' : 'medium',
+        severity: 'medium',
       });
     });
 
@@ -435,7 +488,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     return generated;
-  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, allProfileChangeRequests, readReminderIds]);
+  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, allProfileChangeRequests, allPendingKpiMonthly, readReminderIds]);
 
   const markReminderAsRead = (id: string) => {
     updateReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);

@@ -6,7 +6,7 @@ import {
   useEmployeeSensitiveInfo,
   useEmployeeRelatives,
 } from '../hooks/useEmployees';
-import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
+import { useFileUpload } from '../hooks/useFileUpload';
 import { supabase } from '../lib/supabaseClient';
 import { getUserFacingError } from '../lib/userFacingError';
 import { useI18n } from '../context/I18nContext';
@@ -299,7 +299,6 @@ const FilePicker: React.FC<{
   onChange: (file: File | null) => void;
 }> = ({ label, file, existingPath, onChange }) => {
   const { t } = useI18n();
-  const { data: existingPreviewUrl, isLoading: isLoadingExistingPreview } = useSignedImageUrl(existingPath);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -313,13 +312,11 @@ const FilePicker: React.FC<{
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
-  const previewUrl = localPreviewUrl ?? existingPreviewUrl;
+  const previewUrl = localPreviewUrl;
   const status = file
     ? t('onboarding.selected')
     : existingPath
-      ? isLoadingExistingPreview
-        ? t('onboarding.loadingImage')
-        : t('onboarding.replaceImage')
+      ? t('onboarding.replaceImage')
       : 'PNG, JPG hoặc WEBP';
 
   return (

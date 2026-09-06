@@ -31,20 +31,17 @@ const DocPhoto: React.FC<{ path: string | null | undefined; alt: string; label: 
   label,
   onView,
 }) => {
-  const { data: signedUrl } = useSignedImageUrl(path);
+  const { data: fullUrl } = useSignedImageUrl(path);
   return (
     <div
-      onClick={() => signedUrl && onView(signedUrl, alt)}
+      onClick={() => fullUrl && onView(fullUrl, alt)}
       className="relative bg-slate-100 rounded-xl overflow-hidden border border-slate-200 h-28 cursor-pointer group"
     >
-      {signedUrl ? (
-        <>
-          <img src={signedUrl} alt={alt} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-            <Eye className="w-4 h-4" />
-            <span>Xem phóng to</span>
-          </div>
-        </>
+      {path ? (
+        <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs gap-1">
+          <Eye className="w-5 h-5" />
+          <span className="font-semibold">Bấm để xem ảnh</span>
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs">
           <span>Chưa có ảnh</span>
@@ -249,14 +246,11 @@ export const ProfileView: React.FC = () => {
                   onClick={() => vneidUrl && setSelectedImage({ src: vneidUrl, title: 'Ảnh chụp Thông tin cư trú (VNeID)' })}
                   className="relative bg-white rounded-xl overflow-hidden border border-red-200 h-28 cursor-pointer group shadow-2xs"
                 >
-                  {vneidUrl ? (
-                    <>
-                      <img src={vneidUrl} alt="Thông tin cư trú VNeID" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                        <Eye className="w-4 h-4" />
-                        <span>Xem phóng to</span>
-                      </div>
-                    </>
+                  {sensitiveInfo?.vneid_residency_url ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs gap-1">
+                      <Eye className="w-5 h-5 text-red-500" />
+                      <span className="font-semibold">Bấm để xem ảnh VNeID</span>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs px-2 text-center">
                       <Smartphone className="w-5 h-5 text-red-400 mb-1" />

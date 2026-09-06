@@ -10,7 +10,7 @@ import {
   useSetEmployeeRelatives,
   type RelativeInput,
 } from '../hooks/useEmployees';
-import { useFileUpload, useSignedImageUrl } from '../hooks/useFileUpload';
+import { useFileUpload, useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
 import { useRequestOwnProfileChange } from '../hooks/useProfileChangeRequest';
 import { useContracts, type DbContract } from '../hooks/useContracts';
 import { ContractEditorModal } from './admin/ContractEditorModal';
@@ -52,7 +52,7 @@ const ImageUploadSlot: React.FC<{
   objectFitClass?: 'object-cover' | 'object-contain';
 }> = ({ label, path, pendingFile, onPick, onClear, disabled, heightClass = 'h-40', objectFitClass = 'object-cover' }) => {
   const { data: signedUrl } = useSignedImageUrl(pendingFile ? null : path);
-  const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : signedUrl;
+  const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : null;
 
   return (
     <div className="border-2 border-dashed border-slate-300 rounded-2xl p-3 bg-slate-50 text-center relative group">
@@ -75,6 +75,16 @@ const ImageUploadSlot: React.FC<{
                   Xóa ảnh
                 </button>
               )}
+            </label>
+          )}
+        </div>
+      ) : path ? (
+        <div className="flex h-36 flex-col items-center justify-center gap-2 text-xs text-slate-500">
+          <a href={signedUrl ?? undefined} target="_blank" rel="noreferrer" className="font-bold text-primary-600 hover:underline">Xem ảnh hiện tại</a>
+          {!disabled && (
+            <label className="cursor-pointer font-bold text-slate-700">
+              Thay đổi ảnh
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onPick(e.target.files[0])} />
             </label>
           )}
         </div>
@@ -969,7 +979,7 @@ const ValidationMessage: React.FC<{ message: string }> = ({ message }) => (
 );
 
 const ImageAvatarPreview: React.FC<{ path: string | null; file: File | null }> = ({ path, file }) => {
-  const { data: signedUrl } = useSignedImageUrl(file ? null : path);
+  const { data: signedUrl } = useSignedImageUrl(file ? null : path, AVATAR_TRANSFORM);
   const src = file ? URL.createObjectURL(file) : signedUrl;
   return (
     <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-success-500 bg-slate-700 flex items-center justify-center">

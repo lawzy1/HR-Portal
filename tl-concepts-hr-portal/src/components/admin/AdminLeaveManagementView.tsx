@@ -124,6 +124,32 @@ export const AdminLeaveManagementView: React.FC = () => {
 
   const pendingRequests = requests.filter((r) => r.status === 'Chờ duyệt');
   const pendingWorkEvents = workEvents.filter((event) => event.status === 'Chờ duyệt');
+  const pendingItems = [
+    ...pendingRequests.map((req) => ({
+      kind: 'leave' as const,
+      id: req.id,
+      employeeId: req.employee_id,
+      employeeName: req.employees?.full_name || '',
+      avatarPath: req.employees?.avatar_url,
+      typeLabel: req.leave_type,
+      period: `${formatDate(req.start_date)} đến ${formatDate(req.end_date)}`,
+      amount: `${req.total_days} ngày - ${req.half_day_option}`,
+      reason: req.reason,
+      request: req,
+    })),
+    ...pendingWorkEvents.map((event) => ({
+      kind: 'work_event' as const,
+      id: event.id,
+      employeeId: event.employee_id,
+      employeeName: event.employees?.full_name || '',
+      avatarPath: event.employees?.avatar_url,
+      typeLabel: event.event_type === 'extra_wfh' ? 'WFH thêm' : 'Đi trễ',
+      period: formatDate(event.event_date),
+      amount: event.minutes ? `${event.minutes} phút` : '—',
+      reason: event.reason,
+      request: event,
+    })),
+  ];
   const approvedLateMinutes = workEvents
     .filter((event) =>
       event.status === 'Đã duyệt' &&
@@ -278,99 +304,62 @@ export const AdminLeaveManagementView: React.FC = () => {
 
       <ResourceCalendar employees={(employees || []).map((employee) => ({ id: employee.id, full_name: employee.full_name, employee_code: employee.employee_code }))} leaveRequests={requests} workEvents={workEvents} />
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-        <div className="border-b border-slate-100 pb-3">
-          <h2 className="font-bold text-slate-900 text-base">WFH thêm & đi trễ cần xác nhận ({pendingWorkEvents.length})</h2>
-          <p className="text-xs text-slate-500">Tổng đi trễ đã duyệt Tháng {month}/{year}: {approvedLateMinutes} phút.</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                <th className="p-2.5">Nhân viên</th>
-                <th className="p-2.5">Ngày</th>
-                <th className="p-2.5">Loại</th>
-                <th className="p-2.5">Thời lượng</th>
-                <th className="p-2.5">Lý do</th>
-                <th className="p-2.5">Xử lý</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pendingWorkEvents.length === 0 ? (
-                <tr><td colSpan={6} className="p-5 text-center text-slate-400">Không có yêu cầu đang chờ.</td></tr>
-              ) : pendingWorkEvents.map((event) => (
-                <tr key={event.id}>
-                  <td className="p-2.5 font-bold">{event.employees?.full_name}</td>
-                  <td className="p-2.5">{formatDate(event.event_date)}</td>
-                  <td className="p-2.5">{event.event_type === 'extra_wfh' ? 'WFH thêm' : 'Đi trễ'}</td>
-                  <td className="p-2.5">{event.minutes ? `${event.minutes} phút` : '—'}</td>
-                  <td className="p-2.5">{event.reason}</td>
-                  <td className="p-2.5 space-x-1">
-                    {isAdmin ? <>
-                      <button onClick={() => handleWorkEventStatus(event.id, 'Đã duyệt')} className="px-2 py-1 rounded bg-success-600 text-white font-bold cursor-pointer">Duyệt</button>
-                      <button onClick={() => handleWorkEventStatus(event.id, 'Từ chối')} className="px-2 py-1 rounded bg-rose-100 text-rose-800 font-bold cursor-pointer">Từ chối</button>
-                    </> : <span className="text-[11px] font-semibold text-amber-700">Chờ Admin xử lý</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Pending requests */}
+      {/* Pending requests (leave + WFH + late) */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <div className="flex items-center space-x-3 pb-3 border-b border-slate-100">
           <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
             <Clock className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="font-bold text-slate-900 text-base">Yêu cầu Xin nghỉ phép cần Phê duyệt ({pendingRequests.length})</h2>
-            <p className="text-xs text-slate-500">Xem xét và phản hồi trực tiếp các đơn xin nghỉ phép gửi từ nhân viên</p>
+            <h2 className="font-bold text-slate-900 text-base">Yêu cầu cần Phê duyệt ({pendingItems.length})</h2>
+            <p className="text-xs text-slate-500">Xem xét và phản hồi trực tiếp các đơn xin nghỉ phép, WFH thêm và đi trễ gửi từ nhân viên. Tổng đi trễ đã duyệt Tháng {month}/{year}: {approvedLateMinutes} phút.</p>
           </div>
         </div>
 
-        {pendingRequests.length === 0 ? (
+        {pendingItems.length === 0 ? (
           <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
             <CheckCircle2 className="w-8 h-8 text-success-500 mx-auto mb-2" />
-            <p className="font-medium text-slate-700 text-sm">Hiện tại không có đơn xin nghỉ phép nào đang chờ duyệt.</p>
+            <p className="font-medium text-slate-700 text-sm">Hiện tại không có yêu cầu nào đang chờ duyệt.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {pendingRequests.map((req) => (
-              <div key={req.id} className="relative pl-5 p-4 bg-white rounded-xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            {pendingItems.map((item) => (
+              <div key={`${item.kind}-${item.id}`} className="relative pl-5 p-4 bg-white rounded-xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-full bg-amber-500" />
                 <div className="flex items-start space-x-3">
-                  <RowAvatar path={req.employees?.avatar_url} />
+                  <RowAvatar path={item.avatarPath} />
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-slate-900 text-sm">{req.employees?.full_name}</span>
-                      <span className="text-xs font-mono text-slate-500">({req.employees?.employee_code})</span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-primary-100 text-primary-800">{req.leave_type}</span>
+                      <span className="font-bold text-slate-900 text-sm">{item.employeeName}</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-primary-100 text-primary-800">{item.typeLabel}</span>
                     </div>
                     <p className="text-xs text-slate-700 mt-1">
-                      Thời gian: <b>{formatDate(req.start_date)}</b> đến <b>{formatDate(req.end_date)}</b> ({req.total_days} ngày - {req.half_day_option})
+                      {item.kind === 'leave' ? 'Thời gian' : 'Ngày'}: <b>{item.period}</b> ({item.amount})
                     </p>
-                    <p className="text-xs text-slate-600 mt-0.5 italic">Lý do: "{req.reason}"</p>
+                    <p className="text-xs text-slate-600 mt-0.5 italic">Lý do: "{item.reason}"</p>
                   </div>
                 </div>
 
                 {isAdmin ? <div className="flex items-center space-x-2 shrink-0">
                   <button
-                    onClick={() => setPendingAction({ requestId: req.id, employeeId: req.employee_id, action: 'Đã duyệt', employeeName: req.employees?.full_name || '' })}
+                    onClick={() => item.kind === 'leave'
+                      ? setPendingAction({ requestId: item.id, employeeId: item.employeeId, action: 'Đã duyệt', employeeName: item.employeeName })
+                      : handleWorkEventStatus(item.id, 'Đã duyệt')}
                     className="inline-flex h-9 w-28 items-center justify-center gap-1 bg-success-600 hover:bg-success-700 text-white rounded-xl text-xs font-bold shadow-md shadow-success-600/20 transition-all cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Duyệt đơn</span>
+                    <span>Duyệt</span>
                   </button>
                   <button
-                    onClick={() => setPendingAction({ requestId: req.id, employeeId: req.employee_id, action: 'Từ chối', employeeName: req.employees?.full_name || '' })}
+                    onClick={() => item.kind === 'leave'
+                      ? setPendingAction({ requestId: item.id, employeeId: item.employeeId, action: 'Từ chối', employeeName: item.employeeName })
+                      : handleWorkEventStatus(item.id, 'Từ chối')}
                     className="inline-flex h-9 w-28 items-center justify-center gap-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
                     <XCircle className="w-4 h-4" />
                     <span>Từ chối</span>
                   </button>
-                </div> : <span className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Chờ Admin phê duyệt</span>}
+                </div> : <span className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Chờ Admin xử lý</span>}
               </div>
             ))}
           </div>

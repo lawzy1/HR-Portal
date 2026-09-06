@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../context/I18nContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { startTabAlert, stopTabAlert } from '../lib/tabNotification';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -75,11 +76,19 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           queryClient.invalidateQueries({ queryKey: ['employee_profile_change_requests'] });
           showToast(t('header.newProfileChangeRequest'));
           playNotificationChime();
+          startTabAlert();
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [isBackoffice, companyId, queryClient, showToast, t]);
+
+  // Lark-style: stop flashing the tab title/favicon once the user actually
+  // looks at the tab again.
+  useEffect(() => {
+    window.addEventListener('focus', stopTabAlert);
+    return () => window.removeEventListener('focus', stopTabAlert);
+  }, []);
 
   return (
     <header className="md:col-start-2 md:row-start-1 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30">

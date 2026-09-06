@@ -5,6 +5,35 @@ import { getUserFacingError } from '../lib/userFacingError';
 
 const BUCKET = 'employee-documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+const IMAGE_QUALITY = 0.82;
+
+async function optimizeImage(file: File, label: string): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+
+  const image = await createImageBitmap(file);
+  const maxDimension = label === 'avatar' ? 512 : 1600;
+  const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) {
+    image.close();
+    throw new Error('Không thể tối ưu ảnh trên trình duyệt này.');
+  }
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close();
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Không thể tối ưu ảnh.')), 'image/webp', IMAGE_QUALITY);
+  });
+  if (blob.size >= file.size) return file;
+
+  return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.webp`, {
+    type: 'image/webp',
+    lastModified: file.lastModified,
+  });
+}
 
 export async function calculateFileSha256(file: File): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
@@ -32,12 +61,14 @@ export function useFileUpload() {
     setIsUploading(true);
     setError(null);
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
+      const upload = await optimizeImage(file, label);
+      const ext = upload.name.split('.').pop() || 'jpg';
       const path = `${companyId}/${employeeId}/${label}-${Date.now()}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
+      const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, upload, {
         upsert: true,
-        contentType: file.type,
+        contentType: upload.type,
+        cacheControl: '31536000',
       });
       if (uploadError) throw uploadError;
 

@@ -87,6 +87,7 @@ export const AdminRemindersView: React.FC = () => {
               <option value="ot_request">{t('adminReminders.catOtRequest')}</option>
               <option value="work_event">{t('adminReminders.catWorkEvent')}</option>
               <option value="payroll">{t('adminReminders.catPayroll')}</option>
+              <option value="kpi">{t('adminReminders.catKpi')}</option>
               <option value="profile_change_request">{t('adminReminders.catProfileChangeRequest')}</option>
             </select>
           </div>
@@ -180,7 +181,7 @@ export const AdminRemindersView: React.FC = () => {
                           setAdminTab('admin-contracts');
                         } else if (rem.category === 'leave_request') {
                           setAdminTab('admin-leaves');
-                        } else if (rem.category === 'ot_request' || rem.category === 'work_event') {
+                        } else if (rem.category === 'ot_request' || rem.category === 'work_event' || rem.category === 'kpi') {
                           setAdminTab('admin-kpi');
                         } else if (rem.category === 'payroll') {
                           setAdminTab('admin-payroll');

@@ -45,7 +45,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
-              <p>Nếu email tồn tại trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi. Hãy kiểm tra cả thư mục Spam/Junk.</p>
+              <p>Nếu email tồn tại trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi. Hãy kiểm tra cả thư mục Spam/Junk — email có thể mất một chút thời gian mới tới nơi. <strong>Nếu bạn gửi lại yêu cầu, chỉ liên kết ở email gần nhất còn dùng được</strong>, các liên kết cũ trước đó sẽ hết hiệu lực ngay.</p>
             </div>
           </div>
           <Link to="/login" className="flex items-center justify-center gap-2 rounded-xl bg-[#173f37] px-4 py-3 text-sm font-bold text-white hover:bg-[#0f302a]">

@@ -3,6 +3,7 @@ import { withSupabase } from "@supabase/server";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { LOGO_PNG_BASE64 } from "./logo-asset.ts";
+import { INTER_REGULAR_VI_SUBSET_BASE64 } from "./font-asset.ts";
 
 function base64ToBytes(base64: string) {
   const binary = atob(base64);
@@ -17,19 +18,7 @@ function publicError(code: string, message: string, status: number) {
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const NOTIFICATION_FROM_EMAIL = Deno.env.get("NOTIFICATION_FROM_EMAIL");
-const APP_URL = (Deno.env.get("APP_URL") ?? "https://hr-portal-tl.vercel.app").replace(/\/$/, "");
-const FONT_URL = Deno.env.get("PAYSLIP_FONT_URL")
-  ?? "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf";
-
-let fontBytesPromise: Promise<Uint8Array> | null = null;
-
-function getFontBytes() {
-  fontBytesPromise ??= fetch(FONT_URL).then(async (response) => {
-    if (!response.ok) throw new Error(`Không tải được font PDF (${response.status}).`);
-    return new Uint8Array(await response.arrayBuffer());
-  });
-  return fontBytesPromise;
-}
+const APP_URL = (Deno.env.get("APP_URL") ?? "https://portal.tlconceptsltd.com").replace(/\/$/, "");
 
 function money(value: unknown) {
   return new Intl.NumberFormat("vi-VN").format(Number(value) || 0);
@@ -66,18 +55,11 @@ type PayrollRecord = Record<string, unknown> & {
 async function createPayslipPdf(record: PayrollRecord) {
   const document = await PDFDocument.create();
   document.registerFontkit(fontkit);
-  // Preserve Vietnamese diacritics. A missing Unicode font should fail and
-  // retry the job instead of creating a PDF with broken glyphs.
-  //
-  // Inter is only published as a variable font (opsz/wght axes) — fontkit's
-  // subsetter corrupts glyph mapping on variable fonts, silently dropping or
-  // garbling precomposed Vietnamese diacritics (verified: subset:true turns
-  // "PHIẾU LƯƠNG" into unreadable garbage while the PDF file itself still
-  // looks structurally valid, no error thrown). Embedding the full font
-  // avoids that at the cost of a larger PDF (~500KB), which is fine for an
-  // email attachment.
-  const fontBytes = await getFontBytes();
-  const font = await document.embedFont(fontBytes, { subset: false });
+  // Static, pre-subsetted Vietnamese font embedded directly — see
+  // font-asset.ts for why (fontkit corrupts variable-font subsets; this
+  // static one subsets correctly and needs no runtime network fetch).
+  const fontBytes = base64ToBytes(INTER_REGULAR_VI_SUBSET_BASE64);
+  const font = await document.embedFont(fontBytes, { subset: true });
   const logoImage = await document.embedPng(base64ToBytes(LOGO_PNG_BASE64));
   const logoSize = 26;
   const page = document.addPage([595.28, 841.89]);

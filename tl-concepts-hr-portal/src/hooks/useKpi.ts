@@ -151,6 +151,22 @@ export function useAllKpiMonthly(month: number, year: number) {
   });
 }
 
+// Lightweight cross-month fetch for the Admin reminders feed — only the
+// column needed to flag "KPI tháng chờ Admin duyệt", not full monthly detail.
+export function useAllPendingKpiMonthly() {
+  return useQuery({
+    queryKey: ['kpi_monthly', 'pending_approval'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('kpi_monthly')
+        .select('id, employee_id, month, year, created_at, employees(full_name)')
+        .eq('publish_status', 'pending_approval');
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 // Upsert the monthly aggregate (admin "sync KPI to profiles" action).
 export function useUpsertKpiMonthly() {
   const queryClient = useQueryClient();

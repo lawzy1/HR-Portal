@@ -158,7 +158,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestPasswordReset = async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase();
-    const redirectTo = `${window.location.origin}/auth/reset-password`;
+    // Every other email link in the app (invitation, activation, payslip)
+    // points at a fixed production APP_URL so it works no matter where the
+    // request was triggered from. This is the one client-side exception —
+    // match that instead of window.location.origin, which silently produced
+    // localhost links whenever an Admin tested password reset from their dev machine.
+    const redirectTo = `${import.meta.env.VITE_APP_URL || window.location.origin}/auth/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
     return { error: error ? await getUserFacingError(error, 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.') : null };
   };

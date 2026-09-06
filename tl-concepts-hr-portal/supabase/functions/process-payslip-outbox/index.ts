@@ -68,8 +68,16 @@ async function createPayslipPdf(record: PayrollRecord) {
   document.registerFontkit(fontkit);
   // Preserve Vietnamese diacritics. A missing Unicode font should fail and
   // retry the job instead of creating a PDF with broken glyphs.
+  //
+  // Inter is only published as a variable font (opsz/wght axes) — fontkit's
+  // subsetter corrupts glyph mapping on variable fonts, silently dropping or
+  // garbling precomposed Vietnamese diacritics (verified: subset:true turns
+  // "PHIẾU LƯƠNG" into unreadable garbage while the PDF file itself still
+  // looks structurally valid, no error thrown). Embedding the full font
+  // avoids that at the cost of a larger PDF (~500KB), which is fine for an
+  // email attachment.
   const fontBytes = await getFontBytes();
-  const font = await document.embedFont(fontBytes, { subset: true });
+  const font = await document.embedFont(fontBytes, { subset: false });
   const logoImage = await document.embedPng(base64ToBytes(LOGO_PNG_BASE64));
   const logoSize = 26;
   const page = document.addPage([595.28, 841.89]);
@@ -167,6 +175,10 @@ async function createPayslipPdf(record: PayrollRecord) {
   row("Tổng thu nhập", money(record.gross_income), teal);
   row("(-) Tổng khấu trừ", money(totalDeductions), coral);
   row("(+) Điều chỉnh & hoàn trả", money(totalAdjustments), teal);
+  // Extra clearance so the NET PAY block below doesn't crowd/overlap the
+  // last row's own underline (verified visually — 8-12pt was too tight for
+  // the larger 13/18pt heading text).
+  y -= 14;
 
   page.drawLine({ start: { x: 42, y: y + 28 }, end: { x: width - 42, y: y + 28 }, thickness: 1.4, color: ink });
   page.drawText("THỰC LÃNH (NET PAY)", { x: 52, y: y + 8, size: 13, font, color: teal });

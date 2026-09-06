@@ -618,6 +618,18 @@ const ContractCard: React.FC<{
         </div>
       </div>
 
+      {contract.publish_status !== 'published' && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-800">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            Nhân viên <strong>CHƯA thấy được</strong> hợp đồng này (đang ở trạng thái {translateValue(CONTRACT_APPROVAL_LABELS[contract.publish_status] || contract.publish_status).toLowerCase()}).
+            {contract.publish_status === 'draft' && ' Cần bấm "Gửi Admin duyệt" rồi Admin "Duyệt & áp dụng" trước.'}
+            {contract.publish_status === 'pending_approval' && ' Cần Admin bấm "Duyệt & áp dụng" trước.'}
+            {contract.publish_status === 'rejected' && ' Hợp đồng đã bị trả lại, cần sửa và gửi duyệt lại.'}
+          </span>
+        </div>
+      )}
+
       {/* Grid 1: Basic Contract Details */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
         <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">

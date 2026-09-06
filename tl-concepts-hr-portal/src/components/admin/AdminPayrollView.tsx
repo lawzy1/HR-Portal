@@ -361,8 +361,17 @@ export const AdminPayrollView: React.FC = () => {
   const hasPendingRecords = records.some((record) => record.publish_status === 'pending_approval');
   const hasPublishedRecords = records.some((record) => record.publish_status === 'published');
   const hasEditableRecords = records.some((record) => record.publish_status === 'draft' || record.publish_status === 'rejected');
+  // Import only conflicts with employees who already have a locked (pending/
+  // published) record THIS month — one employee already being approved must
+  // not block everyone else from being imported into the same month.
+  const lockedEmployeeIds = useMemo(
+    () => new Set(records.filter((record) => record.publish_status === 'pending_approval' || record.publish_status === 'published').map((record) => record.employee_id)),
+    [records]
+  );
   const importablePreviewCount = preview.filter((row) => !row.isSummary).length;
   const validPreviewCount = preview.filter((row) => !row.isSummary && !row.error && row.record).length;
+  const lockedPreviewCount = preview.filter((row) => !row.isSummary && !row.error && row.record && lockedEmployeeIds.has(row.record.employee_id)).length;
+  const importableValidCount = validPreviewCount - lockedPreviewCount;
   const invalidPreviewCount = importablePreviewCount - validPreviewCount;
   const totals = records.reduce(
     (sum, record) => ({
@@ -556,11 +565,16 @@ export const AdminPayrollView: React.FC = () => {
   const handleImport = async () => {
     const valid = preview
       .filter((row): row is PreviewRow & { record: TablesInsert<'payroll_records'> } => !row.isSummary && !row.error && Boolean(row.record))
-      .map((row) => row.record);
-    if (!valid.length || hasPendingRecords || hasPublishedRecords) return;
+      .map((row) => row.record)
+      .filter((record) => !lockedEmployeeIds.has(record.employee_id));
+    if (!valid.length) return;
     try {
       await importPayroll.mutateAsync(valid);
-      showToast(`Đã lưu ${valid.length} phiếu lương nháp${invalidPreviewCount ? `; bỏ qua ${invalidPreviewCount} dòng lỗi` : ''}.`);
+      const skippedNotes = [
+        invalidPreviewCount ? `bỏ qua ${invalidPreviewCount} dòng lỗi` : '',
+        lockedPreviewCount ? `bỏ qua ${lockedPreviewCount} dòng đã chờ duyệt/đã phát hành` : '',
+      ].filter(Boolean).join('; ');
+      showToast(`Đã lưu ${valid.length} phiếu lương nháp${skippedNotes ? `; ${skippedNotes}` : ''}.`);
       setPreview([]);
       setPreviewColumns([]);
       setPaste('');
@@ -752,8 +766,8 @@ export const AdminPayrollView: React.FC = () => {
             <FileSpreadsheet className="w-4 h-4" /> {t('payroll.checkData')}
           </button>
           {preview.length > 0 && (
-            <button onClick={handleImport} disabled={!validPreviewCount || importPayroll.isPending || hasPendingRecords || hasPublishedRecords} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">
-              {importPayroll.isPending ? t('payroll.saving') : t('payroll.saveDrafts', { count: validPreviewCount })}
+            <button onClick={() => void handleImport()} disabled={!importableValidCount || importPayroll.isPending} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">
+              {importPayroll.isPending ? t('payroll.saving') : t('payroll.saveDrafts', { count: importableValidCount })}
             </button>
           )}
         </div>
@@ -764,9 +778,9 @@ export const AdminPayrollView: React.FC = () => {
           </p>
         )}
 
-        {(hasPendingRecords || hasPublishedRecords) && (
+        {lockedPreviewCount > 0 && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Kỳ lương đang chờ duyệt hoặc đã phát hành nên không thể import đè. Admin cần trả lại kỳ lương trước khi HR/Kế toán sửa dữ liệu.
+            Có {lockedPreviewCount} dòng thuộc nhân viên đã có phiếu lương chờ duyệt/đã phát hành tháng này nên sẽ bị bỏ qua khi lưu. Admin cần trả lại phiếu lương của nhân viên đó trước nếu muốn nhập đè.
           </p>
         )}
 

@@ -81,21 +81,48 @@ export const AdminLeaveManagementView: React.FC = () => {
   const [quickEntry, setQuickEntry] = useState({ employeeId: '', kind: 'leave', date: '', endDate: '', reason: '', minutes: 15 });
 
   const requests = allRequests || [];
+  const workEvents = allWorkEvents || [];
   const departments = Array.from(new Set((employees || []).map((e) => e.department).filter(Boolean)));
 
-  const filteredRequests = requests.filter((req) => {
-    const matchStatus = filterStatus === 'ALL' || req.status === filterStatus;
-    const matchDept = filterDepartment === 'ALL' || req.employees?.department === filterDepartment;
+  const historyRows = [
+    ...requests.map((req) => ({
+      id: `leave-${req.id}`,
+      employeeName: req.employees?.full_name,
+      employeeCode: req.employees?.employee_code,
+      department: req.employees?.department,
+      typeLabel: req.leave_type,
+      period: `${formatDate(req.start_date)} ~ ${formatDate(req.end_date)}`,
+      amount: `${req.total_days} ngày (${req.half_day_option})`,
+      reason: req.reason,
+      status: req.status,
+      sortDate: req.start_date,
+    })),
+    ...workEvents.map((event) => ({
+      id: `event-${event.id}`,
+      employeeName: event.employees?.full_name,
+      employeeCode: event.employees?.employee_code,
+      department: event.employees?.department,
+      typeLabel: event.event_type === 'extra_wfh' ? 'WFH thêm' : 'Đi trễ',
+      period: formatDate(event.event_date),
+      amount: event.minutes ? `${event.minutes} phút` : '—',
+      reason: event.reason,
+      status: event.status,
+      sortDate: event.event_date,
+    })),
+  ].sort((a, b) => (a.sortDate < b.sortDate ? 1 : -1));
+
+  const filteredRequests = historyRows.filter((row) => {
+    const matchStatus = filterStatus === 'ALL' || row.status === filterStatus;
+    const matchDept = filterDepartment === 'ALL' || row.department === filterDepartment;
     const term = searchTerm.toLowerCase();
     const matchSearch =
-      (req.employees?.full_name || '').toLowerCase().includes(term) ||
-      (req.employees?.employee_code || '').toLowerCase().includes(term) ||
-      (req.reason || '').toLowerCase().includes(term);
+      (row.employeeName || '').toLowerCase().includes(term) ||
+      (row.employeeCode || '').toLowerCase().includes(term) ||
+      (row.reason || '').toLowerCase().includes(term);
     return matchStatus && matchDept && matchSearch;
   });
 
   const pendingRequests = requests.filter((r) => r.status === 'Chờ duyệt');
-  const workEvents = allWorkEvents || [];
   const pendingWorkEvents = workEvents.filter((event) => event.status === 'Chờ duyệt');
   const approvedLateMinutes = workEvents
     .filter((event) =>
@@ -387,19 +414,19 @@ export const AdminLeaveManagementView: React.FC = () => {
                 {filteredRequests.length === 0 ? (
                   <tr><td colSpan={6} className="py-6 text-center text-slate-400">Không có đơn nghỉ phép nào phù hợp bộ lọc.</td></tr>
                 ) : (
-                  filteredRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-4 font-bold text-slate-900">{req.employees?.full_name}</td>
-                      <td className="py-3 px-4 font-medium text-primary-700">{req.leave_type}</td>
-                      <td className="py-3 px-4">{formatDate(req.start_date)} ~ {formatDate(req.end_date)}</td>
-                      <td className="py-3 px-4 font-semibold">{req.total_days} ngày ({req.half_day_option})</td>
-                      <td className="py-3 px-4 max-w-[200px] truncate">{req.reason}</td>
+                  filteredRequests.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-4 font-bold text-slate-900">{row.employeeName}</td>
+                      <td className="py-3 px-4 font-medium text-primary-700">{row.typeLabel}</td>
+                      <td className="py-3 px-4">{row.period}</td>
+                      <td className="py-3 px-4 font-semibold">{row.amount}</td>
+                      <td className="py-3 px-4 max-w-[200px] truncate">{row.reason}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                          req.status === 'Đã duyệt' ? 'bg-success-100 text-success-800' :
-                          req.status === 'Từ chối' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                          row.status === 'Đã duyệt' ? 'bg-success-100 text-success-800' :
+                          row.status === 'Từ chối' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {req.status}
+                          {row.status}
                         </span>
                       </td>
                     </tr>

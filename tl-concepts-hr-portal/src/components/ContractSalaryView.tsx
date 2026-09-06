@@ -33,7 +33,8 @@ export const ContractSalaryView: React.FC = () => {
   const { data: contracts } = useContracts(employeeId);
   const { data: salaryHistory } = useSalaryHistory(employeeId);
   const { data: legalWarnings } = useContractLegalWarnings(employeeId);
-  const { data: payslips } = usePayrollRecords(employeeId, 2026);
+  const currentYear = new Date().getFullYear();
+  const { data: payslips } = usePayrollRecords(employeeId, currentYear);
 
   const [activeSubTab, setActiveSubTab] = useState<'contracts' | 'salaryHistory' | 'payslips'>('contracts');
 
@@ -294,7 +295,7 @@ export const ContractSalaryView: React.FC = () => {
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Receipt className="w-4 h-4 text-success-600" />
-              <span>{t('contract.payslipList', { year: 2026 })}</span>
+              <span>{t("contract.payslipList", { year: currentYear })}</span>
             </h3>
             <button onClick={() => setActiveTab('payslips')} className="text-xs font-bold text-success-700 hover:underline cursor-pointer">
               {t('contract.fullPayslipPage')}
@@ -302,7 +303,7 @@ export const ContractSalaryView: React.FC = () => {
           </div>
 
           {!payslips || payslips.length === 0 ? (
-            <p className="text-xs text-slate-400 italic py-6 text-center">{t('contract.noPayslips', { year: 2026 })}</p>
+            <p className="text-xs text-slate-400 italic py-6 text-center">{t("contract.noPayslips", { year: currentYear })}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {payslips.map((ps) => (

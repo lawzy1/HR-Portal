@@ -17,12 +17,8 @@ import {
   Calendar,
   Star,
   Eye,
-  HelpCircle,
   Smartphone,
-  Sparkles,
 } from 'lucide-react';
-import { VneidGuideModal } from './VneidGuideModal';
-import { VNEID_SAMPLE_IMAGE } from '../constants/vneidSample';
 import { AccountSecurityCard } from './AccountSecurityCard';
 
 const DocPhoto: React.FC<{ path: string | null | undefined; alt: string; label: string; onView: (src: string, title: string) => void }> = ({
@@ -56,7 +52,6 @@ export const ProfileView: React.FC = () => {
   const { setIsEditProfileModalOpen } = useHR();
   const { profile } = useAuth();
   const [selectedImage, setSelectedImage] = useState<{ src: string; title: string } | null>(null);
-  const [isVneidGuideOpen, setIsVneidGuideOpen] = useState<boolean>(false);
 
   const { data: employee } = useEmployee(profile?.employeeId ?? undefined);
   const { data: sensitiveInfo } = useEmployeeSensitiveInfo(profile?.employeeId ?? undefined);
@@ -174,7 +169,6 @@ export const ProfileView: React.FC = () => {
               <CreditCard className="w-4 h-4 text-success-600" />
               <span>CCCD / Hộ chiếu & Giấy tờ pháp lý</span>
             </h3>
-            <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">Bảo mật HR</span>
           </div>
           <div className="text-[11px] bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
             Trạng thái đối chiếu CCCD:{' '}
@@ -221,7 +215,7 @@ export const ProfileView: React.FC = () => {
             </div>
 
             <div className="p-3.5 bg-gradient-to-r from-red-50/70 via-rose-50/50 to-orange-50/40 rounded-2xl border border-red-200/80 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-xs">
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -231,17 +225,9 @@ export const ProfileView: React.FC = () => {
                     <span className="text-[10px] text-red-700">Xác thực nơi thường trú & tạm trú</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsVneidGuideOpen(true)}
-                  className="px-2.5 py-1 bg-white hover:bg-red-100/60 text-red-700 border border-red-300 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <HelpCircle className="w-3.5 h-3.5 text-red-600" />
-                  <span>Xem ảnh mẫu hướng dẫn</span>
-                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+              <div className="grid grid-cols-1 gap-3 items-center">
                 <div
                   onClick={() => vneidUrl && setSelectedImage({ src: vneidUrl, title: 'Ảnh chụp Thông tin cư trú (VNeID)' })}
                   className="relative bg-white rounded-xl overflow-hidden border border-red-200 h-28 cursor-pointer group shadow-2xs"
@@ -258,22 +244,6 @@ export const ProfileView: React.FC = () => {
                       <span className="text-[10px] text-slate-400">Bấm nút Sửa hồ sơ để tải lên</span>
                     </div>
                   )}
-                </div>
-
-                <div
-                  onClick={() => setIsVneidGuideOpen(true)}
-                  className="relative bg-slate-900 rounded-xl overflow-hidden border border-slate-700 h-28 cursor-pointer group flex items-center p-2 gap-3"
-                >
-                  <div className="w-16 h-full rounded-lg overflow-hidden bg-slate-800 flex-shrink-0">
-                    <img src={VNEID_SAMPLE_IMAGE} alt="Ảnh mẫu VNeID" className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform" />
-                  </div>
-                  <div className="text-left text-white text-xs space-y-1">
-                    <span className="bg-yellow-400 text-red-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">ẢNH MẪU CHUẨN</span>
-                    <p className="font-bold text-[11px] text-slate-200 leading-tight">Màn hình VNeID Thông tin cư trú</p>
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-yellow-400" /> Bấm để xem chi tiết
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -379,7 +349,6 @@ export const ProfileView: React.FC = () => {
         </div>
       )}
 
-      <VneidGuideModal isOpen={isVneidGuideOpen} onClose={() => setIsVneidGuideOpen(false)} />
     </div>
   );
 };

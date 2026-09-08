@@ -66,11 +66,10 @@ export const PayslipsView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-success-900 to-teal-950 text-white p-5 rounded-2xl shadow-md space-y-1">
           <span className="text-[11px] uppercase font-bold text-success-300 tracking-wider">{t('payslips.netYear', { year: selectedYear })}</span>
-          <p className="inline-flex items-center gap-1 text-2xl font-black tabular-nums text-white">
+          <p className="flex items-center gap-1 mt-1 text-2xl font-black tabular-nums text-white">
             {formatMoney(totalNetAnnual)}
             <MoneyVisibilityToggle />
           </p>
-          <p className="text-[10px] text-success-200">{t('payslips.netHelp')}</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
@@ -122,19 +121,19 @@ export const PayslipsView: React.FC = () => {
 
                 {/* Card Body */}
                 <div className="p-5 space-y-3.5 text-xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">{t('payslips.base', { actual: ps.actual_work_days, standard: ps.standard_work_days })}:</span>
-                    <strong className="tabular-nums text-slate-800">{formatMoney(ps.base_salary)}</strong>
+                  <div className="flex justify-between items-center gap-4 pb-2 border-b border-slate-100">
+                    <span className="min-w-0 text-slate-500">{t('payslips.base', { actual: ps.actual_work_days, standard: ps.standard_work_days })}:</span>
+                    <strong className="shrink-0 tabular-nums text-slate-800">{formatMoney(ps.base_salary)}</strong>
                   </div>
 
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">{t('payslips.kpiOt')}:</span>
-                    <strong className="tabular-nums text-success-700">+{formatMoney(ps.kpi_bonus + ps.ot_pay)}</strong>
+                  <div className="flex justify-between items-center gap-4 pb-2 border-b border-slate-100">
+                    <span className="min-w-0 text-slate-500">{t('payslips.kpiOt')}:</span>
+                    <strong className="shrink-0 tabular-nums text-success-700">+{formatMoney(ps.kpi_bonus + ps.ot_pay)}</strong>
                   </div>
 
-                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                    <span className="text-slate-500">{t('payslips.totalDeductions')}:</span>
-                    <strong className="tabular-nums text-rose-700">
+                  <div className="flex justify-between items-center gap-4 pb-2 border-b border-slate-100">
+                    <span className="min-w-0 text-slate-500">{t('payslips.totalDeductions')}:</span>
+                    <strong className="shrink-0 tabular-nums text-rose-700">
                       -{formatMoney(ps.bhxh_deduction + ps.bhyt_deduction + ps.bhtn_deduction + ps.personal_income_tax)}
                     </strong>
                   </div>

@@ -12,7 +12,6 @@ import {
   Trash2,
   User,
   ExternalLink,
-  HelpCircle,
   Eye,
   Send,
   Ban,
@@ -29,9 +28,7 @@ import { useEmployees, useEmployee, useEmployeeInvitations, useManageEmployeeInv
 import { useEmployeeSensitiveInfo, useEmployeeRelatives, useUpsertEmployeeSensitiveInfo } from '../../hooks/useEmployees';
 import { useAuth } from '../../context/AuthContext';
 import { useSignedImageUrl, AVATAR_TRANSFORM } from '../../hooks/useFileUpload';
-import { VneidGuideModal } from '../VneidGuideModal';
 import { ConfirmationDialog } from '../ConfirmationDialog';
-import { VNEID_SAMPLE_IMAGE } from '../../constants/vneidSample';
 import { useRecordAuditEvent } from '../../hooks/useAuditLogs';
 import { useAllProfiles, useReviewEmployeeOnboarding } from '../../hooks/useProfiles';
 import { useAllProfileChangeRequests } from '../../hooks/useProfileChangeRequests';
@@ -113,7 +110,6 @@ export const AdminEmployeeListView: React.FC = () => {
   const [employeeToOffboard, setEmployeeToOffboard] = useState<DbEmployee | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<DbEmployee | null>(null);
   const [deleteConfirmationCode, setDeleteConfirmationCode] = useState('');
-  const [isVneidGuideOpen, setIsVneidGuideOpen] = useState(false);
   const [manualActivationLink, setManualActivationLink] = useState<string | null>(null);
   const [invitationActionError, setInvitationActionError] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation>(null);
@@ -604,7 +600,7 @@ export const AdminEmployeeListView: React.FC = () => {
                 </div>
 
                 <div className="mt-3 p-3.5 bg-gradient-to-r from-red-50/80 via-rose-50/50 to-orange-50/40 rounded-xl border border-red-200/90 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-xs">
                         <ShieldCheck className="w-3.5 h-3.5" />
@@ -614,29 +610,10 @@ export const AdminEmployeeListView: React.FC = () => {
                         <span className="text-[10px] text-red-700">{t('adminEmployees.vneidPhotoHelp')}</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsVneidGuideOpen(true)}
-                      className="px-2.5 py-1 bg-white hover:bg-red-50 text-red-700 border border-red-300 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5 text-red-600" />
-                      <span>{t('adminEmployees.vneidSampleBtn')}</span>
-                    </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div className="grid grid-cols-1 gap-3 items-center">
                     <DocPreview path={sensitiveInfo?.vneid_residency_url} label={t('adminEmployees.vneidResidencyLabel')} emptyHint={t('adminEmployees.vneidEmpty')} />
-
-                    <div onClick={() => setIsVneidGuideOpen(true)} className="bg-slate-900 rounded-lg p-2 flex items-center gap-3 border border-slate-700 cursor-pointer group h-36">
-                      <div className="w-16 h-full rounded overflow-hidden bg-slate-800 shrink-0">
-                        <img src={VNEID_SAMPLE_IMAGE} alt={t('adminEmployees.vneidSampleCaption')} className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform" />
-                      </div>
-                      <div className="text-white space-y-1">
-                        <span className="bg-yellow-400 text-red-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">{t('adminEmployees.vneidSampleBadge')}</span>
-                        <p className="text-[11px] font-bold text-slate-200 leading-tight">{t('adminEmployees.vneidSampleCaption')}</p>
-                        <p className="text-[10px] text-slate-400">{t('adminEmployees.vneidSampleHint')}</p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -748,7 +725,6 @@ export const AdminEmployeeListView: React.FC = () => {
         <p className="mt-2 text-xs leading-5 text-rose-700">{t('adminEmployees.deleteCodeHelp', { code: employeeToDelete?.employee_code || '' })}</p>
       </ConfirmationDialog>
 
-      <VneidGuideModal isOpen={isVneidGuideOpen} onClose={() => setIsVneidGuideOpen(false)} />
     </div>
   );
 };

@@ -57,6 +57,7 @@ Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabas
 - Phiếu lương nháp cho phép ngày công thực tế lớn hơn ngày công chuẩn để Kế toán xử lý các kỳ đặc biệt; công thức lương theo ngày công giữ nguyên.
 - Ghi chú dùng cột `payroll_records.note` có sẵn, chỉ hiện ở cuối phiếu lương trên Portal và PDF khi có nội dung.
 - Tiền VND từ Excel giữ nguyên giá trị gốc trong payroll nhưng được làm tròn hiển thị đến đồng nguyên trên bảng, form, preview và PDF; tránh biến phần thập phân thành hàng nghìn khi mở form sửa.
+- Admin được xóa phiếu lương ở mọi trạng thái để nhập và phát hành lại; HR/Kế toán vẫn chỉ xóa Nháp/Bị trả lại. Job gửi email cũ được dọn cùng bản ghi, còn email/PDF đã gửi không thể thu hồi.
 
 ### 2026-09-06 — Duyệt yêu cầu thay đổi ngay tại hồ sơ nhân viên
 

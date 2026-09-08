@@ -285,7 +285,7 @@ const PAYROLL_MONEY_FIELDS = new Set<PayrollImportField>([
 
 const previewMoneyFormatter = new Intl.NumberFormat('en-US', {
   useGrouping: true,
-  maximumFractionDigits: 20,
+  maximumFractionDigits: 0,
 });
 
 const formatPreviewCell = (value: string, field?: PayrollImportField) => {
@@ -296,6 +296,10 @@ const formatPreviewCell = (value: string, field?: PayrollImportField) => {
   const parsed = numberValue(raw);
   return Number.isFinite(parsed) ? previewMoneyFormatter.format(parsed) : value;
 };
+
+if (import.meta.env.DEV) {
+  console.assert(previewMoneyFormatter.format(19811702.128) === '19,811,702', 'Payroll preview rounding self-check failed');
+}
 
 type PreviewRow = {
   rowNumber: number;

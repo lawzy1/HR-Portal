@@ -21,7 +21,7 @@ const NOTIFICATION_FROM_EMAIL = Deno.env.get("NOTIFICATION_FROM_EMAIL");
 const APP_URL = (Deno.env.get("APP_URL") ?? "https://portal.tlconceptsltd.com").replace(/\/$/, "");
 
 function money(value: unknown) {
-  return new Intl.NumberFormat("vi-VN").format(Number(value) || 0);
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Number(value) || 0);
 }
 
 function escapeHtml(value: string) {
@@ -167,8 +167,12 @@ async function createPayslipPdf(record: PayrollRecord) {
   const net = money(record.net_salary);
   page.drawText(net, { x: width - 52 - font.widthOfTextAtSize(net, 18), y: y + 2, size: 18, font, color: ink });
   page.drawLine({ start: { x: 42, y: y - 10 }, end: { x: width - 42, y: y - 10 }, thickness: 1.4, color: ink });
+  const note = String(record.note ?? '').trim().replace(/\s+/g, ' ');
+  if (note) {
+    page.drawText(`Ghi chú: ${fit(note, width - 104, 8)}`, { x: 52, y: 31, size: 8, font, color: ink });
+  }
   page.drawText("Tài liệu được phát hành sau khi Admin phê duyệt trên TL Concepts HR Portal.", {
-    x: 52, y: 38, size: 7.5, font, color: muted,
+    x: 52, y: note ? 16 : 38, size: 7.5, font, color: muted,
   });
   // Avoid object streams for compatibility with older PDF viewers used by
   // desktop mail clients.

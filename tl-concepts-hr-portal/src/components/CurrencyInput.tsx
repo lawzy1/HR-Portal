@@ -7,8 +7,12 @@ type CurrencyInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | '
 };
 
 function normalizeCurrency(value: number | string | null | undefined) {
-  const digits = String(value ?? '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  const digits = (typeof value === 'number' ? (Number.isFinite(value) ? String(Math.round(value)) : '') : String(value ?? '').replace(/\D/g, '')).replace(/^0+(?=\d)/, '');
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+if (import.meta.env.DEV) {
+  console.assert(normalizeCurrency(817021.277) === '817,021', 'Currency input rounding self-check failed');
 }
 
 // Currency is entered as whole VND. The component exposes unformatted digits

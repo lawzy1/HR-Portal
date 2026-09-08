@@ -1,6 +1,10 @@
 export function formatVND(amount: number): string {
   if (isNaN(amount)) return '0';
-  return new Intl.NumberFormat('vi-VN').format(amount);
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(amount);
+}
+
+if (import.meta.env.DEV) {
+  console.assert(formatVND(19811702.128) === '19.811.702' && formatVND(12357446.809) === '12.357.447', 'Whole-VND formatting self-check failed');
 }
 
 /** Single reusable date format for the whole app: dd/mm/yyyy. */

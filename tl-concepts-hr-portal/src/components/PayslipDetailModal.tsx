@@ -332,6 +332,13 @@ export const PayslipDetailModal: React.FC = () => {
             </div>
           </div>
 
+          {payslip.note?.trim() ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-slate-700">
+              <p className="font-bold uppercase tracking-wide text-amber-800">Ghi chú</p>
+              <p className="mt-1 whitespace-pre-wrap break-words">{payslip.note.trim()}</p>
+            </div>
+          ) : null}
+
           {/* Footer signatures */}
           <div className="pt-6 border-t border-slate-200 grid grid-cols-2 text-center text-xs text-slate-600">
             <div>

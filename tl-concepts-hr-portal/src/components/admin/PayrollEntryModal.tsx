@@ -507,10 +507,9 @@ export const PayrollEntryModal: React.FC<PayrollEntryModalProps> = ({
             <div className="rounded-2xl border border-success-300 bg-success-50 p-4 text-right"><span className="block text-xs font-bold uppercase tracking-wider text-success-800">THỰC LÃNH (NET PAY)</span><strong className={`mt-1 block font-mono text-2xl ${netSalary < 0 ? 'text-rose-700' : 'text-success-900'}`}>{formatMoney(netSalary)}</strong><span className="mt-1 block text-[10px] text-success-800">Tổng thu nhập − Tổng khấu trừ + Điều chỉnh</span></div>
           </section>
 
-          <section className="grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 md:grid-cols-3">
-            <label className="block space-y-1"><span className="text-xs font-semibold text-slate-700">Trạng thái thanh toán</span><select value={form.paymentStatus} onChange={(event) => updateField('paymentStatus', event.target.value)} className={inputClass}><option>Chờ thanh toán</option><option>Đã thanh toán</option><option>Tạm ứng</option></select></label>
+          <section className="grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 md:grid-cols-2">
             <label className="block space-y-1"><span className="text-xs font-semibold text-slate-700">Ngày thanh toán</span><input type="date" value={form.paymentDate} onChange={(event) => updateField('paymentDate', event.target.value)} className={inputClass} /></label>
-            <label className="block space-y-1 md:col-span-3"><span className="text-xs font-semibold text-slate-700">Ghi chú trên phiếu lương</span><textarea rows={2} value={form.note} onChange={(event) => updateField('note', event.target.value)} className={`${inputClass} resize-y`} placeholder="Để trống nếu không cần hiển thị ghi chú trên phiếu lương" /></label>
+            <label className="block space-y-1 md:col-span-2"><span className="text-xs font-semibold text-slate-700">Ghi chú trên phiếu lương</span><textarea rows={2} value={form.note} onChange={(event) => updateField('note', event.target.value)} className={`${inputClass} resize-y`} placeholder="Để trống nếu không cần hiển thị ghi chú trên phiếu lương" /></label>
           </section>
 
           {lockedExistingRecord && <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Phiếu lương này đang chờ Admin duyệt hoặc đã phát hành, nên chỉ được xem. Hãy trả lại kỳ lương trước khi chỉnh sửa.</p>}

@@ -41,6 +41,10 @@ interface HRContextType {
   selectedEmployeeIdForAdmin: string;
   setSelectedEmployeeIdForAdmin: (id: string) => void;
 
+  // Read-only "view as user" preview: which employee's payslip screen the admin is previewing, if any
+  viewAsEmployeeId: string | null;
+  setViewAsEmployeeId: (id: string | null) => void;
+
   // Reminders & Alerts
   reminders: HrReminder[];
   pendingOnboardingCount: number;
@@ -183,6 +187,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // Supabase and keeps the selection stable across refetches.
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string>('');
   const [selectedEmployeeIdForAdmin, setSelectedEmployeeIdForAdmin] = useState<string>('');
+  const [viewAsEmployeeId, setViewAsEmployeeId] = useState<string | null>(null);
 
   // Modals
   const [isNewLeaveModalOpen, setIsNewLeaveModalOpen] = useState(false);
@@ -406,9 +411,7 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       });
     });
 
-    // 6. Payroll — split "chờ Admin duyệt" (actionable now) from "đã phát
-    // hành nhưng chưa thanh toán" (a different, non-approval task). Drafts
-    // and rejected records are excluded — HR hasn't asked Admin for anything yet.
+    // 6. Payroll pending Admin approval.
     allPayroll.forEach(record => {
       const empName = record.employees?.full_name || '';
       if (record.publish_status === 'pending_approval') {
@@ -422,20 +425,6 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           isRead: readReminderIds.includes(`rem-pay-approve-${record.id}`),
           createdAt: record.created_at,
           severity: 'medium',
-        });
-        return;
-      }
-      if (record.publish_status === 'published' && record.payment_status !== 'Đã thanh toán') {
-        generated.push({
-          id: `rem-pay-${record.id}`,
-          category: 'payroll',
-          title: 'Phiếu lương chưa thanh toán',
-          message: `Phiếu lương tháng ${record.month}/${record.year} của ${empName} đang ở trạng thái ${record.payment_status}.`,
-          employeeId: record.employee_id,
-          employeeName: empName,
-          isRead: readReminderIds.includes(`rem-pay-${record.id}`),
-          createdAt: record.created_at,
-          severity: 'high',
         });
       }
     });
@@ -521,6 +510,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         setCurrentEmployeeId,
         selectedEmployeeIdForAdmin,
         setSelectedEmployeeIdForAdmin,
+        viewAsEmployeeId,
+        setViewAsEmployeeId,
         reminders,
         pendingOnboardingCount: pendingOnboardingProfiles.length,
         markReminderAsRead,

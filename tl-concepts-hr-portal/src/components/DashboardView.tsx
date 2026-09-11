@@ -17,7 +17,6 @@ import {
   Receipt,
   PlusCircle,
   ChevronRight,
-  ShieldCheck,
   FileCheck,
   Sparkles,
   ArrowUpRight
@@ -251,7 +250,7 @@ export const DashboardView: React.FC = () => {
 
           {latestPayslip ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-xs">
                 <div>
                   <span className="text-slate-500 block text-[11px]">{t('contract.gross')}</span>
                   <strong className="text-slate-900 font-mono text-xs">{formatMoney(latestPayslip.gross_income)}</strong>
@@ -265,13 +264,6 @@ export const DashboardView: React.FC = () => {
                 <div>
                   <span className="text-slate-500 block text-[11px]">{t('payroll.pit')}</span>
                   <strong className="text-rose-700 font-mono text-xs">-{formatMoney(latestPayslip.personal_income_tax)}</strong>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[11px]">{t('common.status')}</span>
-                  <span className="font-bold text-success-700 inline-flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    {translateValue(latestPayslip.payment_status)}
-                  </span>
                 </div>
               </div>
 

@@ -13,6 +13,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Eye,
   X,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
@@ -31,7 +32,7 @@ interface AdminSidebarProps {
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, toggleCollapsed, onResizeStart, mobileOpen, closeMobile }) => {
-  const { adminTab, setAdminTab, reminders, pendingOnboardingCount } = useHR();
+  const { adminTab, setAdminTab, reminders, pendingOnboardingCount, setViewAsEmployeeId } = useHR();
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const { data: employees } = useEmployees();
@@ -182,6 +183,23 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, toggleCol
             );
           })}
         </nav>
+
+        {/* View as user (read-only preview) */}
+        <div className="border-t border-slate-100 p-2">
+          <button
+            onClick={() => {
+              const firstActive = employees?.find((e) => e.status !== 'offboarded');
+              if (firstActive) setViewAsEmployeeId(firstActive.id);
+              closeMobile();
+            }}
+            disabled={!employees?.length}
+            title={collapsed ? t('sidebar.viewAsUser') : undefined}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-amber-700 hover:bg-amber-50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${collapsed ? 'justify-center px-0' : ''}`}
+          >
+            <Eye className="w-4 h-4 shrink-0" />
+            {!collapsed && <span>{t('sidebar.viewAsUser')}</span>}
+          </button>
+        </div>
 
         {/* Collapse toggle footer (desktop only) */}
         <div className="hidden md:block border-t border-slate-100 p-2">

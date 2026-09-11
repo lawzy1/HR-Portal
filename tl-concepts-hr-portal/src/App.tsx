@@ -42,6 +42,7 @@ import { EditProfileModal } from './components/EditProfileModal';
 import { ImportKpiModal } from './components/ImportKpiModal';
 import { PayslipDetailModal } from './components/PayslipDetailModal';
 import { NewEmployeeModal } from './components/NewEmployeeModal';
+import { ViewAsUserModal } from './components/admin/ViewAsUserModal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +103,11 @@ function MainContent() {
           </>
         )}
       </main>
+
+      {/* Read-only employee preview overlay — mounted before the other global
+          modals so PayslipDetailModal (opened from within the preview) stacks
+          on top of it; all of these share the same z-50 and rely on DOM order. */}
+      {isBackoffice && <ViewAsUserModal />}
 
       {/* Global App Modals */}
       <NewLeaveModal />

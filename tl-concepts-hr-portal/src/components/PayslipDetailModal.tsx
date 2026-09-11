@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEmployeeSensitiveInfo } from '../hooks/useEmployees';
 import { usePayrollRecord } from '../hooks/usePayroll';
 import { formatDate } from '../utils/formatters';
-import { X, Download, CheckCircle2, FileText } from 'lucide-react';
+import { X, Download, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 import { getUserFacingError } from '../lib/userFacingError';
@@ -321,15 +321,11 @@ export const PayslipDetailModal: React.FC = () => {
               </h2>
             </div>
 
-            <div className="text-left sm:text-right">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-success-800">
-                <CheckCircle2 className="w-4 h-4 text-success-600" />
-                <span>{payslip.payment_status}</span>
+            {payslip.payment_date && (
+              <div className="text-left sm:text-right">
+                <p className="text-[11px] text-slate-500">Ngày chuyển: {formatDate(payslip.payment_date)}</p>
               </div>
-              {payslip.payment_date && (
-                <p className="mt-1 text-[11px] text-slate-500">Ngày chuyển: {formatDate(payslip.payment_date)}</p>
-              )}
-            </div>
+            )}
           </div>
 
           {payslip.note?.trim() ? (

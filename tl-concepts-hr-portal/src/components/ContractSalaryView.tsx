@@ -16,17 +16,16 @@ import {
   Receipt,
   ArrowUpRight,
   ShieldCheck,
-  CheckCircle2,
   AlertTriangle,
   ChevronDown,
 } from 'lucide-react';
 
-export const ContractSalaryView: React.FC = () => {
+export const ContractSalaryView: React.FC<{ employeeIdOverride?: string }> = ({ employeeIdOverride }) => {
   const { setSelectedPayslipId, setActiveTab } = useHR();
   const { formatMoney } = useMoneyVisibility();
   const { profile } = useAuth();
   const { t, value: translateValue } = useI18n();
-  const employeeId = profile?.employeeId ?? undefined;
+  const employeeId = employeeIdOverride ?? profile?.employeeId ?? undefined;
 
   const { data: employee } = useEmployee(employeeId);
   const { data: allEmployees } = useEmployees();
@@ -34,7 +33,10 @@ export const ContractSalaryView: React.FC = () => {
   const { data: salaryHistory } = useSalaryHistory(employeeId);
   const { data: legalWarnings } = useContractLegalWarnings(employeeId);
   const currentYear = new Date().getFullYear();
-  const { data: payslips } = usePayrollRecords(employeeId, currentYear);
+  const { data: payslipsData } = usePayrollRecords(employeeId, currentYear);
+  // Admin's RLS returns every publish_status; a real employee only ever sees
+  // 'published' rows — filter here so a "view as user" preview matches exactly.
+  const payslips = payslipsData?.filter((ps) => ps.publish_status === 'published');
 
   const [activeSubTab, setActiveSubTab] = useState<'contracts' | 'salaryHistory' | 'payslips'>('contracts');
 
@@ -300,9 +302,11 @@ export const ContractSalaryView: React.FC = () => {
               <Receipt className="w-4 h-4 text-success-600" />
               <span>{t("contract.payslipList", { year: currentYear })}</span>
             </h3>
-            <button onClick={() => setActiveTab('payslips')} className="text-xs font-bold text-success-700 hover:underline cursor-pointer">
-              {t('contract.fullPayslipPage')}
-            </button>
+            {!employeeIdOverride && (
+              <button onClick={() => setActiveTab('payslips')} className="text-xs font-bold text-success-700 hover:underline cursor-pointer">
+                {t('contract.fullPayslipPage')}
+              </button>
+            )}
           </div>
 
           {!payslips || payslips.length === 0 ? (
@@ -311,15 +315,9 @@ export const ContractSalaryView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {payslips.map((ps) => (
                 <div key={ps.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 hover:border-success-300 transition-all">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-success-800 bg-success-100 px-2.5 py-1 rounded-lg border border-success-200">
-                      {t('common.month', { month: ps.month })}/{ps.year}
-                    </span>
-                    <span className="text-[11px] text-success-700 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {translateValue(ps.payment_status)}
-                    </span>
-                  </div>
+                  <span className="text-xs font-bold text-success-800 bg-success-100 px-2.5 py-1 rounded-lg border border-success-200">
+                    {t('common.month', { month: ps.month })}/{ps.year}
+                  </span>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-500">{t('contract.gross')}:</span>

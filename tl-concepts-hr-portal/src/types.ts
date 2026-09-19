@@ -23,10 +23,11 @@ export type UserRole = 'admin' | 'hr' | 'manager' | 'employee';
 
 export type AppMode = 'user' | 'admin';
 
-export type TabType = 'dashboard' | 'profile' | 'contracts' | 'payslips' | 'leaves' | 'kpi';
+export type TabType = 'dashboard' | 'announcements' | 'profile' | 'contracts' | 'payslips' | 'leaves' | 'kpi';
 
 export type AdminTabType = 
   | 'admin-dashboard' 
+  | 'admin-announcements'
   | 'admin-profile'
   | 'admin-employees' 
   | 'admin-contracts' 

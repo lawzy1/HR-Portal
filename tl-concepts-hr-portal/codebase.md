@@ -1,6 +1,6 @@
 # codebase.md — Trạng thái hiện tại của TL Concepts HR Portal
 
-Cập nhật lần cuối: **2026-09-06**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết và [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md) cho audit đầy đủ.
+Cập nhật lần cuối: **2026-09-19**. File này tóm tắt trạng thái repo + lịch sử thay đổi để nạp context nhanh cho session tiếp theo. Xem [AGENTS.md](AGENTS.md) để biết quy ước code / bài học / logic nghiệp vụ chi tiết và [docs/audit-2026-09-05.md](docs/audit-2026-09-05.md) cho audit đầy đủ.
 
 > Quy ước: mỗi lần có thay đổi đáng kể, thêm 1 mục mới lên **đầu** phần "Lịch sử thay đổi" (mới nhất trên cùng), và cập nhật "Trạng thái hiện tại" nếu module liên quan đổi.
 
@@ -17,6 +17,7 @@ Cập nhật lần cuối: **2026-09-06**. File này tóm tắt trạng thái re
 - KPI/OT: nhập liệu bài/dự án theo Order+sub-task, **phân loại New Render / Re Process** (mới), **chỉ tiêu KPI tháng tính riêng theo từng nhân viên = chỉ tiêu/ngày × ngày công cá nhân (đã trừ lễ/Tết và phép đã duyệt)** (mới), đồng bộ sang `kpi_monthly`, quản lý OT; Admin tạo trực tiếp OT cho nhân viên được.
 - Payroll: bảng lương tháng là màn hình vận hành mặc định (chỉ tiêu ngày công, dòng lương và tổng Gross/BHXH-PIT/Net), import/paste Excel để nạp nhanh các dòng vào kỳ đó, form sửa từng phiếu, publish/xem phiếu lương, audit log, reminders (HĐ sắp hết hạn, hồ sơ thiếu giấy tờ...), báo cáo & audit trail.
 - User chỉ tự tạo request nghỉ phép, OT, WFH thêm/đi trễ của chính mình; tất cả bắt đầu `Chờ duyệt`. Admin được duyệt/từ chối hoặc tạo trực tiếp bản ghi đã duyệt; HR/Kế toán chỉ xem các request này.
+- Bảng tin nội bộ dùng chung cho mọi role: Admin đăng text nhanh hoặc đính kèm PDF; nhân viên tìm theo nội dung/loại/năm và xem PDF ngay trong portal. File nằm trong private bucket giới hạn 6 MB, RLS theo công ty.
 
 **Đã deploy Supabase, chờ deploy frontend lên Vercel:**
 - Luồng **Admin mời → nhân viên đặt mật khẩu → onboarding → Admin duyệt** đã apply migration, deploy Edge Function `create-employee` và regenerate type từ DB thật. Đăng ký công khai đã bị tắt ở UI và Supabase Auth.
@@ -46,11 +47,19 @@ Cập nhật lần cuối: **2026-09-06**. File này tóm tắt trạng thái re
 
 ## Schema hiện tại (bảng chính, `public` schema)
 
-`companies`, `company_settings`, `company_holidays`, `profiles`, `employees`, `employee_sensitive_info`, `employee_relatives`, `contracts`, `salary_history`, `leave_balances`, `leave_balance_adjustments`, `leave_requests`, `work_events`, `kpi_job_items`, `kpi_monthly`, `kpi_adjustments`, `ot_records`, `payroll_records`, `audit_logs`.
+`companies`, `company_settings`, `company_holidays`, `profiles`, `employees`, `employee_sensitive_info`, `employee_relatives`, `contracts`, `salary_history`, `leave_balances`, `leave_balance_adjustments`, `leave_requests`, `work_events`, `kpi_job_items`, `kpi_monthly`, `kpi_adjustments`, `ot_records`, `payroll_records`, `announcements`, `audit_logs`.
 
 Nguồn sự thật cho type: `src/lib/database.types.ts` (generate từ Supabase, đừng sửa tay trừ khi vừa migrate xong và chưa kịp regenerate).
 
 ## Lịch sử thay đổi
+
+### 2026-09-19 — Bảng tin nội bộ và thư viện chính sách PDF
+
+- Thêm màn `Thông báo & Chính sách` dùng chung cho Admin/HR/User: timeline theo ngày đăng, tìm kiếm toàn văn phía client, lọc loại/năm và nội dung text giống bài đăng chat.
+- Admin đăng thông báo bắt buộc có tiêu đề + nội dung ngắn, PDF là tùy chọn; có xác nhận trước khi xóa. PDF mở trong overlay bằng trình xem native của trình duyệt và chỉ tạo signed URL khi người dùng mở preview.
+- Migration production `20260919095938_company_announcements.sql` thêm bảng `announcements`, audit trigger, RLS tenant-safe và private bucket `company-announcements` chỉ nhận PDF tối đa 6 MB. Object dùng path bất biến có UUID + cache một năm; DB chỉ lưu path, không lưu signed URL.
+- Đã revoke quyền gọi RPC trực tiếp `audit_row_change()` sau cảnh báo Security Advisor; trigger audit vẫn hoạt động. RLS check trong transaction xác nhận Admin tạo/xem được và Employee bị chặn INSERT; không để lại dữ liệu test.
+- Verify: migration local/remote cùng version; generated types từ remote trùng file local; `npm run lint`, `npm run typecheck`, `npm run build` sạch error (còn warning cũ và cảnh báo chunk lớn). Chưa click-test UI vì quyền điều khiển tab localhost bị từ chối.
 
 ### 2026-09-08 — Cho phép tùy chỉnh ngày công và ghi chú phiếu lương
 

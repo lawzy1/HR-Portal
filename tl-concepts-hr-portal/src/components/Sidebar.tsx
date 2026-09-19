@@ -13,6 +13,7 @@ import {
   Receipt,
   CalendarDays,
   Award,
+  Megaphone,
   Sparkles,
   User,
   PanelLeftClose,
@@ -44,6 +45,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleCollapsed, on
       id: 'dashboard',
       label: t('nav.dashboard'),
       icon: <LayoutDashboard className="w-5 h-5" />
+    },
+    {
+      id: 'announcements',
+      label: t('nav.announcements'),
+      icon: <Megaphone className="w-5 h-5" />
     },
     {
       id: 'profile',

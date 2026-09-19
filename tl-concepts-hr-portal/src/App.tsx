@@ -23,6 +23,7 @@ import { ContractSalaryView } from './components/ContractSalaryView';
 import { PayslipsView } from './components/PayslipsView';
 import { LeaveManagementView } from './components/LeaveManagementView';
 import { KpiRewardsView } from './components/KpiRewardsView';
+import { AnnouncementsView } from './components/AnnouncementsView';
 
 // Admin Views
 import { AdminDashboardView } from './components/admin/AdminDashboardView';
@@ -82,6 +83,7 @@ function MainContent() {
         {isBackoffice ? (
           <>
             {adminTab === 'admin-dashboard' && <AdminDashboardView />}
+            {adminTab === 'admin-announcements' && <AnnouncementsView />}
             {adminTab === 'admin-profile' && <AdminProfileView />}
             {adminTab === 'admin-employees' && <AdminEmployeeListView />}
             {adminTab === 'admin-contracts' && <AdminContractSalaryView />}
@@ -95,6 +97,7 @@ function MainContent() {
         ) : (
           <>
             {activeTab === 'dashboard' && <DashboardView />}
+            {activeTab === 'announcements' && <AnnouncementsView />}
             {activeTab === 'profile' && <ProfileView />}
             {activeTab === 'contracts' && <ContractSalaryView />}
             {activeTab === 'payslips' && <PayslipsView />}

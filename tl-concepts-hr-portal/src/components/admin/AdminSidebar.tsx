@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   Eye,
   X,
+  Megaphone,
 } from 'lucide-react';
 import { useHR } from '../../context/HRContext';
 import { useAuth } from '../../context/AuthContext';
@@ -45,6 +46,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, toggleCol
       id: 'admin-dashboard',
       label: t('nav.adminDashboard'),
       icon: <LayoutDashboard className="w-5 h-5" />,
+    },
+    {
+      id: 'admin-announcements',
+      label: t('nav.announcements'),
+      icon: <Megaphone className="w-5 h-5" />,
     },
     {
       id: 'admin-employees',

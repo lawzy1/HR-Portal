@@ -39,6 +39,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          author_profile_id: string | null
+          category: string
+          company_id: string
+          content: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          author_profile_id?: string | null
+          category?: string
+          company_id: string
+          content: string
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          author_profile_id?: string | null
+          category?: string
+          company_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_author_profile_id_fkey"
+            columns: ["author_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string

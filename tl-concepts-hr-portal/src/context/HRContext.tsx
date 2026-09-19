@@ -73,9 +73,10 @@ interface HRContextType {
 
 const HRContext = createContext<HRContextType | undefined>(undefined);
 
-const USER_TAB_VALUES: readonly TabType[] = ['dashboard', 'profile', 'contracts', 'payslips', 'leaves', 'kpi'];
+const USER_TAB_VALUES: readonly TabType[] = ['dashboard', 'announcements', 'profile', 'contracts', 'payslips', 'leaves', 'kpi'];
 const ADMIN_TAB_VALUES: readonly AdminTabType[] = [
   'admin-dashboard',
+  'admin-announcements',
   'admin-profile',
   'admin-employees',
   'admin-contracts',

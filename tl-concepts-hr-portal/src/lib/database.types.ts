@@ -1450,6 +1450,9 @@ export type Database = {
           rejection_reason: string | null
           standard_work_days: number
           tax_exempt_income: number
+          policy_leave_days: number
+          paid_work_days: number
+          custom_items: Json
           taxable_income: number
           total_adjustments: number | null
           total_deductions: number | null
@@ -1505,6 +1508,9 @@ export type Database = {
           rejection_reason?: string | null
           standard_work_days?: number
           tax_exempt_income?: number
+          policy_leave_days?: number
+          paid_work_days?: number
+          custom_items?: Json
           taxable_income?: number
           total_adjustments?: number | null
           total_deductions?: number | null
@@ -1560,6 +1566,9 @@ export type Database = {
           rejection_reason?: string | null
           standard_work_days?: number
           tax_exempt_income?: number
+          policy_leave_days?: number
+          paid_work_days?: number
+          custom_items?: Json
           taxable_income?: number
           total_adjustments?: number | null
           total_deductions?: number | null
@@ -1663,6 +1672,32 @@ export type Database = {
           {
             foreignKeyName: "profiles_onboarding_reviewed_by_fkey"
             columns: ["onboarding_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder_reads: {
+        Row: {
+          profile_id: string
+          read_at: string
+          reminder_id: string
+        }
+        Insert: {
+          profile_id?: string
+          read_at?: string
+          reminder_id: string
+        }
+        Update: {
+          profile_id?: string
+          read_at?: string
+          reminder_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_reads_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

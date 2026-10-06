@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import type { Tables, TablesInsert } from '../lib/database.types';
 import { refreshQueries } from '../lib/queryRefresh';
+import { readCustomItems, type PayrollCustomItem } from '../utils/payroll';
 
 export type DbPayrollRecord = Tables<'payroll_records'>;
 
@@ -147,6 +148,26 @@ export function useImportPayrollRecords() {
     onSuccess: () => {
       refreshQueries(queryClient, [['payroll_records']]);
     },
+  });
+}
+
+// Adds a custom line (amount 0) to the other draft payslips of the same month
+// so every employee gets the field; each one then fills its own value.
+// ponytail: one UPDATE per payslip (~10/month); move to an RPC if headcount grows.
+export function useSyncPayrollCustomItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ records, item }: { records: DbPayrollRecord[]; item: Pick<PayrollCustomItem, 'section' | 'label'> }) => {
+      for (const record of records) {
+        const items = readCustomItems(record.custom_items);
+        const { error } = await supabase
+          .from('payroll_records')
+          .update({ custom_items: [...items, { id: crypto.randomUUID(), section: item.section, label: item.label.trim(), amount: 0 }] })
+          .eq('id', record.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => refreshQueries(queryClient, [['payroll_records']]),
   });
 }
 

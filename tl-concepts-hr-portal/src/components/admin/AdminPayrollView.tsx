@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileText, Mail, Pencil, Plus, RotateCcw, Search, Send, ShieldCheck, Trash2, Upload } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardPaste, Download, FileSpreadsheet, FileText, Mail, Pencil, Plus, RotateCcw, Search, Send, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHR } from '../../context/HRContext';
 import { MoneyVisibilityToggle, useMoneyVisibility } from '../../context/MoneyVisibilityContext';
@@ -18,93 +18,14 @@ import {
 } from '../../hooks/usePayroll';
 import type { TablesInsert } from '../../lib/database.types';
 import { getMonthWorkDays, getWorkDaysFormulaText } from '../../utils/workDays';
+import { calcFamilyDeduction, calcTaxableIncome, matchPayrollHeader, PAYROLL_TEMPLATE_COLUMNS, readCustomItems, normalizeHeader, parseDelimited, PAYROLL_FIELD_LABELS, type PayrollField } from '../../utils/payroll';
+import { useCompanySettings } from '../../hooks/useCompanySettings';
+import { useCompanyWorkdayOverride } from '../../hooks/useKpi';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { PayrollEntryModal } from './PayrollEntryModal';
 import { useI18n } from '../../context/I18nContext';
 
-type PayrollImportField = keyof TablesInsert<'payroll_records'> | 'employee_name';
-
-const HEADER_MAP: Record<string, PayrollImportField> = {
-  msnv: 'employee_id',
-  ma_nv: 'employee_id',
-  ma_nhan_vien: 'employee_id',
-  employee_code: 'employee_id',
-  ten_nhan_vien: 'employee_name',
-  employee_name: 'employee_name',
-  luong_co_ban: 'base_salary',
-  base_salary: 'base_salary',
-  ngay_cong_chuan: 'standard_work_days',
-  standard_work_days: 'standard_work_days',
-  ngay_cong_thuc_te: 'actual_work_days',
-  actual_work_days: 'actual_work_days',
-  ngay_cong_thang: 'actual_work_days',
-  so_ngay_nghi_phep_nam: 'annual_leave_used_days',
-  phep_da_su_dung: 'annual_leave_used_days',
-  phep_con_lai: 'annual_leave_remaining_days',
-  nguoi_phu_thuoc: 'dependents_count',
-  luong_ngay_cong: 'workday_salary',
-  phu_cap_dien_thoai: 'phone_allowance',
-  phone_allowance: 'phone_allowance',
-  phu_cap_an_trua: 'lunch_allowance',
-  lunch_allowance: 'lunch_allowance',
-  gross: 'gross_income',
-  tong_thu_nhap: 'gross_income',
-  gross_income: 'gross_income',
-  bhxh: 'bhxh_deduction',
-  bhxh_10_5: 'bhxh_deduction',
-  bhxh_bhyt_bhtn: 'bhxh_deduction',
-  bhyt: 'bhyt_deduction',
-  bhtn: 'bhtn_deduction',
-  thue_tncn: 'personal_income_tax',
-  personal_income_tax: 'personal_income_tax',
-  thuc_linh: 'net_salary',
-  net: 'net_salary',
-  net_salary: 'net_salary',
-  thuong_kpi: 'kpi_bonus',
-  kpi_bonus: 'kpi_bonus',
-  kpi: 'kpi_bonus',
-  luong_ot: 'ot_pay',
-  ot_pay: 'ot_pay',
-  ot_thuong_du_an: 'ot_pay',
-  thuong_ot_du_an: 'ot_pay',
-  ot_thuong_du_an_5_gio_ot: 'ot_pay',
-  thuong_du_an: 'project_bonus_amount',
-  project_bonus_amount: 'project_bonus_amount',
-  // The supplied TL Concepts workbook has one aggregate "Thưởng lễ + OT"
-  // column. Keep it as the single OT/project income line to avoid splitting
-  // or double-counting the same amount in the payslip.
-  thuong_le_ot: 'ot_pay',
-  thuong_le: 'holiday_bonus_amount',
-  giam_tru_gia_canh: 'family_deduction',
-  thu_nhap_chiu_thue_tncn: 'taxable_income',
-  luong_thuc_nhan: 'net_salary',
-  hoan_chi_phi_phuc_loi: 'welfare_refund',
-  hoan_cong_tac_phi: 'business_trip_refund',
-  hoan_thue_tncn: 'personal_income_tax_refund',
-  truy_linh_dieu_chinh_ky_truoc: 'prior_month_adjustment',
-  dieu_chinh_thang_truoc: 'prior_month_adjustment',
-  prior_month_adjustment: 'prior_month_adjustment',
-  tam_ung: 'advance_payment',
-  advance_payment: 'advance_payment',
-  khau_tru_khac: 'other_deductions',
-  other_deductions: 'other_deductions',
-  trang_thai_thanh_toan: 'payment_status',
-  payment_status: 'payment_status',
-  ghi_chu: 'note',
-  note: 'note',
-};
-
-const normalizeHeader = (value: string) =>
-  value
-    // NFD does not transliterate Vietnamese Đ/đ, so normalize it explicitly
-    // or headers such as "Phụ cấp điện thoại" will never map.
-    .replace(/[Đđ]/g, 'd')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
+type PayrollImportField = PayrollField;
 
 const normalizeParsedNumber = (value: number) => {
   if (!Number.isFinite(value)) return value;
@@ -117,7 +38,7 @@ const normalizeParsedNumber = (value: number) => {
 
 const numberValue = (value: string, decimal = false) => {
   const cleaned = value.trim().replace(/[^0-9,.-]/g, '');
-  if (!cleaned) return 0;
+  if (!cleaned || cleaned === '-') return 0;
   if (decimal) {
     if (cleaned.includes(',') && cleaned.includes('.')) return normalizeParsedNumber(Number(cleaned.replace(/\./g, '').replace(',', '.')));
     return normalizeParsedNumber(Number(cleaned.replace(',', '.')));
@@ -177,82 +98,93 @@ const detectPayrollPeriod = (rows: unknown[][]) => {
   return null;
 };
 
+const DECIMAL_FIELDS = new Set<PayrollImportField>([
+  'standard_work_days', 'actual_work_days', 'annual_leave_used_days', 'annual_leave_remaining_days',
+  'policy_leave_days', 'paid_work_days', 'ot_hours', 'dependents_count',
+]);
+const TEXT_FIELDS = new Set<PayrollImportField>(['payment_status', 'note', 'employee_id', 'employee_name']);
+
+// mapped: recognised · merged: several money columns summed into one field
+// (e.g. "Lương OT" + "Phụ cấp thiết kế OT") · duplicate: non-money field
+// claimed twice (blocks saving) · unknown: not recognised, ignored · ignored: STT/Vị trí.
+type ColumnStatus = 'mapped' | 'merged' | 'duplicate' | 'unknown' | 'ignored';
+
 type ParsedPayrollRow = {
   rowNumber: number;
   row: Record<string, string | number>;
   displayValues: string[];
+  issues: Array<{ column: number; message: string }>;
 };
 
 type ParsedPayroll = {
   headers: string[];
   fields: Array<PayrollImportField | undefined>;
+  statuses: ColumnStatus[];
   rows: ParsedPayrollRow[];
+  blockingIssues: string[];
 };
 
-function parsePayrollPaste(text: string): ParsedPayroll {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return { headers: [], fields: [], rows: [] };
-  const separator = lines[0].includes('\t') ? '\t' : ',';
-  const headers = lines[0].split(separator).map((header) => header.trim());
-  const normalizedHeaders = headers.map(normalizeHeader);
-  const fields = normalizedHeaders.map((header) => HEADER_MAP[header]);
-  const rows = lines.slice(1).map((line, index) => {
-    const values = line.split(separator);
+function parsePayrollTable(table: string[][]): ParsedPayroll {
+  const headerIndex = table.findIndex((cells) => cells.some((cell) => {
+    const field = matchPayrollHeader(cell);
+    return field === 'employee_id' || field === 'employee_name';
+  }));
+  if (headerIndex < 0) {
+    return { headers: [], fields: [], statuses: [], rows: [], blockingIssues: ['Không tìm thấy dòng tiêu đề có cột "Mã nhân viên" hoặc "Họ Tên".'] };
+  }
+  const headers = table[headerIndex];
+  const matched = headers.map(matchPayrollHeader);
+  const fields = matched.map((field) => (field === 'ignore' ? undefined : field));
+  const statuses: ColumnStatus[] = matched.map((field, column) => (!headers[column] || field === 'ignore' ? 'ignored' : field ? 'mapped' : 'unknown'));
+  const blockingIssues: string[] = [];
+  const firstColumn = new Map<PayrollImportField, number>();
+  fields.forEach((field, column) => {
+    if (!field) return;
+    const first = firstColumn.get(field);
+    if (first === undefined) {
+      firstColumn.set(field, column);
+    } else if (PAYROLL_MONEY_FIELDS.has(field)) {
+      statuses[first] = 'merged';
+      statuses[column] = 'merged';
+    } else {
+      statuses[first] = 'duplicate';
+      statuses[column] = 'duplicate';
+      blockingIssues.push(`Cột "${headers[first]}" và "${headers[column]}" cùng được hiểu là "${PAYROLL_FIELD_LABELS[field] ?? field}" — đổi tên một cột rồi kiểm tra lại.`);
+    }
+  });
+
+  const rows = table.slice(headerIndex + 1).map((cells, index): ParsedPayrollRow => {
+    const values = [...cells];
+    while (values.length > headers.length && values[values.length - 1] === '') values.pop();
+    const issues: ParsedPayrollRow['issues'] = [];
+    if (values.length > headers.length) {
+      issues.push({ column: -1, message: `Dòng có ${values.length} ô nhưng tiêu đề chỉ có ${headers.length} cột — dữ liệu bị lệch cột.` });
+    }
     const row: Record<string, string | number> = {};
     fields.forEach((field, column) => {
       if (!field) return;
       const raw = values[column]?.trim() || '';
-      const parsed = ['payment_status', 'note', 'employee_id', 'employee_name'].includes(field)
-        ? raw
-        : numberValue(raw, field === 'standard_work_days' || field === 'actual_work_days');
-      row[field] = parsed;
-      // The supplied TL Concepts workbook has one "Ngày công/tháng" column.
-      // Until Accounting supplies separate actual/standard columns, use that
-      // single confirmed value for both so a payslip never shows 24 / 0 days.
-      if (normalizedHeaders[column] === 'ngay_cong_thang') {
-        row.standard_work_days = parsed;
-        row.actual_work_days = parsed;
+      if (TEXT_FIELDS.has(field)) {
+        row[field] = raw;
+        return;
       }
+      if (raw && raw !== '-' && !/[0-9]/.test(raw)) {
+        issues.push({ column, message: `Ô "${headers[column]}" không phải số ("${raw}").` });
+      }
+      const parsed = numberValue(raw, DECIMAL_FIELDS.has(field));
+      row[field] = statuses[column] === 'merged' && field in row ? Number(row[field]) + parsed : parsed;
     });
-    return {
-      rowNumber: index + 2,
-      row,
-      // Keep every source cell in the original column order for the review
-      // table, including columns that are intentionally not persisted yet.
-      displayValues: headers.map((_header, column) => values[column]?.trim() || ''),
-    };
+    return { rowNumber: headerIndex + index + 2, row, displayValues: headers.map((_header, column) => values[column] ?? ''), issues };
   });
-  return { headers, fields, rows };
+  return { headers, fields, statuses, rows, blockingIssues };
 }
 
-if (import.meta.env.DEV) {
-  console.assert(
-    parsePayrollPaste('MSNV\tGross\tThực lĩnh\nNV01\t20.000.000\t18.000.000').rows[0]?.row.net_salary === 18000000,
-    'Payroll paste parser self-check failed',
-  );
-  console.assert(
-    parsePayrollPaste('MSNV\tGross\tThực lĩnh\nNV01\t22000000\t21476886.45').rows[0]?.row.net_salary === 21476886.45,
-    'Payroll decimal formula parser self-check failed',
-  );
-  const singleWorkdayValue = parsePayrollPaste('MSNV\tNgày công/tháng\tThực lĩnh\nNV01\t24\t18000000').rows[0]?.row;
-  console.assert(
-    singleWorkdayValue?.actual_work_days === 24 && singleWorkdayValue?.standard_work_days === 24,
-    'Payroll single workday column parser self-check failed',
-  );
-  console.assert(
-    parsePayrollPaste('MSNV\tPhụ cấp điện thoại\tThưởng lễ + OT\nOF-01\t550000\t100000').rows[0]?.row.phone_allowance === 550000
-      && parsePayrollPaste('MSNV\tPhụ cấp điện thoại\tThưởng lễ + OT\nOF-01\t550000\t100000').rows[0]?.row.ot_pay === 100000,
-    'Payroll Vietnamese header mapping self-check failed',
-  );
-  console.assert(
-    parsePayrollPaste('MSNV\tThuế TNCN\nOF-01\t247204.55000000002').rows[0]?.row.personal_income_tax === 247204.55,
-    'Payroll floating-point number parser self-check failed',
-  );
-}
+const parsePayrollPaste = (text: string) => parsePayrollTable(parseDelimited(text.trim()));
 
 type PreviewColumn = {
   label: string;
   field?: PayrollImportField;
+  status: ColumnStatus;
 };
 
 // The import record keeps every monetary value as a number.  Formatting is
@@ -283,6 +215,27 @@ const PAYROLL_MONEY_FIELDS = new Set<PayrollImportField>([
   'other_deductions',
 ]);
 
+if (import.meta.env.DEV) {
+  // Template from Kế toán T09/2026, pasted from Excel (multi-line header cell,
+  // decimal comma, "-" for zero, one row shifted by an extra empty cell).
+  const sample = parsePayrollPaste([
+    'STT\tMã nhân viên\tHọ Tên\tVị trí\tLàm việc\tNgày nghỉ\tNghỉ chế độ\tTổng\tLương cơ bản\tHỗ trợ điện thoại\tHỗ trợ ăn trưa\tOT ngày lễ (giờ)\tLương + Phụ cấp thiết kế OT\tThưởng lễ (số 4)\tPhụ cấp thiết kế (thay cho thưởng KPI sản phẩm)\tTổng cộng\t"NV BHXH + BHYT + BHTN',
+    '(10.5%)"\tThuế TNCN\tThu nhập ròng',
+    '1\tOF - 03\tTrân Hoàng Khánh Vi\tTrưởng nhóm thiết kế\t22\t\t2\t24\t7000000\t550000\t1200000\t17,6\t5375000\t200000\t13719500\t28044500\t735000\t234225\t27075275',
+    '8\tOF - 09\tNguyễn Xuân Hoàng Thịnh\t\tNhân viên xử lý Video\t22\t\t2\t24\t5310000\t550000\t1200000\t-\t0\t200000\t13650000\t20910000\t557550\t155123\t20197327',
+  ].join('\n'));
+  const first = sample.rows[0];
+  console.assert(
+    sample.blockingIssues.length === 0 && sample.statuses.every((status) => status === 'mapped' || status === 'ignored')
+      && first.issues.length === 0 && first.row.ot_hours === 17.6 && first.row.ot_pay === 5375000 && first.row.kpi_bonus === 13719500
+      && first.row.bhxh_deduction === 735000 && first.row.net_salary === 27075275 && first.row.paid_work_days === 24,
+    'Payroll template paste self-check failed',
+  );
+  console.assert(sample.rows[1].issues.length > 0, 'Payroll shifted row self-check failed');
+  const twoOtColumns = parsePayrollPaste('Họ Tên\tLương OT\tPhụ cấp thiết kế OT\nA\t1925000\t3450000');
+  console.assert(twoOtColumns.rows[0].row.ot_pay === 5375000 && twoOtColumns.statuses[1] === 'merged', 'Payroll merged OT columns self-check failed');
+}
+
 const previewMoneyFormatter = new Intl.NumberFormat('en-US', {
   useGrouping: true,
   maximumFractionDigits: 0,
@@ -301,10 +254,29 @@ if (import.meta.env.DEV) {
   console.assert(previewMoneyFormatter.format(19811702.128) === '19,811,702', 'Payroll preview rounding self-check failed');
 }
 
+const COLUMN_STATUS_CLASS: Record<ColumnStatus, string> = {
+  mapped: 'text-success-700',
+  merged: 'text-amber-700',
+  duplicate: 'text-rose-700',
+  unknown: 'text-amber-700',
+  ignored: 'text-slate-400',
+};
+
+// Exact template header → short "✓ Khớp"; a fuzzy match spells out the field it was read as.
+const columnStatusText = ({ label, field, status }: PreviewColumn) => {
+  if (status === 'unknown') return 'Không nhận diện';
+  if (status === 'ignored') return 'Bỏ qua';
+  const fieldLabel = field ? PAYROLL_FIELD_LABELS[field] ?? field : '';
+  if (status === 'merged') return `→ ${fieldLabel} (cộng dồn)`;
+  if (status === 'duplicate') return `→ ${fieldLabel} (trùng)`;
+  return normalizeHeader(label) === normalizeHeader(fieldLabel) ? '✓ Khớp' : `→ ${fieldLabel}`;
+};
+
 type PreviewRow = {
   rowNumber: number;
   employeeName: string;
   displayValues: string[];
+  conflictColumns?: number[];
   record?: TablesInsert<'payroll_records'>;
   error?: string;
   warning?: string;
@@ -323,6 +295,7 @@ export const AdminPayrollView: React.FC = () => {
   const [paste, setPaste] = useState('');
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [previewColumns, setPreviewColumns] = useState<PreviewColumn[]>([]);
+  const [importIssues, setImportIssues] = useState<string[]>([]);
   const [approvalDialog, setApprovalDialog] = useState<'approve' | 'reject' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isPayrollFormOpen, setIsPayrollFormOpen] = useState(false);
@@ -338,6 +311,8 @@ export const AdminPayrollView: React.FC = () => {
   } | null>(null);
   const { data: employeesData } = useEmployees();
   const { data: holidaysData } = useCompanyHolidays();
+  const { data: workdayOverride } = useCompanyWorkdayOverride(selectedMonth, selectedYear);
+  const { data: companySettings } = useCompanySettings();
   const { data: recordsData } = useAllPayrollRecords(selectedMonth, selectedYear);
   const importPayroll = useImportPayrollRecords();
   const deletePayroll = useDeletePayrollRecord();
@@ -395,17 +370,19 @@ export const AdminPayrollView: React.FC = () => {
     const seen = new Set<string>();
     const seenEmployeeIds = new Set<string>();
     const parsed = parsePayrollPaste(text);
-    setPreviewColumns(parsed.headers.map((label, index) => ({ label, field: parsed.fields[index] })));
+    setPreviewColumns(parsed.headers.map((label, index) => ({ label, field: parsed.fields[index], status: parsed.statuses[index] })));
+    setImportIssues(parsed.blockingIssues);
+    const columnOf = (field: PayrollImportField) => parsed.fields.indexOf(field);
     const next = parsed.rows
       .filter(({ row }) => {
         const employeeCode = String(row.employee_id || '').trim();
         const employeeName = String(row.employee_name || '').trim();
         return Boolean(employeeCode) || Boolean(employeeName);
       })
-      .map(({ rowNumber, row, displayValues }): PreviewRow => {
+      .map(({ rowNumber, row, displayValues, issues }): PreviewRow => {
       const employeeCode = String(row.employee_id || '').trim();
       const importedEmployeeName = String(row.employee_name || '').trim();
-      if (!employeeCode && isPayrollSummaryName(importedEmployeeName)) {
+      if (isPayrollSummaryName(importedEmployeeName) || isPayrollSummaryName(employeeCode)) {
         return {
           rowNumber,
           employeeName: importedEmployeeName,
@@ -441,14 +418,18 @@ export const AdminPayrollView: React.FC = () => {
         + Number(row.project_bonus_amount || 0)
         + Number(row.holiday_bonus_amount || 0);
       const gross = 'gross_income' in row ? Number(row.gross_income || 0) : derivedGross;
-      // The supplied workbook may only have "Ngày công/tháng" (actual days).
-      // Always resolve the standard days from the selected payroll period and
-      // the company holiday calendar when the file does not provide one.
-      const standardWorkDays = Number(row.standard_work_days || getMonthWorkDays(
-        period.month,
-        period.year,
-        (holidaysData || []).map((holiday) => holiday.date),
-      ).standardWorkDays);
+      const conflicts = [...issues];
+      if ('gross_income' in row && Math.abs(gross - derivedGross) > 1) {
+        conflicts.push({
+          column: columnOf('gross_income'),
+          message: `"${parsed.headers[columnOf('gross_income')]}" trong file (${previewMoneyFormatter.format(gross)}) khác tổng các khoản thu nhập (${previewMoneyFormatter.format(derivedGross)}).`,
+        });
+      }
+      // Standard days always follow the month's rule (Quy chuẩn ngày công),
+      // never a value from the file.
+      const standardWorkDays = workdayOverride && workdayOverride.month === period.month && workdayOverride.year === period.year
+        ? workdayOverride.standard_work_days
+        : getMonthWorkDays(period.month, period.year, (holidaysData || []).map((holiday) => holiday.date)).standardWorkDays;
       const totalDeductions = Number(row.bhxh_deduction || 0)
         + Number(row.bhyt_deduction || 0)
         + Number(row.bhtn_deduction || 0)
@@ -460,6 +441,29 @@ export const AdminPayrollView: React.FC = () => {
         + Number(row.personal_income_tax_refund || 0)
         + Number(row.prior_month_adjustment || 0);
       const finalNet = gross - totalDeductions + totalAdjustments;
+      const insurance = Number(row.bhxh_deduction || 0) + Number(row.bhyt_deduction || 0) + Number(row.bhtn_deduction || 0);
+      const familyDeduction = 'family_deduction' in row
+        ? Number(row.family_deduction || 0)
+        : calcFamilyDeduction(Number(row.dependents_count || 0), companySettings);
+      const taxableIncome = 'taxable_income' in row
+        ? Number(row.taxable_income || 0)
+        : calcTaxableIncome({
+          gross,
+          lunchAllowance: Number(row.lunch_allowance || 0),
+          phoneAllowance: Number(row.phone_allowance || 0),
+          insurance,
+          familyDeduction,
+        });
+      // An unrecognised column is ignored, so cross-check against the file's
+      // own net and refuse rows that drift.
+      const fileNet = 'net_salary' in row ? Number(row.net_salary || 0) : null;
+      if (fileNet !== null && Math.abs(fileNet - finalNet) > 1 && Math.abs(fileNet - (gross - totalDeductions)) > 1) {
+        const unknown = parsed.headers.filter((_header, column) => parsed.statuses[column] === 'unknown');
+        conflicts.push({
+          column: columnOf('net_salary'),
+          message: `"${parsed.headers[columnOf('net_salary')]}" trong file (${previewMoneyFormatter.format(fileNet)}) lệch với hệ thống tính (${previewMoneyFormatter.format(finalNet)})${unknown.length ? `; kiểm tra cột chưa nhận diện: ${unknown.join(', ')}` : ''}.`,
+        });
+      }
       if (!employee) {
         error = error || (nameMatches.length > 1
           ? `Họ tên trong file trùng nhiều nhân viên, cần bổ sung MSNV đúng.`
@@ -468,6 +472,13 @@ export const AdminPayrollView: React.FC = () => {
       else if (!error && normalizedEmployeeCode && seen.has(normalizedEmployeeCode)) error = 'Mã nhân viên bị trùng trong file';
       else if (!error && seenEmployeeIds.has(employee.id)) error = 'Nhân viên bị trùng trong file (nhiều MSNV cùng trỏ một hồ sơ)';
       else if (!error && (!Number.isFinite(gross) || !Number.isFinite(finalNet) || gross < 0 || finalNet < 0)) error = 'Gross/Net không hợp lệ';
+      else if (!error && conflicts.length) error = conflicts.map((conflict) => conflict.message).join(' ');
+      const existingCustomCount = employee
+        ? readCustomItems(records.find((record) => record.employee_id === employee.id)?.custom_items).length
+        : 0;
+      if (!error && existingCustomCount) {
+        warning = [warning, `Phiếu hiện có ${existingCustomCount} khoản tùy chỉnh sẽ bị xóa khi nhập đè.`].filter(Boolean).join(' ');
+      }
       if (normalizedEmployeeCode) seen.add(normalizedEmployeeCode);
       if (employee) seenEmployeeIds.add(employee.id);
 
@@ -475,6 +486,7 @@ export const AdminPayrollView: React.FC = () => {
         rowNumber,
         employeeName: employee?.full_name || '—',
         displayValues,
+        conflictColumns: conflicts.map((conflict) => conflict.column),
         error,
         warning,
         record: {
@@ -487,7 +499,12 @@ export const AdminPayrollView: React.FC = () => {
           base_salary: Number(row.base_salary || 0),
           standard_work_days: standardWorkDays,
           actual_work_days: Number(row.actual_work_days || 0),
-          workday_salary: Number(row.workday_salary || 0),
+          // The template's "Lương cơ bản" is already prorated by working days.
+          workday_salary: Number(row.workday_salary || row.base_salary || 0),
+          policy_leave_days: Number(row.policy_leave_days || 0),
+          paid_work_days: Number(row.paid_work_days || 0) || Number(row.actual_work_days || 0) + Number(row.policy_leave_days || 0),
+          ot_hours: Number(row.ot_hours || 0),
+          custom_items: [],
           annual_leave_used_days: Number(row.annual_leave_used_days || 0),
           annual_leave_remaining_days: Number(row.annual_leave_remaining_days || 0),
           dependents_count: Number(row.dependents_count || 0),
@@ -495,8 +512,8 @@ export const AdminPayrollView: React.FC = () => {
           bhyt_deduction: Number(row.bhyt_deduction || 0),
           bhtn_deduction: Number(row.bhtn_deduction || 0),
           personal_income_tax: Number(row.personal_income_tax || 0),
-          family_deduction: Number(row.family_deduction || 0),
-          taxable_income: Number(row.taxable_income || 0),
+          family_deduction: familyDeduction,
+          taxable_income: taxableIncome,
           kpi_bonus: Number(row.kpi_bonus || 0),
           ot_pay: Number(row.ot_pay || 0),
           phone_allowance: Number(row.phone_allowance || 0),
@@ -539,6 +556,11 @@ export const AdminPayrollView: React.FC = () => {
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    // getUserFacingError hides plain Error messages, so tell the user directly.
+    if (file.name.toLowerCase().endsWith('.xls')) {
+      showToast('File .xls (Excel 97-2003) chưa được hỗ trợ. Mở file và Lưu thành .xlsx, hoặc bôi đen bảng lương rồi dán vào ô bên dưới.');
+      return;
+    }
     try {
       setSourceName(file.name);
       if (file.name.toLowerCase().endsWith('.xlsx')) {
@@ -546,20 +568,14 @@ export const AdminPayrollView: React.FC = () => {
         const sheets = await readWorkbook(file);
         const payrollSheet = sheets.find((sheet) => normalizeHeader(sheet.sheet).includes('bang_luong')) ?? sheets[0];
         if (!payrollSheet) throw new Error('File Excel không có worksheet nào.');
-        const detectedPeriod = detectPayrollPeriod(payrollSheet.data);
-        if (!detectedPeriod) throw new Error('Không đọc được kỳ lương từ tiêu đề bảng lương (ví dụ: THÁNG 07-2026).');
-        setSelectedMonth(detectedPeriod.month);
-        setSelectedYear(detectedPeriod.year);
-        const headerIndex = payrollSheet.data.findIndex((row) => row.some((cell) => {
-          const header = normalizeHeader(String(cell ?? ''));
-          return header === 'msnv' || header === 'ten_nhan_vien' || header === 'employee_name';
-        }));
-        if (headerIndex < 0) throw new Error('Không tìm thấy dòng tiêu đề có cột Tên nhân viên hoặc MSNV trong file Excel.');
-        const text = payrollSheet.data.slice(headerIndex).map((row) => row.map((cell) => {
-          return workbookCellValue(cell);
-        }).join('\t')).join('\n');
+        // The template's title row may still read "THÁNG MM-YYYY"; fall back
+        // to the period selected on screen instead of rejecting the file.
+        const period = detectPayrollPeriod(payrollSheet.data) ?? { month: selectedMonth, year: selectedYear };
+        setSelectedMonth(period.month);
+        setSelectedYear(period.year);
+        const text = payrollSheet.data.map((row) => row.map(workbookCellValue).join('\t')).join('\n');
         setPaste(text);
-        buildPreview(text, `${file.name} • ${payrollSheet.sheet}`, detectedPeriod ?? undefined);
+        buildPreview(text, `${file.name} • ${payrollSheet.sheet}`, period);
         return;
       }
       const text = await file.text();
@@ -568,6 +584,7 @@ export const AdminPayrollView: React.FC = () => {
     } catch (error) {
       setPreview([]);
       setPreviewColumns([]);
+      setImportIssues([]);
       showToast(await getUserFacingError(error, 'Không thể đọc file payroll. Vui lòng thử lại.'));
     }
   };
@@ -587,6 +604,7 @@ export const AdminPayrollView: React.FC = () => {
       showToast(`Đã lưu ${valid.length} phiếu lương nháp${skippedNotes ? `; ${skippedNotes}` : ''}.`);
       setPreview([]);
       setPreviewColumns([]);
+      setImportIssues([]);
       setPaste('');
     } catch (error) {
       showToast(await getUserFacingError(error, 'Không thể nhập payroll. Vui lòng thử lại.'));
@@ -714,7 +732,7 @@ export const AdminPayrollView: React.FC = () => {
           </div>
           <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-right">
             <span className="block text-[10px] font-bold uppercase tracking-wide text-success-100">{t('payroll.standardDays')}</span>
-            <strong className="text-base">{t('payroll.workdayUnit', { count: workDaysInfo.standardWorkDays })}</strong>
+            <strong className="text-base">{t('payroll.workdayUnit', { count: workdayOverride?.standard_work_days ?? workDaysInfo.standardWorkDays })}</strong>
           </div>
         </div>
 
@@ -723,8 +741,8 @@ export const AdminPayrollView: React.FC = () => {
             <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="p-3">{t('payroll.employeeCode')}</th><th className="p-3">{t('payroll.employeePosition')}</th><th className="p-3 text-center">{t('payroll.days')}</th>
-                <th className="p-3 text-right">{t('payroll.baseSalary')}</th><th className="p-3 text-right">{t('payroll.lunchAllowance')}</th><th className="p-3 text-right">{t('payroll.phoneAllowance')}</th>
-                <th className="p-3 text-right">{t('payroll.kpiBonus')}</th><th className="p-3 text-right">{t('payroll.otBonus')}</th><th className="p-3 text-right">{t('payroll.holidayBonus')}</th>
+                <th className="p-3 text-right">{t('payroll.baseSalary')}</th><th className="p-3 text-right">{t('payroll.phoneAllowance')}</th><th className="p-3 text-right">{t('payroll.lunchAllowance')}</th>
+                <th className="p-3 text-right">{t('payroll.otBonus')}</th><th className="p-3 text-right">{t('payroll.holidayBonus')}</th><th className="p-3 text-right">{t('payroll.kpiBonus')}</th>
                 <th className="bg-slate-100 p-3 text-right">{t('payroll.grossIncome')}</th><th className="p-3 text-right text-rose-700">{t('payroll.insurance')}</th>
                 <th className="p-3 text-right">{t('payroll.familyDeduction')}</th><th className="p-3 text-right text-primary-700">{t('payroll.pit')}</th><th className="bg-success-50 p-3 text-right text-success-800">{t('payroll.netIncome')}</th><th className="p-3 text-center">{t('common.actions')}</th>
               </tr>
@@ -739,9 +757,9 @@ export const AdminPayrollView: React.FC = () => {
                 return <tr key={record.id} className="hover:bg-slate-50/70">
                   <td className="p-3 font-mono text-[11px] font-bold text-slate-700">{record.employees?.employee_code || '—'}</td>
                   <td className="p-3"><strong className="block text-slate-900">{record.employees?.full_name || '—'}</strong><span className="mt-0.5 block text-[10px] text-slate-500">{record.employees?.job_title || t('payroll.positionMissing')}</span></td>
-                  <td className="p-3 text-center font-semibold text-slate-700">{record.standard_work_days} / {record.actual_work_days}</td>
-                  <td className="p-3 text-right font-semibold">{formatMoney(record.base_salary)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.lunch_allowance)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.phone_allowance)}</td>
-                  <td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.kpi_bonus)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.ot_pay + record.project_bonus_amount)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.holiday_bonus_amount)}</td>
+                  <td className="p-3 text-center font-semibold text-slate-700">{record.actual_work_days} / {record.paid_work_days || record.actual_work_days + record.policy_leave_days}</td>
+                  <td className="p-3 text-right font-semibold">{formatMoney(record.workday_salary || record.base_salary)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.phone_allowance)}</td><td className="p-3 text-right text-slate-600">{formatMoney(record.lunch_allowance)}</td>
+                  <td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.ot_pay + record.project_bonus_amount)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.holiday_bonus_amount)}</td><td className="p-3 text-right font-semibold text-success-800">{formatMoney(record.kpi_bonus)}</td>
                   <td className="bg-slate-50 p-3 text-right font-extrabold text-slate-900">{formatMoney(record.gross_income)}</td><td className="p-3 text-right font-semibold text-rose-700">−{formatMoney(insurance)}</td>
                   <td className="p-3 text-right text-slate-500">{formatMoney(record.family_deduction)}</td><td className="p-3 text-right font-semibold text-primary-700">−{formatMoney(record.personal_income_tax)}</td>
                   <td className="bg-success-50 p-3 text-right font-extrabold text-success-800">{formatMoney(record.net_salary)}</td>
@@ -774,10 +792,13 @@ export const AdminPayrollView: React.FC = () => {
           rows={7}
           value={paste}
           onChange={(e) => setPaste(e.target.value)}
-          placeholder={'MSNV\tGross\tBHXH\tBHYT\tBHTN\tThuế TNCN\tThực lĩnh\nNV001\t20000000\t1600000\t300000\t200000\t500000\t17400000'}
+          placeholder={`Bôi đen bảng lương trong Excel (gồm dòng tiêu đề) rồi dán vào đây.\nCột theo file mẫu: ${PAYROLL_TEMPLATE_COLUMNS.map((column) => column.label).join(' · ')}`}
           className="w-full p-3 font-mono text-xs bg-slate-50 border border-slate-300 rounded-xl"
         />
         <div className="flex flex-wrap gap-2">
+          <a href="/templates/Mau-bang-luong.xlsx" download className="px-4 py-2 border border-slate-300 bg-white rounded-xl text-xs font-bold flex items-center gap-2 text-slate-700 hover:bg-slate-50">
+            <Download className="w-4 h-4" /> Tải file mẫu
+          </a>
           <label className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-2">
             <Upload className="w-4 h-4" /> {t('payroll.chooseFile')}
             <input type="file" accept=".xlsx,.csv,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values" className="hidden" onChange={(e) => { void handleFile(e.target.files?.[0]); e.currentTarget.value = ''; }} />
@@ -786,11 +807,25 @@ export const AdminPayrollView: React.FC = () => {
             <FileSpreadsheet className="w-4 h-4" /> {t('payroll.checkData')}
           </button>
           {preview.length > 0 && (
-            <button onClick={() => void handleImport()} disabled={!importableValidCount || importPayroll.isPending} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">
+            <button onClick={() => void handleImport()} disabled={!importableValidCount || importIssues.length > 0 || importPayroll.isPending} className="px-4 py-2 bg-success-600 text-white rounded-xl text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">
               {importPayroll.isPending ? t('payroll.saving') : t('payroll.saveDrafts', { count: importableValidCount })}
             </button>
           )}
         </div>
+
+        {importIssues.length > 0 && (
+          <div className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+            <p className="font-bold">Không thể lưu — tiêu đề cột bị xung đột:</p>
+            <ul className="mt-1 list-disc pl-5">{importIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+          </div>
+        )}
+
+        {previewColumns.some((column) => column.status === 'unknown' || column.status === 'merged') && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {previewColumns.some((column) => column.status === 'unknown') && <>Cột không nhận diện được, sẽ bị bỏ qua: <b>{previewColumns.filter((column) => column.status === 'unknown').map((column) => column.label).join(', ')}</b>. </>}
+            {previewColumns.some((column) => column.status === 'merged') && <>Các cột được cộng dồn: <b>{previewColumns.filter((column) => column.status === 'merged').map((column) => column.label).join(' + ')}</b>.</>}
+          </p>
+        )}
 
         {invalidPreviewCount > 0 && (
           <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
@@ -811,7 +846,12 @@ export const AdminPayrollView: React.FC = () => {
                 <tr>
                   <th className="p-2 whitespace-nowrap">{t('payroll.row')}</th>
                   {previewColumns.map((column, index) => (
-                    <th key={`${column.label}-${index}`} className="p-2 whitespace-nowrap">{column.label || `Cột ${index + 1}`}</th>
+                    <th key={`${column.label}-${index}`} className="p-2 whitespace-nowrap align-bottom">
+                      {column.label || `Cột ${index + 1}`}
+                      <span className={`mt-0.5 block text-[10px] font-semibold ${COLUMN_STATUS_CLASS[column.status]}`}>
+                        {columnStatusText(column)}
+                      </span>
+                    </th>
                   ))}
                   <th className="p-2 whitespace-nowrap">{t('payroll.validation')}</th>
                 </tr>
@@ -825,7 +865,8 @@ export const AdminPayrollView: React.FC = () => {
                     // currency symbol is added to the preview.
                     const value = formatPreviewCell(item.displayValues[index], column.field);
                     const isEmployeeName = column.field === 'employee_name';
-                    return <td key={`${item.rowNumber}-${column.label}-${index}`} className={`p-2 whitespace-nowrap ${isEmployeeName ? 'font-bold' : ''}`}>{value}</td>;
+                    const isConflict = item.conflictColumns?.includes(index);
+                    return <td key={`${item.rowNumber}-${column.label}-${index}`} className={`p-2 whitespace-nowrap ${isEmployeeName ? 'font-bold' : ''} ${isConflict ? 'bg-rose-100 font-bold text-rose-800 ring-1 ring-inset ring-rose-400' : ''}`}>{value}</td>;
                   })}
                   <td className={`p-2 font-semibold ${item.error ? 'text-rose-700' : item.warning ? 'text-amber-700' : 'text-success-700'}`}>
                     {item.isSummary ? t('payroll.summary') : item.error || item.warning || t('payroll.valid')}

@@ -80,8 +80,8 @@ export function useAllKpiJobItems(month: number, year: number) {
 export function useCreateKpiJobItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: TablesInsert<'kpi_job_items'>) => {
-      const { data, error } = await supabase.from('kpi_job_items').insert(input).select().single();
+    mutationFn: async (input: TablesInsert<'kpi_job_items'>[]) => {
+      const { data, error } = await supabase.from('kpi_job_items').insert(input).select();
       if (error) throw error;
       return data;
     },

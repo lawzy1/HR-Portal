@@ -9,6 +9,7 @@ import { X, Download, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useSignedImageUrl } from '../hooks/useFileUpload';
 import { getUserFacingError } from '../lib/userFacingError';
+import { customTotal, readCustomItems } from '../utils/payroll';
 
 export const PayslipDetailModal: React.FC = () => {
   const { selectedPayslipId, setSelectedPayslipId, showToast } = useHR();
@@ -90,6 +91,10 @@ export const PayslipDetailModal: React.FC = () => {
   if (!payslip) return null;
 
   const employee = payslip.employees;
+  const customItems = readCustomItems(payslip.custom_items);
+  const customOf = (section: 'income' | 'deduction' | 'adjustment') => customItems.filter((item) => item.section === section);
+  const expenseRefund = payslip.welfare_refund + payslip.business_trip_refund;
+  const paidWorkDays = payslip.paid_work_days || payslip.actual_work_days + payslip.policy_leave_days;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -173,16 +178,12 @@ export const PayslipDetailModal: React.FC = () => {
               <strong className="text-slate-800">{employee?.department}</strong>
             </div>
             <div>
-              <span className="text-slate-500 block text-[11px]">Ngày công thực tế / chuẩn</span>
-              <strong className="font-mono text-slate-800">{payslip.actual_work_days} / {payslip.standard_work_days} ngày</strong>
+              <span className="text-slate-500 block text-[11px]">Làm việc / Tổng</span>
+              <strong className="font-mono text-slate-800">{payslip.actual_work_days} / {paidWorkDays} ngày</strong>
             </div>
             <div>
-              <span className="text-slate-500 block text-[11px]">Phép đã dùng / còn lại</span>
-              <strong className="font-mono text-slate-800">{payslip.annual_leave_used_days} / {payslip.annual_leave_remaining_days} ngày</strong>
-            </div>
-            <div>
-              <span className="text-slate-500 block text-[11px]">Người phụ thuộc</span>
-              <strong className="font-mono text-slate-800">{payslip.dependents_count}</strong>
+              <span className="text-slate-500 block text-[11px]">Ngày nghỉ / Nghỉ chế độ</span>
+              <strong className="font-mono text-slate-800">{payslip.annual_leave_used_days} / {payslip.policy_leave_days} ngày</strong>
             </div>
             <div>
               <span className="text-slate-500 block text-[11px]">Email</span>
@@ -204,39 +205,34 @@ export const PayslipDetailModal: React.FC = () => {
                 <span>SỐ TIỀN (VNĐ)</span>
               </div>
               <div className="p-4 space-y-2.5 text-xs">
-                {payslip.workday_salary > 0 ? (
-                  <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">Lương theo ngày công <small className="block text-[10px] text-slate-400">Lương HĐ: {formatMoney(payslip.base_salary)}</small></span>
-                    <span className="font-semibold tabular-nums">{formatMoney(payslip.workday_salary)}</span>
-                  </div>
-                ) : (
-                  <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                    <span className="text-slate-600">Lương cơ bản hợp đồng:</span>
-                    <span className="font-semibold tabular-nums">{formatMoney(payslip.base_salary)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <div>
-                    <span className="text-slate-600 block">Ngày công thực tế / chuẩn:</span>
-                    <span className="text-[10px] text-slate-400 font-medium">Theo dữ liệu kỳ lương đã import</span>
-                  </div>
-                  <span className="font-bold tabular-nums text-slate-800 self-center">{payslip.actual_work_days} / {payslip.standard_work_days} ngày</span>
+                  <span className="text-slate-600">Lương cơ bản:</span>
+                  <span className="font-semibold tabular-nums">{formatMoney(payslip.workday_salary || payslip.base_salary)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">Lương KPI hoàn thành:</span>
+                  <span className="text-slate-600">Phụ cấp thiết kế (thay cho thưởng KPI sản phẩm):</span>
                   <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.kpi_bonus)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">OT / thưởng dự án:</span>
-                  <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.ot_pay + payslip.project_bonus_amount)}</span>
+                  <span className="text-slate-600">
+                    Lương + Phụ cấp thiết kế OT:
+                    {payslip.ot_hours > 0 && <small className="block text-[10px] text-slate-400">OT ngày lễ: {payslip.ot_hours} giờ</small>}
+                  </span>
+                  <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.ot_pay)}</span>
                 </div>
+                {payslip.project_bonus_amount > 0 && (
+                  <div className="flex justify-between pb-1.5 border-b border-slate-100">
+                    <span className="text-slate-600">Thưởng dự án:</span>
+                    <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.project_bonus_amount)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between pb-1.5 border-b border-slate-100 pl-2 text-[11px]">
-                  <span className="text-slate-500">• Phụ cấp điện thoại:</span>
+                  <span className="text-slate-500">• Hỗ trợ điện thoại:</span>
                   <span className="font-semibold tabular-nums">+{formatMoney(payslip.phone_allowance)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100 pl-2 text-[11px]">
-                  <span className="text-slate-500">• Phụ cấp ăn trưa:</span>
+                  <span className="text-slate-500">• Hỗ trợ ăn trưa:</span>
                   <span className="font-semibold tabular-nums">+{formatMoney(payslip.lunch_allowance)}</span>
                 </div>
 
@@ -246,6 +242,13 @@ export const PayslipDetailModal: React.FC = () => {
                     <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.holiday_bonus_amount)}</span>
                   </div>
                 )}
+
+                {customOf('income').map((item) => (
+                  <div key={item.id} className="flex justify-between pb-1.5 border-b border-slate-100">
+                    <span className="text-slate-600">{item.label}:</span>
+                    <span className="font-semibold tabular-nums text-success-700">+{formatMoney(item.amount)}</span>
+                  </div>
+                ))}
 
                 <div className="flex justify-between pt-2 text-xs font-bold text-slate-900 border-t-2 border-slate-200">
                   <span>TỔNG THU NHẬP (GROSS):</span>
@@ -286,10 +289,17 @@ export const PayslipDetailModal: React.FC = () => {
                   </div>
                 )}
 
+                {customOf('deduction').map((item) => (
+                  <div key={item.id} className="flex justify-between pb-1.5 border-b border-slate-100">
+                    <span className="text-slate-600">{item.label}:</span>
+                    <span className="font-semibold tabular-nums text-rose-700">-{formatMoney(item.amount)}</span>
+                  </div>
+                ))}
+
                 <div className="flex justify-between pt-2 text-xs font-bold text-slate-900 border-t-2 border-slate-200">
                   <span>TỔNG KHẤU TRỪ:</span>
                   <span className="tabular-nums text-rose-700">
-                    -{formatMoney(payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction + payslip.personal_income_tax + payslip.advance_payment + payslip.other_deductions)}
+                    -{formatMoney(payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction + payslip.personal_income_tax + payslip.advance_payment + payslip.other_deductions + customTotal(customItems, 'deduction'))}
                   </span>
                 </div>
               </div>
@@ -297,17 +307,19 @@ export const PayslipDetailModal: React.FC = () => {
 
           </div>
 
-          {(payslip.welfare_refund > 0 || payslip.business_trip_refund > 0 || payslip.personal_income_tax_refund > 0 || payslip.prior_month_adjustment !== 0) && (
+          {(expenseRefund > 0 || payslip.personal_income_tax_refund > 0 || payslip.prior_month_adjustment !== 0 || customOf('adjustment').length > 0) && (
             <div className="overflow-hidden rounded-xl border border-primary-200">
               <div className="flex items-center justify-between bg-primary-50 px-4 py-2.5 text-xs font-bold text-primary-800">
                 <span>III. ĐIỀU CHỈNH & HOÀN TRẢ</span>
                 <span>SỐ TIỀN (VNĐ)</span>
               </div>
               <div className="grid grid-cols-1 gap-2 p-4 text-xs sm:grid-cols-2">
-                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn chi phí phúc lợi</span><b className="tabular-nums">+{formatMoney(payslip.welfare_refund)}</b></div>
-                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn công tác phí</span><b className="tabular-nums">+{formatMoney(payslip.business_trip_refund)}</b></div>
+                <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn chi phí</span><b className="tabular-nums">+{formatMoney(expenseRefund)}</b></div>
                 <div className="flex justify-between border-b border-slate-100 pb-2"><span>Hoàn thuế TNCN</span><b className="tabular-nums">+{formatMoney(payslip.personal_income_tax_refund)}</b></div>
                 <div className="flex justify-between border-b border-slate-100 pb-2"><span>Truy lĩnh / điều chỉnh kỳ trước</span><b className="tabular-nums">{payslip.prior_month_adjustment > 0 ? '+' : ''}{formatMoney(payslip.prior_month_adjustment)}</b></div>
+                {customOf('adjustment').map((item) => (
+                  <div key={item.id} className="flex justify-between border-b border-slate-100 pb-2"><span>{item.label}</span><b className="tabular-nums">+{formatMoney(item.amount)}</b></div>
+                ))}
               </div>
             </div>
           )}

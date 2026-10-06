@@ -207,7 +207,7 @@ export function useAllEmployeeSensitiveInfo() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employee_sensitive_info')
-        .select('employee_id, id_card_front_url, tax_code');
+        .select('employee_id, id_card_front_url, id_card_back_url, tax_code');
       if (error) throw error;
       return data;
     },

@@ -11,6 +11,7 @@ import { useAllLeaveRequests, useAllWorkEvents } from '../hooks/useLeave';
 import { useAllOtRecords } from '../hooks/useOt';
 import { useAllPayrollHistory } from '../hooks/usePayroll';
 import { useAllProfileChangeRequests } from '../hooks/useProfileChangeRequests';
+import { useMarkRemindersRead, useReminderReads } from '../hooks/useReminderReads';
 import { useAllPendingKpiMonthly } from '../hooks/useKpi';
 import { useAllProfiles } from '../hooks/useProfiles';
 import { CONTRACT_EXPIRING_WINDOW_DAYS, employeeNeedsContract } from '../utils/contracts';
@@ -127,14 +128,6 @@ const readStoredReminderIds = (storageKey: string | null): string[] => {
   }
 };
 
-const persistReminderIds = (storageKey: string | null, ids: string[]) => {
-  if (typeof window === 'undefined' || !storageKey) return;
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(ids));
-  } catch {
-    // Reminder state remains usable in memory when storage is unavailable.
-  }
-};
 
 export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -198,21 +191,29 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   const [isNewEmployeeModalOpen, setIsNewEmployeeModalOpen] = useState(false);
   const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
 
-  // Reminder read state is UI-only, but persists per signed-in account so a
-  // reload does not bring back every dismissed alert.
-  const reminderStorageKey = profile ? `tl-hr-read-reminders:${profile.companyId}:${profile.id}` : null;
-  const [readReminderIds, setReadReminderIds] = useState<string[]>([]);
+  // Reminder "đã đọc" state lives in public.reminder_reads (per account).
+  const readIdsQuery = useReminderReads(!!profile);
+  const readReminderIds = useMemo(() => readIdsQuery.data ?? [], [readIdsQuery.data]);
+  const readIdsPending = readIdsQuery.isPending;
+  const markRemindersRead = useMarkRemindersRead();
 
+  // One-time move of reads saved by the old localStorage version into the DB.
+  const legacyReminderKey = profile ? `tl-hr-read-reminders:${profile.companyId}:${profile.id}` : null;
   useEffect(() => {
-    setReadReminderIds(readStoredReminderIds(reminderStorageKey));
-  }, [reminderStorageKey]);
-
-  const updateReadReminderIds = (update: (current: string[]) => string[]) => {
-    setReadReminderIds((current) => {
-      const next = update(current);
-      persistReminderIds(reminderStorageKey, next);
-      return next;
+    if (!legacyReminderKey || !readIdsQuery.isSuccess) return;
+    const legacyIds = readStoredReminderIds(legacyReminderKey);
+    if (legacyIds.length === 0) return;
+    markRemindersRead.mutate(legacyIds, {
+      onSuccess: () => {
+        try { window.localStorage.removeItem(legacyReminderKey); } catch { /* storage unavailable */ }
+      },
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per account after reads load
+  }, [legacyReminderKey, readIdsQuery.isSuccess]);
+
+  const updateReadReminderIds = (ids: string[]) => {
+    const unread = ids.filter(id => !readReminderIds.includes(id));
+    if (unread.length > 0) markRemindersRead.mutate(unread);
   };
 
   // Toast message
@@ -233,11 +234,11 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   // (employees, contracts, leave_requests, employee_sensitive_info). read/
   // resolved tracking stays local-only;
   // there's no reminders table, this is just dismissal state for the UI.
-  const { data: allContractsData } = useAllContracts();
+  const { data: allContractsData, isSuccess: contractsLoaded } = useAllContracts();
   const allContracts = useMemo(() => allContractsData || [], [allContractsData]);
   const { data: allLeaveRequestsData } = useAllLeaveRequests();
   const allLeaveRequests = useMemo(() => allLeaveRequestsData || [], [allLeaveRequestsData]);
-  const { data: allSensitiveInfoData } = useAllEmployeeSensitiveInfo();
+  const { data: allSensitiveInfoData, isSuccess: sensitiveInfoLoaded } = useAllEmployeeSensitiveInfo();
   const allSensitiveInfo = useMemo(() => allSensitiveInfoData || [], [allSensitiveInfoData]);
   const { data: allOtData } = useAllOtRecords();
   const allOt = useMemo(() => allOtData || [], [allOtData]);
@@ -257,6 +258,8 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const reminders = useMemo<HrReminder[]>(() => {
     const generated: HrReminder[] = [];
+    // Read state not loaded yet → show nothing rather than flashing everything as unread.
+    if (readIdsPending) return generated;
 
     pendingOnboardingProfiles.forEach((profile) => {
       const employee = profile.employees;
@@ -303,8 +306,10 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     // 1b. Employee onboarded but no published contract yet.
+    // "Missing X" rules only run once X has loaded; an empty list mid-load
+    // would otherwise flag every employee for a moment.
     employees.forEach(emp => {
-      if (!employeeNeedsContract(emp, allContracts)) return;
+      if (!contractsLoaded || !employeeNeedsContract(emp, allContracts)) return;
       generated.push({
         id: `rem-no-contract-${emp.id}`,
         category: 'contract_missing',
@@ -342,13 +347,19 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     // 3. Missing documents
     const sensitiveByEmployee = new Map(allSensitiveInfo.map(s => [s.employee_id, s]));
     employees.forEach(emp => {
+      if (!sensitiveInfoLoaded) return;
       const info = sensitiveByEmployee.get(emp.id);
-      if (!info || !info.id_card_front_url || !info.tax_code) {
+      const missing = [
+        !info?.id_card_front_url && 'ảnh CCCD mặt trước',
+        !info?.id_card_back_url && 'ảnh CCCD mặt sau',
+        !info?.tax_code && 'mã số thuế',
+      ].filter(Boolean);
+      if (missing.length > 0) {
         generated.push({
           id: `rem-doc-${emp.id}`,
           category: 'missing_doc',
           title: 'Thiếu giấy tờ / hồ sơ cá nhân',
-          message: `Nhân viên ${emp.full_name} chưa hoàn thiện upload CCCD hoặc mã số thuế cá nhân.`,
+          message: `Nhân viên ${emp.full_name} còn thiếu: ${missing.join(', ')}.`,
           employeeId: emp.id,
           employeeName: emp.full_name,
           isRead: readReminderIds.includes(`rem-doc-${emp.id}`),
@@ -396,13 +407,13 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     allWorkEvents.forEach(record => {
-      if (record.status !== 'pending') return;
+      if (record.status !== 'Chờ duyệt') return;
       const empName = record.employees?.full_name || '';
       generated.push({
         id: `rem-work-${record.id}`,
         category: 'work_event',
         title: 'Yêu cầu WFH/đi muộn chờ duyệt',
-        message: `${empName} gửi yêu cầu ${record.event_type} ngày ${record.event_date}.`,
+        message: `${empName} gửi yêu cầu ${record.event_type === 'extra_wfh' ? 'WFH thêm' : 'đi trễ'} ngày ${record.event_date}.${record.reason ? ` Lý do: "${record.reason}"` : ''}`,
         employeeId: record.employee_id,
         employeeName: empName,
         dueDate: record.event_date,
@@ -482,19 +493,19 @@ export const HRProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     });
 
     return generated;
-  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, allProfileChangeRequests, allPendingKpiMonthly, readReminderIds]);
+  }, [pendingOnboardingProfiles, employees, allContracts, allLeaveRequests, allSensitiveInfo, allOt, allWorkEvents, allPayroll, allProfileChangeRequests, allPendingKpiMonthly, readReminderIds, readIdsPending, contractsLoaded, sensitiveInfoLoaded]);
 
   const markReminderAsRead = (id: string) => {
-    updateReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
+    updateReadReminderIds([id]);
   };
 
   const resolveReminder = (id: string) => {
-    updateReadReminderIds(prev => prev.includes(id) ? prev : [...prev, id]);
-    showToast('Đã đánh dấu đã đọc. Cảnh báo sẽ tự mất khi dữ liệu gốc được xử lý.');
+    updateReadReminderIds([id]);
+    showToast('Đã đánh dấu đã đọc.');
   };
 
   const markAllRemindersAsRead = () => {
-    updateReadReminderIds(prev => [...new Set([...prev, ...reminders.map(r => r.id)])]);
+    updateReadReminderIds(reminders.map(r => r.id));
     showToast('Đã đánh dấu tất cả thông báo là đã đọc.');
   };
 

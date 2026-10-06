@@ -51,6 +51,16 @@ const JOB_CATEGORIES: { value: 'new_render' | 'reprocess'; label: string }[] = [
   { value: 'reprocess', label: 'Re Process (Chỉnh sửa)' },
 ];
 
+type ExtraSubTask = {
+  subTask: string;
+  employeeId: string;
+  category: 'new_render' | 'reprocess';
+  views: number;
+  kpi: number;
+  days: number;
+  deadlineInput: string;
+};
+
 const categoryBadge = (category: string) =>
   category === 'reprocess'
     ? <span className="inline-flex whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">Re Process</span>
@@ -184,7 +194,10 @@ export const AdminKpiOtView: React.FC = () => {
   const [durationDays, setDurationDays] = useState<number>(2.0);
   const [deadline, setDeadline] = useState<string>('');
   const [deadlineDateInput, setDeadlineDateInput] = useState<string>('');
-  const [completedDateInput, setCompletedDateInput] = useState<string>('');
+  // Extra sub-tasks created together with the order (create mode only).
+  const [extraSubTasks, setExtraSubTasks] = useState<ExtraSubTask[]>([]);
+  const updateExtraSubTask = (index: number, patch: Partial<ExtraSubTask>) =>
+    setExtraSubTasks(prev => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
 
   // Edit Job state
   const [editingJob, setEditingJob] = useState<KpiJobRow | null>(null);
@@ -288,7 +301,6 @@ export const AdminKpiOtView: React.FC = () => {
           duration_days: durationDays,
           deadline: finalDeadline || null,
           deadline_at: toIso(deadlineDateInput),
-          completed_at: toIso(completedDateInput),
           month: selectedMonth,
           year: selectedYear,
         },
@@ -296,22 +308,35 @@ export const AdminKpiOtView: React.FC = () => {
       showToast('Đã cập nhật chi tiết KPI bài/dự án!');
       setEditingJob(null);
     } else {
-      await createKpiJobItem.mutateAsync({
-        company_id: profile.companyId,
-        order_job: orderJob,
-        sub_task: subTask || null,
-        parent_task: orderJob,
-        employee_id: jobEmployeeId,
-        category: jobCategory,
-        views_count: viewsCount,
-        converted_kpi: convertedKpi,
-        duration_days: durationDays,
-        deadline: finalDeadline || null,
-        deadline_at: toIso(deadlineDateInput),
-        completed_at: toIso(completedDateInput),
-        month: selectedMonth,
-        year: selectedYear,
-      });
+      if (extraSubTasks.some(item => !item.subTask.trim() || !item.employeeId)) {
+        alert('Vui lòng nhập tên sub-task và người thực hiện cho mọi sub-task thêm');
+        return;
+      }
+      const base = { company_id: profile.companyId, order_job: orderJob, parent_task: orderJob, month: selectedMonth, year: selectedYear };
+      await createKpiJobItem.mutateAsync([
+        {
+          ...base,
+          sub_task: subTask || null,
+          employee_id: jobEmployeeId,
+          category: jobCategory,
+          views_count: viewsCount,
+          converted_kpi: convertedKpi,
+          duration_days: durationDays,
+          deadline: finalDeadline || null,
+          deadline_at: toIso(deadlineDateInput),
+        },
+        ...extraSubTasks.map(item => ({
+          ...base,
+          sub_task: item.subTask.trim(),
+          employee_id: item.employeeId,
+          category: item.category,
+          views_count: item.views,
+          converted_kpi: item.kpi,
+          duration_days: item.days,
+          deadline: item.deadlineInput ? formatDeadlineFromDateStr(item.deadlineInput) : finalDeadline || null,
+          deadline_at: toIso(item.deadlineInput || deadlineDateInput),
+        })),
+      ]);
       showToast('Đã thêm bài / dự án KPI mới thành công!');
     }
 
@@ -324,7 +349,7 @@ export const AdminKpiOtView: React.FC = () => {
     setDurationDays(2.0);
     setDeadline('');
     setDeadlineDateInput('');
-    setCompletedDateInput('');
+    setExtraSubTasks([]);
     setIsNewJobModalOpen(false);
   };
 
@@ -339,7 +364,6 @@ export const AdminKpiOtView: React.FC = () => {
     setDurationDays(job.duration_days || 0);
     setDeadline(job.deadline || '');
     setDeadlineDateInput(toLocalInput(job.deadline_at));
-    setCompletedDateInput(toLocalInput(job.completed_at));
     setIsNewJobModalOpen(true);
   };
 
@@ -1348,6 +1372,8 @@ export const AdminKpiOtView: React.FC = () => {
           {employeeList.map(emp => {
             // Real employee_id FK match — no more fuzzy assigneeName string matching.
             const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
+            // Admin/HR accounts only get a card once they actually have KPI jobs this month.
+            if (empJobs.length === 0 && backofficeEmployeeIds.has(emp.id)) return null;
             const renderJobs = empJobs.filter(j => j.category !== 'reprocess');
             const reprocessJobs = empJobs.filter(j => j.category === 'reprocess');
 
@@ -1662,22 +1688,94 @@ export const AdminKpiOtView: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('adminKpi.completedDateLabel')}</label>
-                <input
-                  type="datetime-local"
-                  value={completedDateInput}
-                  onChange={e => setCompletedDateInput(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-xs"
-                />
-              </div>
             </div>
+
+            {!editingJob && (
+              <div className="border-t border-slate-200 pt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">{t('adminKpi.extraSubtasksTitle')}</p>
+                    <p className="text-[10px] text-slate-400 italic">{t('adminKpi.extraSubtasksHint')}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExtraSubTasks(prev => [...prev, {
+                      subTask: '', employeeId: jobEmployeeId, category: 'new_render', views: 2, kpi: 2, days: 1, deadlineInput: '',
+                    }])}
+                    className="px-2 py-1 bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg text-[11px] font-bold cursor-pointer"
+                  >
+                    {t('adminKpi.addSubtaskBtn')}
+                  </button>
+                </div>
+
+                {extraSubTasks.map((item, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
+                    <input
+                      type="text"
+                      placeholder={t('adminKpi.subtaskPlaceholder')}
+                      value={item.subTask}
+                      onChange={e => updateExtraSubTask(index, { subTask: e.target.value })}
+                      aria-label={t('adminKpi.subtaskLabel')}
+                      className="col-span-3 p-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-primary-700"
+                      required
+                    />
+                    <div className="col-span-3">
+                      <SearchableSelect
+                        value={item.employeeId}
+                        onChange={value => updateExtraSubTask(index, { employeeId: value })}
+                        options={employeeList.map(emp => ({ value: emp.id, label: `${emp.full_name} (${emp.employee_code})` }))}
+                      />
+                    </div>
+                    <select
+                      value={item.category}
+                      onChange={e => updateExtraSubTask(index, { category: e.target.value as ExtraSubTask['category'] })}
+                      aria-label={t('adminKpi.categoryLabel')}
+                      className="col-span-2 p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold"
+                    >
+                      {JOB_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <input
+                      type="number" step="1" value={item.views} title={t('adminKpi.viewsLabel')} aria-label={t('adminKpi.viewsLabel')}
+                      onChange={e => updateExtraSubTask(index, { views: Number(e.target.value) })}
+                      className="col-span-1 p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold"
+                    />
+                    <input
+                      type="number" step="0.1" value={item.kpi} title={t('adminKpi.convertedKpiLabel')} aria-label={t('adminKpi.convertedKpiLabel')}
+                      onChange={e => updateExtraSubTask(index, { kpi: Number(e.target.value) })}
+                      className="col-span-1 p-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-success-700"
+                    />
+                    <input
+                      type="number" step="0.5" value={item.days} title={t('adminKpi.durationLabel')} aria-label={t('adminKpi.durationLabel')}
+                      onChange={e => updateExtraSubTask(index, { days: Number(e.target.value) })}
+                      className="col-span-1 p-2 bg-white border border-slate-300 rounded-lg text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setExtraSubTasks(prev => prev.filter((_, i) => i !== index))}
+                      title={t('adminKpi.deleteSubtaskTooltip')}
+                      aria-label={t('adminKpi.deleteSubtaskTooltip')}
+                      className="col-span-1 p-2 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer justify-self-center"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="col-span-12 flex items-center space-x-1">
+                      <span className="text-[10px] text-slate-400">{t('adminKpi.deadlineLabel')}</span>
+                      <input
+                        type="datetime-local"
+                        value={item.deadlineInput}
+                        onChange={e => updateExtraSubTask(index, { deadlineInput: e.target.value })}
+                        className="p-1 text-[11px] bg-white border rounded cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center justify-end space-x-2 pt-2">
               <button
                 type="button"
-                onClick={() => setIsNewJobModalOpen(false)}
+                onClick={() => { setExtraSubTasks([]); setIsNewJobModalOpen(false); }}
                 className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 {t('adminKpi.cancel')}

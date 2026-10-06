@@ -27,12 +27,13 @@ export const AdminRemindersView: React.FC = () => {
 
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [filterSeverity, setFilterSeverity] = useState<string>('ALL');
+  const [showRead, setShowRead] = useState(false);
 
   const filteredReminders = reminders
     .filter(rem => {
       const matchCat = filterCategory === 'ALL' || rem.category === filterCategory;
       const matchSev = filterSeverity === 'ALL' || rem.severity === filterSeverity;
-      return matchCat && matchSev;
+      return matchCat && matchSev && (showRead || !rem.isRead);
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -58,7 +59,7 @@ export const AdminRemindersView: React.FC = () => {
             </span>
           )}
           <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-xl font-bold text-xs">
-            {t('adminReminders.activeAlertsCount', { count: reminders.length })}
+            {t('adminReminders.activeAlertsCount', { count: unreadCount })}
           </span>
           {unreadCount > 0 && (
             <button
@@ -111,6 +112,11 @@ export const AdminRemindersView: React.FC = () => {
             </select>
           </div>
         </div>
+
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+          <input type="checkbox" checked={showRead} onChange={e => setShowRead(e.target.checked)} />
+          {t('adminReminders.showRead')}
+        </label>
 
         <span className="text-xs font-medium text-slate-500">
           {t('adminReminders.showingCount', { count: filteredReminders.length })}
@@ -192,9 +198,9 @@ export const AdminRemindersView: React.FC = () => {
                           setIsEditProfileModalOpen(true);
                         } else if (rem.category === 'contract' || rem.category === 'contract_missing' || rem.category === 'salary_review') {
                           setAdminTab('admin-contracts');
-                        } else if (rem.category === 'leave_request') {
+                        } else if (rem.category === 'leave_request' || rem.category === 'work_event') {
                           setAdminTab('admin-leaves');
-                        } else if (rem.category === 'ot_request' || rem.category === 'work_event' || rem.category === 'kpi') {
+                        } else if (rem.category === 'ot_request' || rem.category === 'kpi') {
                           setAdminTab('admin-kpi');
                         } else if (rem.category === 'payroll') {
                           setAdminTab('admin-payroll');
@@ -209,12 +215,12 @@ export const AdminRemindersView: React.FC = () => {
                     </button>
                   )}
 
-                  <button
+                  {!rem.isRead && <button
                     onClick={() => resolveReminder(rem.id)}
                     className="px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer"
                   >
                     {t('adminReminders.markAsRead')}
-                  </button>
+                  </button>}
                 </div>
               </div>
             ))}

@@ -24,6 +24,10 @@ function money(value: unknown) {
   return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(Number(value) || 0);
 }
 
+function days(value: unknown) {
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(Number(value) || 0);
+}
+
 function escapeHtml(value: string) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
@@ -62,7 +66,7 @@ async function createPayslipPdf(record: PayrollRecord) {
   const font = await document.embedFont(fontBytes, { subset: true });
   const logoImage = await document.embedPng(base64ToBytes(LOGO_PNG_BASE64));
   const logoSize = 26;
-  const page = document.addPage([595.28, 841.89]);
+  let page = document.addPage([595.28, 841.89]);
   const { width, height } = page.getSize();
   const teal = rgb(0.08, 0.39, 0.39);
   const coral = rgb(0.89, 0.32, 0.23);
@@ -71,11 +75,17 @@ async function createPayslipPdf(record: PayrollRecord) {
   const line = rgb(0.86, 0.88, 0.91);
   const employee = record.employees;
   const sensitive = record.employeeSensitive;
-  const totalDeductions = Number(record.bhxh_deduction) + Number(record.bhyt_deduction)
-    + Number(record.bhtn_deduction) + Number(record.personal_income_tax)
-    + Number(record.advance_payment) + Number(record.other_deductions);
-  const totalAdjustments = Number(record.welfare_refund) + Number(record.business_trip_refund)
-    + Number(record.personal_income_tax_refund) + Number(record.prior_month_adjustment);
+  // Custom lines added by Accounting for this month only (see payroll_records.custom_items).
+  const customItems = (Array.isArray(record.custom_items) ? record.custom_items : []) as Array<{ section?: string; label?: string; amount?: number }>;
+  const custom = (section: string) => customItems.filter((item) => item.section === section);
+  const customSum = (section: string) => custom(section).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const insurance = Number(record.bhxh_deduction) + Number(record.bhyt_deduction) + Number(record.bhtn_deduction);
+  const expenseRefund = Number(record.welfare_refund) + Number(record.business_trip_refund);
+  const totalDeductions = insurance + Number(record.personal_income_tax)
+    + Number(record.advance_payment) + Number(record.other_deductions) + customSum("deduction");
+  const totalAdjustments = expenseRefund + Number(record.personal_income_tax_refund)
+    + Number(record.prior_month_adjustment) + customSum("adjustment");
+  const paidWorkDays = Number(record.paid_work_days) || Number(record.actual_work_days) + Number(record.policy_leave_days);
   let y = height - 54;
 
   const draw = (text: string, x: number, size = 10, color = ink) => {
@@ -90,14 +100,23 @@ async function createPayslipPdf(record: PayrollRecord) {
     }
     return `${shortened}…`;
   };
+  const ensureSpace = (needed: number) => {
+    if (y - needed > 70) return;
+    page = document.addPage([595.28, 841.89]);
+    y = height - 54;
+  };
   const row = (label: string, value: string, tone = ink) => {
-    page.drawText(label, { x: 52, y, size: 9, font, color: muted });
+    ensureSpace(20);
+    page.drawText(fit(label, width - 230, 9), { x: 52, y, size: 9, font, color: muted });
     const valueWidth = font.widthOfTextAtSize(value, 9);
     page.drawText(value, { x: width - 52 - valueWidth, y, size: 9, font, color: tone });
     page.drawLine({ start: { x: 52, y: y - 8 }, end: { x: width - 52, y: y - 8 }, thickness: 0.5, color: line });
     y -= 20;
   };
   const section = (title: string, color = teal) => {
+    // Gap so the bar never covers the previous row's text.
+    y -= 10;
+    ensureSpace(74);
     page.drawRectangle({ x: 42, y: y - 8, width: width - 84, height: 27, color });
     page.drawText(title, { x: 52, y, size: 10, font, color: rgb(1, 1, 1) });
     y -= 34;
@@ -122,48 +141,53 @@ async function createPayslipPdf(record: PayrollRecord) {
   draw(`Mã NV: ${employee?.employee_code ?? "—"}`, 330, 10);
   y -= 20;
   draw(`Phòng ban: ${employee?.department ?? "—"}`, 52, 9, muted);
-  draw(`Chức vụ: ${employee?.job_title ?? "—"}`, 330, 9, muted);
+  draw(`Vị trí: ${employee?.job_title ?? "—"}`, 330, 9, muted);
   y -= 19;
-  draw(`Ngày công thực tế / chuẩn: ${record.actual_work_days ?? 0} / ${record.standard_work_days ?? 0}`, 52, 8.5, muted);
-  draw(`Người phụ thuộc: ${record.dependents_count ?? 0}`, 330, 8.5, muted);
+  // The embedded font subset has no "·" glyph, so place each count by x.
+  draw(`Làm việc: ${days(record.actual_work_days)}`, 52, 8.5, muted);
+  draw(`Ngày nghỉ: ${days(record.annual_leave_used_days)}`, 170, 8.5, muted);
+  draw(`Nghỉ chế độ: ${days(record.policy_leave_days)}`, 330, 8.5, muted);
+  draw(`Tổng: ${days(paidWorkDays)}`, 460, 8.5, muted);
   y -= 19;
-  draw(`Phép đã dùng / còn lại: ${record.annual_leave_used_days ?? 0} / ${record.annual_leave_remaining_days ?? 0} ngày`, 52, 8.5, muted);
-  draw(`Tài khoản: ${fit(`${sensitive?.bank_name ?? '—'} · ${sensitive?.bank_account_number ?? '—'}`, 210, 8.5)}`, 330, 8.5, muted);
+  draw(`Tài khoản: ${fit(`${sensitive?.bank_name ?? '—'} - ${sensitive?.bank_account_number ?? '—'}`, width - 104, 8.5)}`, 52, 8.5, muted);
   y -= 28;
 
-  section("I. THU NHẬP (GROSS)");
-  row("Lương cơ bản", money(record.base_salary));
-  row("Lương theo ngày công", money(record.workday_salary));
-  row("Phụ cấp ăn trưa", money(record.lunch_allowance));
-  row("Phụ cấp điện thoại", money(record.phone_allowance));
-  row("KPI / commission", money(record.kpi_bonus), teal);
-  row("OT / thưởng dự án", money(Number(record.ot_pay) + Number(record.project_bonus_amount)), teal);
-  row("Thưởng lễ", money(record.holiday_bonus_amount), teal);
-  row("TỔNG THU NHẬP", money(record.gross_income), teal);
+  section("I. TỔNG THU NHẬP");
+  row("Lương cơ bản", money(Number(record.workday_salary) || record.base_salary));
+  row("Hỗ trợ điện thoại", money(record.phone_allowance));
+  row("Hỗ trợ ăn trưa", money(record.lunch_allowance));
+  row("OT ngày lễ (giờ)", days(record.ot_hours));
+  row("Lương + Phụ cấp thiết kế OT", money(record.ot_pay), teal);
+  row("Thưởng lễ (số 4)", money(record.holiday_bonus_amount), teal);
+  row("Phụ cấp thiết kế (thay cho thưởng KPI sản phẩm)", money(record.kpi_bonus), teal);
+  if (Number(record.project_bonus_amount)) row("Thưởng dự án", money(record.project_bonus_amount), teal);
+  for (const item of custom("income")) row(String(item.label ?? ""), money(item.amount), teal);
+  row("TỔNG CỘNG", money(record.gross_income), teal);
 
   section("II. CÁC KHOẢN KHẤU TRỪ", coral);
-  row("BHXH / BHYT / BHTN", money(Number(record.bhxh_deduction) + Number(record.bhyt_deduction) + Number(record.bhtn_deduction)), coral);
-  row("Thuế thu nhập cá nhân", money(record.personal_income_tax), coral);
-  row("Tạm ứng / khấu trừ khác", money(Number(record.advance_payment) + Number(record.other_deductions)), coral);
+  row("NV BHXH + BHYT + BHTN (10.5%)", money(insurance), coral);
+  row("Thuế TNCN", money(record.personal_income_tax), coral);
+  if (Number(record.advance_payment)) row("Khấu trừ tạm ứng", money(record.advance_payment), coral);
+  if (Number(record.other_deductions)) row("Khấu trừ khác", money(record.other_deductions), coral);
+  for (const item of custom("deduction")) row(String(item.label ?? ""), money(item.amount), coral);
   row("TỔNG KHẤU TRỪ", money(totalDeductions), coral);
 
-  section("III. ĐIỀU CHỈNH & HOÀN TRẢ");
-  row("Hoàn chi phí phúc lợi", money(record.welfare_refund), teal);
-  row("Hoàn công tác phí", money(record.business_trip_refund), teal);
-  row("Hoàn thuế TNCN", money(record.personal_income_tax_refund), teal);
-  row("Truy lĩnh / điều chỉnh kỳ trước", money(record.prior_month_adjustment));
-  row("TỔNG CỘNG THÊM", money(totalAdjustments), teal);
-
-  row("Tổng thu nhập", money(record.gross_income), teal);
-  row("(-) Tổng khấu trừ", money(totalDeductions), coral);
-  row("(+) Điều chỉnh & hoàn trả", money(totalAdjustments), teal);
+  if (totalAdjustments !== 0 || custom("adjustment").length) {
+    section("III. ĐIỀU CHỈNH & HOÀN TRẢ");
+    if (expenseRefund) row("Hoàn chi phí", money(expenseRefund), teal);
+    if (Number(record.personal_income_tax_refund)) row("Hoàn thuế TNCN", money(record.personal_income_tax_refund), teal);
+    if (Number(record.prior_month_adjustment)) row("Truy lĩnh / điều chỉnh kỳ trước", money(record.prior_month_adjustment));
+    for (const item of custom("adjustment")) row(String(item.label ?? ""), money(item.amount), teal);
+    row("TỔNG CỘNG THÊM", money(totalAdjustments), teal);
+  }
+  ensureSpace(60);
   // Extra clearance so the NET PAY block below doesn't crowd/overlap the
   // last row's own underline (verified visually — 8-12pt was too tight for
   // the larger 13/18pt heading text).
   y -= 14;
 
   page.drawLine({ start: { x: 42, y: y + 28 }, end: { x: width - 42, y: y + 28 }, thickness: 1.4, color: ink });
-  page.drawText("THỰC LÃNH (NET PAY)", { x: 52, y: y + 8, size: 13, font, color: teal });
+  page.drawText("THU NHẬP RÒNG (NET PAY)", { x: 52, y: y + 8, size: 13, font, color: teal });
   const net = money(record.net_salary);
   page.drawText(net, { x: width - 52 - font.widthOfTextAtSize(net, 18), y: y + 2, size: 18, font, color: ink });
   page.drawLine({ start: { x: 42, y: y - 10 }, end: { x: width - 42, y: y - 10 }, thickness: 1.4, color: ink });

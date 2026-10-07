@@ -33,7 +33,7 @@ export const PAYROLL_TEMPLATE_COLUMNS: Array<{ label: string; field?: PayrollFie
   { label: 'OT ngày lễ (giờ)', field: 'ot_hours' },
   { label: 'Lương + Phụ cấp thiết kế OT', field: 'ot_pay' },
   { label: 'Thưởng lễ', field: 'holiday_bonus_amount' },
-  { label: 'Phụ cấp thiết kế (thay cho thưởng KPI sản phẩm)', field: 'kpi_bonus' },
+  { label: 'Phụ cấp thiết kế', field: 'kpi_bonus' },
   { label: 'Tổng cộng', field: 'gross_income' },
   { label: 'NV BHXH + BHYT + BHTN (10.5%)', field: 'bhxh_deduction' },
   { label: 'Thuế TNCN', field: 'personal_income_tax' },

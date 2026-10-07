@@ -210,7 +210,7 @@ export const PayslipDetailModal: React.FC = () => {
                   <span className="font-semibold tabular-nums">{formatMoney(payslip.workday_salary || payslip.base_salary)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">Phụ cấp thiết kế (thay cho thưởng KPI sản phẩm):</span>
+                  <span className="text-slate-600">Phụ cấp thiết kế:</span>
                   <span className="font-semibold tabular-nums text-success-700">+{formatMoney(payslip.kpi_bonus)}</span>
                 </div>
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
@@ -265,7 +265,7 @@ export const PayslipDetailModal: React.FC = () => {
               </div>
               <div className="p-4 space-y-2.5 text-xs">
                 <div className="flex justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-600">BHXH / BHYT / BHTN bắt buộc (theo Excel):</span>
+                  <span className="text-slate-600">BHXH / BHYT / BHTN bắt buộc:</span>
                   <span className="font-semibold tabular-nums text-rose-700">-{formatMoney(
                     payslip.bhxh_deduction + payslip.bhyt_deduction + payslip.bhtn_deduction
                   )}</span>

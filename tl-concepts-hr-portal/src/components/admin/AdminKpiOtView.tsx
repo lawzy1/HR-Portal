@@ -40,7 +40,7 @@ import {
 import { useAllOtRecords, useCreateOtRecord, useDeleteOtRecord, useUpdateOtRecord } from '../../hooks/useOt';
 import { useAllLeaveRequests, useCompanyHolidays } from '../../hooks/useLeave';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../../utils/workDays';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, sumConvertedKpi } from '../../utils/formatters';
 import { ConfirmationDialog } from '../ConfirmationDialog';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { ModalPanel } from '../ui/ModalPanel';
@@ -529,7 +529,7 @@ export const AdminKpiOtView: React.FC = () => {
       const empJobs = currentMonthJobs.filter(j => j.employee_id === emp.id);
 
       const totalViews = empJobs.reduce((acc, curr) => acc + (curr.views_count || 0), 0);
-      const totalKpiPoints = empJobs.reduce((acc, curr) => acc + (curr.converted_kpi || 0), 0);
+      const totalKpiPoints = sumConvertedKpi(empJobs);
 
       // Mỗi nhân viên có chỉ tiêu KPI/ngày riêng (Hồ sơ nhân viên), không
       // còn dùng chung 1 định mức công ty cho tất cả.
@@ -1135,7 +1135,7 @@ export const AdminKpiOtView: React.FC = () => {
               <span className="px-2 py-0.5 rounded bg-primary-100 text-primary-800">{t('adminKpi.jobsUnit', { count: currentMonthJobs.length })}</span>
             </span>
             <p className="text-2xl font-black text-slate-900 mt-1">{currentMonthJobs.reduce((s, j) => s + (j.views_count || 0), 0)} <span className="text-xs font-semibold text-slate-500">views</span></p>
-            <span className="text-xs text-success-700 font-bold">{t('adminKpi.kpiConverted', { count: currentMonthJobs.reduce((s, j) => s + (j.converted_kpi || 0), 0) })}</span>
+            <span className="text-xs text-success-700 font-bold">{t('adminKpi.kpiConverted', { count: sumConvertedKpi(currentMonthJobs) })}</span>
           </div>
           <div className="p-4 rounded-xl border border-success-200 bg-success-50/60">
             <span className="text-[11px] font-bold text-success-700 uppercase flex items-center justify-between">
@@ -1143,7 +1143,7 @@ export const AdminKpiOtView: React.FC = () => {
               <span className="px-2 py-0.5 rounded bg-success-100 text-success-800">{t('adminKpi.jobsUnit', { count: currentMonthJobs.filter(j => j.category !== 'reprocess').length })}</span>
             </span>
             <p className="text-2xl font-black text-slate-900 mt-1">{currentMonthJobs.filter(j => j.category !== 'reprocess').reduce((s, j) => s + (j.views_count || 0), 0)} <span className="text-xs font-semibold text-slate-500">views</span></p>
-            <span className="text-xs text-success-700 font-bold">{t('adminKpi.kpiConverted', { count: currentMonthJobs.filter(j => j.category !== 'reprocess').reduce((s, j) => s + (j.converted_kpi || 0), 0) })}</span>
+            <span className="text-xs text-success-700 font-bold">{t('adminKpi.kpiConverted', { count: sumConvertedKpi(currentMonthJobs.filter(j => j.category !== 'reprocess')) })}</span>
           </div>
           <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60">
             <span className="text-[11px] font-bold text-amber-700 uppercase flex items-center justify-between">
@@ -1151,7 +1151,7 @@ export const AdminKpiOtView: React.FC = () => {
               <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800">{t('adminKpi.jobsUnit', { count: currentMonthJobs.filter(j => j.category === 'reprocess').length })}</span>
             </span>
             <p className="text-2xl font-black text-slate-900 mt-1">{currentMonthJobs.filter(j => j.category === 'reprocess').reduce((s, j) => s + (j.views_count || 0), 0)} <span className="text-xs font-semibold text-slate-500">views</span></p>
-            <span className="text-xs text-amber-700 font-bold">{t('adminKpi.kpiConverted', { count: currentMonthJobs.filter(j => j.category === 'reprocess').reduce((s, j) => s + (j.converted_kpi || 0), 0) })}</span>
+            <span className="text-xs text-amber-700 font-bold">{t('adminKpi.kpiConverted', { count: sumConvertedKpi(currentMonthJobs.filter(j => j.category === 'reprocess')) })}</span>
           </div>
         </div>
 
@@ -1268,7 +1268,7 @@ export const AdminKpiOtView: React.FC = () => {
                           {group.items.reduce((sum, item) => sum + (item.views_count || 0), 0)}
                         </td>
                         <td className="py-3 px-3 text-center font-bold text-success-700 border-r border-slate-300">
-                          {group.items.reduce((sum, item) => sum + (item.converted_kpi || 0), 0)}
+                          {sumConvertedKpi(group.items)}
                         </td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
@@ -1378,12 +1378,11 @@ export const AdminKpiOtView: React.FC = () => {
             const reprocessJobs = empJobs.filter(j => j.category === 'reprocess');
 
             const totalViews = empJobs.reduce((a, c) => a + (c.views_count || 0), 0);
-            const totalKpi = empJobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
+            const totalKpi = sumConvertedKpi(empJobs);
             const target = getEmployeeKpiTarget(emp);
             const pct = target ? Math.min(150, Math.round((totalKpi / target) * 100)) : 0;
 
             const sumViews = (jobs: KpiJobRow[]) => jobs.reduce((a, c) => a + (c.views_count || 0), 0);
-            const sumKpi = (jobs: KpiJobRow[]) => jobs.reduce((a, c) => a + (c.converted_kpi || 0), 0);
 
             return (
               <div key={emp.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
@@ -1421,11 +1420,11 @@ export const AdminKpiOtView: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="px-2 py-1.5 rounded-lg bg-success-50 border border-success-200 text-[10px]">
                     <span className="block text-success-700 font-bold">{t('adminKpi.renderViews')}</span>
-                    <span className="text-slate-700">{sumViews(renderJobs)}v • {sumKpi(renderJobs)}đ</span>
+                    <span className="text-slate-700">{sumViews(renderJobs)}v • {sumConvertedKpi(renderJobs)}đ</span>
                   </div>
                   <div className="px-2 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[10px]">
                     <span className="block text-amber-700 font-bold">{t('adminKpi.reprocessViews')}</span>
-                    <span className="text-slate-700">{sumViews(reprocessJobs)}v • {sumKpi(reprocessJobs)}đ</span>
+                    <span className="text-slate-700">{sumViews(reprocessJobs)}v • {sumConvertedKpi(reprocessJobs)}đ</span>
                   </div>
                 </div>
 

@@ -6,6 +6,7 @@ import { useCompanyWorkdayOverride, useKpiJobItems, useKpiMonthly } from '../hoo
 import { useCompanyHolidays, useLeaveRequests } from '../hooks/useLeave';
 import { useSignedImageUrl, AVATAR_TRANSFORM } from '../hooks/useFileUpload';
 import { getApprovedLeaveDaysInMonth, getMonthWorkDays } from '../utils/workDays';
+import { sumConvertedKpi } from '../utils/formatters';
 import { MonthYearFilter } from './ui/MonthYearFilter';
 import {
   Award,
@@ -114,7 +115,7 @@ export const KpiRewardsView: React.FC = () => {
   }, [assignedJobs, kpiMonthly]);
 
   const totalConvertedKpi = useMemo(() => {
-    if (assignedJobs.length > 0) return assignedJobs.reduce((sum, item) => sum + (item.converted_kpi || 0), 0);
+    if (assignedJobs.length > 0) return sumConvertedKpi(assignedJobs);
     return kpiMonthly?.kpi_converted_views || 0;
   }, [assignedJobs, kpiMonthly]);
 
@@ -341,7 +342,7 @@ export const KpiRewardsView: React.FC = () => {
                           </div>
                         </td>
                         <td className="py-3 px-3 text-center font-bold text-slate-700 border-r border-slate-300">{group.items.reduce((sum, item) => sum + (item.views_count || 0), 0)}</td>
-                        <td className="py-3 px-3 text-center font-bold text-success-700 border-r border-slate-300">{group.items.reduce((sum, item) => sum + (item.converted_kpi || 0), 0)}</td>
+                        <td className="py-3 px-3 text-center font-bold text-success-700 border-r border-slate-300">{sumConvertedKpi(group.items)}</td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center text-slate-400 border-r border-slate-300">—</td>
                         <td className="py-3 px-3 text-center">

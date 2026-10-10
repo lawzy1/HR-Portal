@@ -50,3 +50,12 @@ export function getStatusBadgeClass(status: string): string {
       return 'bg-slate-100 text-slate-700 border-slate-200';
   }
 }
+
+/** Sums converted KPI rounded to 2 decimals, dropping float noise (e.g. 31.450000000000003 → 31.45). */
+export function sumConvertedKpi(jobs: { converted_kpi?: number | null }[]): number {
+  return Math.round(jobs.reduce((sum, j) => sum + (j.converted_kpi || 0), 0) * 100) / 100;
+}
+
+if (import.meta.env.DEV) {
+  console.assert(sumConvertedKpi([{ converted_kpi: 0.1 }, { converted_kpi: 0.2 }, { converted_kpi: null }]) === 0.3, 'sumConvertedKpi self-check failed');
+}

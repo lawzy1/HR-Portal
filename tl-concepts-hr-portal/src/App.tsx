@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ActivateAccountPage } from './pages/ActivateAccountPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ContinueEmailLinkPage } from './pages/ContinueEmailLinkPage';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { AdminSidebar } from './components/admin/AdminSidebar';
@@ -136,6 +137,7 @@ export default function App() {
               <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth/activate" element={<ActivateAccountPage />} />
+              <Route path="/auth/continue-email" element={<ContinueEmailLinkPage />} />
               <Route
                 path="/*"
                 element={

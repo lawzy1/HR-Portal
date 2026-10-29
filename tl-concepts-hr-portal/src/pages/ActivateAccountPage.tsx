@@ -86,7 +86,7 @@ const PasswordField: React.FC<{ label: string; value: string; show: boolean; onC
 );
 
 const ActivateFrame: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4"><section className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8"><ShieldCheck className="h-9 w-9 text-emerald-700" /><h1 className="mt-4 text-2xl font-black text-slate-900">{title}</h1><div className="mt-3 text-slate-600">{children}</div><p className="mt-6 flex items-center gap-2 text-[11px] text-slate-500"><CheckCircle2 className="h-4 w-4 text-emerald-700" />TL Concepts HR Portal</p></section></main>
+  <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4"><section className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl sm:p-8"><ShieldCheck className="h-9 w-9 text-emerald-700" /><h1 className="mt-4 text-2xl font-black text-slate-900">{title}</h1><div className="mt-3 text-slate-600">{children}</div><p className="mt-6 flex items-center gap-2 text-[11px] text-slate-500"><CheckCircle2 className="h-4 w-4 text-emerald-700" />LAWZY HR Portal</p></section></main>
 );
 
 const Loading = () => <main className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">Đang xác thực lời mời...</main>;

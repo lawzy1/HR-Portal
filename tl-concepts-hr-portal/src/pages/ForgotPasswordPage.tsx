@@ -94,7 +94,7 @@ const AuthFrame: React.FC<{ title: string; children: React.ReactNode }> = ({ tit
       <ShieldCheck className="h-9 w-9 text-emerald-700" />
       <h1 className="mt-4 text-2xl font-black text-slate-900">{title}</h1>
       <div className="mt-3 text-slate-600">{children}</div>
-      <p className="mt-6 text-[11px] text-slate-500">TL Concepts HR Portal</p>
+      <p className="mt-6 text-[11px] text-slate-500">LAWZY HR Portal</p>
     </section>
   </main>
 );

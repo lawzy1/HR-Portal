@@ -188,7 +188,7 @@ export const EmployeeOnboardingPage: React.FC = () => {
       <div className="mx-auto max-w-5xl space-y-5">
         <header className="rounded-2xl bg-[#173f37] p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-emerald-200">TL Concepts HR Portal</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-emerald-200">LAWZY HR Portal</p>
             <h1 className="mt-2 text-2xl font-black">{t('onboarding.title')}</h1>
             <p className="mt-1 text-sm text-emerald-50/80">{t('onboarding.hello', { name: employee.full_name })}</p>
           </div>

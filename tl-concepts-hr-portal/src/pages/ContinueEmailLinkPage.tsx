@@ -28,7 +28,7 @@ export const ContinueEmailLinkPage: React.FC = () => {
         {confirmation ? (
           <>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Bấm nút bên dưới để tiếp tục trên TL Concepts HR Portal. Liên kết xác nhận chỉ được sử dụng một lần.
+              Bấm nút bên dưới để tiếp tục trên LAWZY HR Portal. Liên kết xác nhận chỉ được sử dụng một lần.
             </p>
             <button
               type="button"
@@ -49,7 +49,7 @@ export const ContinueEmailLinkPage: React.FC = () => {
             </Link>
           </>
         )}
-        <p className="mt-6 text-[11px] text-slate-500">TL Concepts HR Portal</p>
+        <p className="mt-6 text-[11px] text-slate-500">LAWZY HR Portal</p>
       </section>
     </main>
   );

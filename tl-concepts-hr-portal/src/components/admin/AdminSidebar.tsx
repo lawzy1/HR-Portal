@@ -119,7 +119,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, toggleCol
             <Logo size="sm" />
             {!collapsed && (
               <div className="min-w-0">
-                <h1 className="font-bold text-base text-slate-900 tracking-wide truncate">TL CONCEPTS HR</h1>
+                <h1 className="font-bold text-base text-slate-900 tracking-wide truncate">LAWZY HR</h1>
                 <p className="text-xs text-slate-500 font-medium truncate">{t('sidebar.adminPortal')}</p>
               </div>
             )}
